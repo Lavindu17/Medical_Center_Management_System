@@ -82,11 +82,16 @@ export async function GET(req: Request) {
         a.time_slot as timeSlot, 
         a.queue_number as queueNumber, 
         a.status,
+        a.reason,
+        a.patient_id,
         d_user.name as doctorName,
-        d.specialization
+        d.specialization,
+        p_user.name as patientName,
+        p_user.id as patientUserId
       FROM appointments a
       JOIN doctors d ON a.doctor_id = d.user_id
       JOIN users d_user ON d.user_id = d_user.id
+      LEFT JOIN users p_user ON a.patient_id = p_user.id
     `;
 
         const params: any[] = [];
