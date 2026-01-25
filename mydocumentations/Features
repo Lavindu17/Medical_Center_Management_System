@@ -1,0 +1,9 @@
+Admin
+
+adminfeat01- admin should be able to view doctors profiles and set give them a consultation fee. and view there earnings.
+
+adminfeat02-admin should be able to view the full revenue on daily basis, monthly basis, year basis. and revenue from consultation fees, revenue from medicine dispensing, revenue from lab tests etc. 
+
+adminfeat03-aslo calculate the profit (commission from doctor's fees, from medicine ( selling price  - buying price ) 
+
+adminfeat04-manage users (Create,Delete,Update,Read)

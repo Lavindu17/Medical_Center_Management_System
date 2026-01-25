@@ -9,7 +9,8 @@ import {
     Settings,
     LogOut,
     Menu,
-    HeartPulse
+    HeartPulse,
+    TrendingUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -17,7 +18,9 @@ import { useState } from 'react';
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/admin' },
+    { icon: TrendingUp, label: 'Revenue', href: '/admin/revenue' },
     { icon: Users, label: 'User Management', href: '/admin/users' },
+    { icon: HeartPulse, label: 'Doctor Fees', href: '/admin/doctors' },
     { icon: FileText, label: 'System Logs', href: '/admin/logs' },
     { icon: Settings, label: 'Settings', href: '/admin/settings' },
 ];
