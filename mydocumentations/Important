@@ -1,0 +1,3 @@
+Project should be build according to the mvc architecture (models, views, controllers)
+project should be have strong authentication and autherization
+project should follow standard error handling and loggings to make it easier to debug
