@@ -27,8 +27,8 @@ export default function DoctorLayout({
     const sidebarItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor' },
         { icon: Calendar, label: 'Appointments', href: '/doctor/appointments' },
+        { icon: Users, label: 'Patients', href: '/doctor/patients' },
         { icon: User, label: 'Profile & Schedule', href: '/doctor/profile' },
-        // { icon: Users, label: 'Patients', href: '/doctor/patients' }, 
     ];
 
     return (
