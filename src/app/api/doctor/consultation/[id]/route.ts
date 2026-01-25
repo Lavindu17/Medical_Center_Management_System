@@ -7,7 +7,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         // 1. Get Appointment & Patient Details
         // We join 'patients' table to get medical_history etc.
-        const [rows]: any = await query(
+        const rows: any = await query(
             `SELECT 
                 a.*,
                 u.name as patientName,
