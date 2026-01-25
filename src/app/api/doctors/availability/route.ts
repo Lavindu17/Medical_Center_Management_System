@@ -31,14 +31,10 @@ export async function GET(req: Request) {
         sessions.forEach(session => {
             let [h, m] = session.start.split(':').map(Number);
             const [endH, endM] = session.end.split(':').map(Number);
-
             const endTimeInMinutes = endH * 60 + endM;
 
             while (true) {
                 const currentTimeInMinutes = h * 60 + m;
-                // If current slot start is >= end time, stop (strict check)
-                // Note: If session ends at 8:00, the last slot depends on if it's inclusive of end time. 
-                // Typically 8:00 is the closing time, so 7:50 is the last 10-min slot.
                 if (currentTimeInMinutes >= endTimeInMinutes) break;
 
                 const timeString = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -58,15 +54,18 @@ export async function GET(req: Request) {
             'SELECT time_slot FROM appointments WHERE doctor_id = ? AND date = ? AND status != "CANCELLED"',
             [doctorId, date]
         );
-        const bookedSlots = new Set(existing.map((a: any) => a.time_slot.slice(0, 5))); // ensure format
+        const bookedSlots = new Set(existing.map((a: any) => a.time_slot.slice(0, 5)));
 
-        // Filter
-        const availableSlots = allSlots.filter(slot => !bookedSlots.has(slot));
+        // Return all slots with availability status
+        const slotsWithStatus = allSlots.map(time => ({
+            time,
+            available: !bookedSlots.has(time)
+        }));
 
         return NextResponse.json({
             date,
             doctorId,
-            slots: availableSlots
+            slots: slotsWithStatus
         });
 
     } catch (error) {

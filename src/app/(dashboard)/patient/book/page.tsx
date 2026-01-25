@@ -4,12 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-// import { Calendar } from '@/components/ui/calendar'; 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { User, CheckCircle2, Calendar as CalendarIcon, Clock, ChevronRight, ChevronLeft } from 'lucide-react';
+import { CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface Doctor {
     id: number;
@@ -18,24 +15,42 @@ interface Doctor {
     consultationFee: number;
 }
 
+interface Slot {
+    time: string;
+    available: boolean;
+}
+
 export default function BookAppointmentPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState<any>(null);
 
     // Data
     const [doctors, setDoctors] = useState<Doctor[]>([]);
-    const [slots, setSlots] = useState<string[]>([]);
+    const [slots, setSlots] = useState<Slot[]>([]);
 
     // Selection
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedSlot, setSelectedSlot] = useState<string>('');
 
-    // Fetch Doctors on Mount
+    // Fetch User Session & Doctors on Mount
     useEffect(() => {
+        // 1. Fetch Session
+        fetch('/api/auth/session')
+            .then(res => {
+                if (res.ok) return res.json();
+                // If not logged in, maybe redirect? For now, let fail gracefully or showing loading
+            })
+            .then(data => {
+                if (data?.user) setUser(data.user);
+            })
+            .catch(console.error);
+
+        // 2. Fetch Doctors
         async function fetchDoctors() {
-            const res = await fetch('/api/admin/doctors'); // Reuse admin endpoint for now as it serves the list
+            const res = await fetch('/api/admin/doctors');
             if (res.ok) {
                 const data = await res.json();
                 setDoctors(data);
@@ -54,10 +69,12 @@ export default function BookAppointmentPage() {
     async function fetchSlots() {
         setLoading(true);
         setSlots([]);
+        setSelectedSlot(''); // Reset selection
         try {
             const res = await fetch(`/api/doctors/availability?doctorId=${selectedDoctor?.id}&date=${selectedDate}`);
             if (res.ok) {
                 const data = await res.json();
+                // API now returns { time, available } objects
                 setSlots(data.slots);
             }
         } catch (e) {
@@ -67,47 +84,18 @@ export default function BookAppointmentPage() {
         }
     }
 
-    async function handleBook() {
-        // Ideally get patient ID from session context. For now, we'll fetch 'me' or assume ID is in cookie/session handled by API?
-        // The API expects 'patientId'. We need to know who the logged-in user is.
-        // In a real app, the API would extract user from the JWT token.
-        // Let's assume the API can handle 'me' or we fetch user profile first.
-        // Wait, the API I wrote expects `patientId` in body. I should update API to use session user if possible, 
-        // OR fetch current user profile here.
+    async function submitBooking() {
+        if (!user) {
+            alert("You must be logged in to book.");
+            return;
+        }
 
-        // For this implementation, let's fetch /api/auth/me (we don't have it yet, but we have /api/users?email=... or similar)
-        // Actually, in `login` we saved user to state/cookie? 
-        // Let's rely on the API verifying the token. 
-        // BUT the API Route expects `patientId`. 
-        // I will fetch the current user's details first or assume we have it.
-        // Let's create a quick helper to get session user ID if we don't store it in a context.
-
-        // Quick Fix: Retrieve user from localStorage if we saved it there during login? 
-        // The Login page code didn't save to localStorage, just cookies. 
-        // Use a placeholder or fetch a 'me' endpoint? 
-        // I'll assume we need to pass patientId.
-        // I'll fetch the user list filtering by my email or add a /api/auth/me endpoint.
-        // Let's add that endpoint quickly or just fetch all users and find logic (inefficient).
-
-        // Better: Add /api/auth/session endpoint.
-
-        // For now, I'll alert that I need to implement fetching the current user.
-        // Actually, I'll try to use a dummy ID '3' (from seed) if real auth isn't fully client-accessible yet, 
-        // BUT we want this to work.
-
-        // Let's assume there is a way. I will pause this function and implement a '/api/auth/session' route next step.
-        // For now, I will PUT A TODO logic here.
-        alert("Booking... (Patient ID logic pending)");
-    }
-
-    // Actually, let's implement the booking call assuming we have the ID.
-    async function submitBooking(patientId: number) {
         try {
             const res = await fetch('/api/appointments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    patientId,
+                    patientId: user.id, // Use dynamic ID
                     doctorId: selectedDoctor?.id,
                     date: selectedDate,
                     timeSlot: selectedSlot
@@ -130,7 +118,7 @@ export default function BookAppointmentPage() {
         <div className="max-w-4xl mx-auto py-8 px-4">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold">Book Appointment</h1>
-                <p className="text-neutral-500">Follow the steps to schedule a consultation.</p>
+                <p className="text-neutral-500">Scheduled for: <span className="font-semibold text-blue-600">{user?.name || 'Guest'}</span></p>
             </div>
 
             {/* Progress Steps */}
@@ -203,28 +191,38 @@ export default function BookAppointmentPage() {
 
                             {selectedDate && (
                                 <div className="space-y-2">
-                                    <Label>Available Slots (10 min)</Label>
+                                    <Label>Select Time Slot (10 min)</Label>
                                     {loading ? (
                                         <div className="py-8 text-neutral-500">Loading slots...</div>
                                     ) : slots.length === 0 ? (
-                                        <div className="py-8 text-red-500">No slots available for this date.</div>
+                                        <div className="py-8 text-neutral-500">No slots available (or closed).</div>
                                     ) : (
                                         <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                                            {slots.map(slot => (
+                                            {slots.map((slotObj, idx) => (
                                                 <button
-                                                    key={slot}
-                                                    onClick={() => setSelectedSlot(slot)}
+                                                    key={idx}
+                                                    disabled={!slotObj.available}
+                                                    onClick={() => slotObj.available && setSelectedSlot(slotObj.time)}
                                                     className={`py-2 px-1 text-sm rounded border text-center transition-colors
-                             ${selectedSlot === slot
-                                                            ? 'bg-blue-600 text-white border-blue-600'
-                                                            : 'hover:border-blue-400 hover:bg-blue-50 bg-white'}
-                           `}
+                                                      ${!slotObj.available
+                                                            ? 'bg-red-50 text-red-500 border-red-200 cursor-not-allowed opacity-60'
+                                                            : selectedSlot === slotObj.time
+                                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                                : 'hover:border-blue-400 hover:bg-blue-50 bg-white'
+                                                        }
+                                                    `}
+                                                    title={!slotObj.available ? 'Already Booked' : 'Available'}
                                                 >
-                                                    {slot}
+                                                    {slotObj.time}
                                                 </button>
                                             ))}
                                         </div>
                                     )}
+                                    <div className="flex gap-4 text-xs mt-2">
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-white"></div> Available</div>
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-blue-600"></div> Selected</div>
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-red-50"></div> Booked</div>
+                                    </div>
                                 </div>
                             )}
                         </CardContent>
@@ -273,10 +271,7 @@ export default function BookAppointmentPage() {
                             <Button variant="outline" onClick={() => setStep(2)}>
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Back
                             </Button>
-                            <Button className="bg-green-600 hover:bg-green-700" onClick={() => {
-                                // Hardcoded ID for now to test flow as discussed
-                                submitBooking(3);
-                            }}>
+                            <Button className="bg-green-600 hover:bg-green-700" onClick={submitBooking}>
                                 <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Booking
                             </Button>
                         </div>
