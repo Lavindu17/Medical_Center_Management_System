@@ -78,7 +78,7 @@ export async function GET(req: Request) {
         let sql = `
       SELECT 
         a.id, 
-        a.date, 
+        DATE_FORMAT(a.date, '%Y-%m-%d') as date, 
         a.time_slot as timeSlot, 
         a.queue_number as queueNumber, 
         a.status,
