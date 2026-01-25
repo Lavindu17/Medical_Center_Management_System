@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Search, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight, Play, Eye, Clock, CalendarDays, User } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DoctorAppointmentsPage() {
     const [appointments, setAppointments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
+    const [filter, setFilter] = useState<'today' | 'week' | 'month'>('today');
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        // Fetch User then Appointments
+        // Fetch User and Appointments
+        setLoading(true); // Ensure loading state resets on mount if needed
         fetch('/api/auth/session')
             .then(res => res.json())
             .then(data => {
@@ -25,7 +25,6 @@ export default function DoctorAppointmentsPage() {
             })
             .then(res => res.json())
             .then(data => {
-                // Determine status logic if needed, currently API gives status
                 if (Array.isArray(data)) setAppointments(data);
             })
             .catch(console.error)
@@ -34,45 +33,30 @@ export default function DoctorAppointmentsPage() {
 
     const getFilteredAppointments = () => {
         const today = new Date();
-        const todayStr = today.toLocaleDateString('en-CA'); // YYYY-MM-DD local
+        const todayStr = today.toLocaleDateString('en-CA');
 
         return appointments.filter(appt => {
-            const apptDate = new Date(appt.date); // appt.date is YYYY-MM-DD string
             const apptDateStr = appt.date;
 
-            // 1. Search Logic (Date or Name)
+            // Search
             if (searchTerm) {
-                // If specific date entered/selected
                 if (apptDateStr.includes(searchTerm)) return true;
-                // If name search
                 if (appt.patientName && appt.patientName.toLowerCase().includes(searchTerm.toLowerCase())) return true;
                 return false;
             }
 
-            // 2. Filter Logic
-            if (filter === 'today') {
-                return apptDateStr === todayStr;
-            }
+            // Filter
+            if (filter === 'today') return apptDateStr === todayStr;
             if (filter === 'week') {
-                // Simple logic: Is date within this week (Sunday to Saturday) containing today?
-                // Or next 7 days? Let's do "Current Week"
-                const firstDayOfWeek = new Date(today);
-                firstDayOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
-                const lastDayOfWeek = new Date(today);
-                lastDayOfWeek.setDate(today.getDate() + (6 - today.getDay())); // Saturday
-
-                // Compare times (reset hours to avoid mismatches)
-                firstDayOfWeek.setHours(0, 0, 0, 0);
-                lastDayOfWeek.setHours(23, 59, 59, 999);
-                apptDate.setHours(12, 0, 0, 0); // set to middle of day to be safe
-
-                return apptDate >= firstDayOfWeek && apptDate <= lastDayOfWeek;
+                const d = new Date(appt.date);
+                const t = new Date();
+                const diffTime = Math.abs(t.getTime() - d.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays <= 7; // Approx 'week'
             }
             if (filter === 'month') {
-                return apptDate.getMonth() === today.getMonth() && apptDate.getFullYear() === today.getFullYear();
-            }
-            if (filter === 'year') {
-                return apptDate.getFullYear() === today.getFullYear();
+                const d = new Date(appt.date);
+                return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
             }
             return true;
         });
@@ -81,81 +65,137 @@ export default function DoctorAppointmentsPage() {
     const filteredData = getFilteredAppointments();
 
     return (
-        <div className="p-8 max-w-7xl mx-auto font-sans text-neutral-800">
-            {/* Header Section */}
-            <div className="mb-6">
-                <p className="text-sm text-neutral-500 font-medium">Sethro Medical Center</p>
-                <h1 className="text-4xl font-extrabold tracking-tight text-neutral-900">Appointments</h1>
+        <div className="p-8 max-w-7xl mx-auto font-sans text-neutral-800 bg-gray-50/50 min-h-screen">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Appointments</h1>
+                    <p className="text-neutral-500 mt-1">Manage patient queue and consultations.</p>
+                </div>
+                <div className="flex bg-white p-1 rounded-lg border shadow-sm">
+                    {(['today', 'week', 'month'] as const).map(f => (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f)}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === f
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-gray-50'
+                                }`}
+                        >
+                            {f.charAt(0).toUpperCase() + f.slice(1)}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="flex gap-2 mb-6 bg-gray-50 p-2 rounded-lg">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            {/* Search */}
+            <div className="mb-6 max-w-md">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                     <Input
-                        type="text"
-                        placeholder="Enter Date (YYYY-MM-DD) or Patient Name"
-                        className="pl-10 h-12 bg-transparent border-none shadow-none text-lg placeholder:text-neutral-400 focus-visible:ring-0"
+                        placeholder="Search by Patient Name or Date..."
+                        className="pl-9 bg-white border-neutral-200 focus:border-blue-500 transition-colors"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button className="h-12 px-8 bg-green-500 hover:bg-green-600 text-white font-bold rounded-md">
-                    Search
-                </Button>
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-4 mb-8">
-                <FilterButton active={filter === 'today'} onClick={() => setFilter('today')}>Today</FilterButton>
-                <FilterButton active={filter === 'week'} onClick={() => setFilter('week')}>This Week</FilterButton>
-                <FilterButton active={filter === 'month'} onClick={() => setFilter('month')}>This Month</FilterButton>
-                <FilterButton active={filter === 'year'} onClick={() => setFilter('year')}>This Year</FilterButton>
-            </div>
-
-            {/* Appointment Table */}
-            <div className="border rounded-xl overflow-hidden shadow-sm bg-white">
+            {/* Content */}
+            <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
                 {/* Table Header */}
-                <div className="grid grid-cols-12 gap-4 p-4 border-b bg-white text-sm font-bold text-neutral-900">
-                    <div className="col-span-1">No</div>
-                    <div className="col-span-3">Patient Name</div>
-                    <div className="col-span-2">Timeslot</div>
-                    <div className="col-span-4">Reason to visit</div>
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-neutral-100 bg-neutral-50/50 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                    <div className="col-span-1 text-center">Queue</div>
+                    <div className="col-span-4">Patient</div>
+                    <div className="col-span-2">Time</div>
                     <div className="col-span-2">Status</div>
+                    <div className="col-span-3 text-right">Action</div>
                 </div>
 
-                {/* Table Body */}
-                <div className="bg-white">
+                {/* Rows */}
+                <div className="divide-y divide-neutral-100">
                     {loading ? (
-                        <div className="p-8 text-center text-neutral-500">Loading appointments...</div>
+                        <div className="p-12 flex justify-center text-neutral-400">Loading...</div>
                     ) : filteredData.length === 0 ? (
-                        <div className="p-12 text-center">
-                            <p className="text-neutral-400 mb-2">No appointments found for this filter.</p>
+                        <div className="p-16 flex flex-col items-center justify-center text-neutral-400 gap-2">
+                            <CalendarDays className="h-10 w-10 text-neutral-200" />
+                            <p>No appointments found.</p>
                         </div>
                     ) : (
                         filteredData.map((appt) => (
-                            <div key={appt.id} className="grid grid-cols-12 gap-4 p-4 border-b last:border-0 hover:bg-neutral-50 transition-colors items-center">
-                                <div className="col-span-1 font-mono text-neutral-500">
-                                    {appt.queueNumber.toString().padStart(2, '0')}
+                            <div key={appt.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-blue-50/30 transition-colors group">
+                                {/* Queue Number */}
+                                <div className="col-span-1 flex justify-center">
+                                    <div className="h-8 w-8 rounded-full bg-neutral-100 text-neutral-600 font-bold flex items-center justify-center text-sm border border-neutral-200 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                                        {appt.queueNumber}
+                                    </div>
                                 </div>
-                                <div className="col-span-3 font-semibold text-neutral-900">
-                                    {appt.patientName || `Patient #${appt.patient_id}`}
+
+                                {/* Patient */}
+                                <div className="col-span-4 flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold text-sm shrink-0 border border-white shadow-sm">
+                                        {appt.patientName ? appt.patientName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+                                    </div>
+                                    <div>
+                                        <div className="font-semibold text-neutral-900 leading-tight">
+                                            {appt.patientName || `Patient #${appt.patient_id}`}
+                                        </div>
+                                        <div className="text-xs text-neutral-500 truncate mt-0.5" title={appt.reason}>
+                                            {appt.reason || 'Routine Checkup'}
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* Time */}
                                 <div className="col-span-2">
-                                    <div className="font-bold text-neutral-800">{appt.timeSlot}</div>
-                                    <div className="text-xs text-neutral-400">{appt.date}</div>
+                                    <div className="flex items-center gap-1.5 text-neutral-900 font-medium text-sm">
+                                        <Clock className="h-3.5 w-3.5 text-neutral-400" />
+                                        {appt.timeSlot}
+                                    </div>
+                                    <div className="text-xs text-neutral-400 pl-5">{appt.date}</div>
                                 </div>
-                                <div className="col-span-4 text-sm text-neutral-600 truncate pr-4" title={appt.reason}>
-                                    {appt.reason || '-'}
+
+                                {/* Status */}
+                                <div className="col-span-2">
+                                    <StatusPill status={appt.status} />
                                 </div>
-                                <div className="col-span-2 flex items-center justify-between">
-                                    <StatusBadge status={appt.status} />
+
+                                {/* Actions */}
+                                <div className="col-span-3 flex justify-end gap-2">
+                                    {/* Logic: 
+                                        Pending -> Start(Disabled)
+                                        CheckedIn -> Start
+                                        Ongoing -> Resume
+                                        Completed -> View
+                                    */}
                                     {appt.status === 'PENDING' && (
+                                        <Button size="sm" variant="ghost" disabled className="text-neutral-400 gap-2 h-8">
+                                            <Play className="h-4 w-4" /> Start
+                                        </Button>
+                                    )}
+                                    {appt.status === 'CHECKED_IN' && (
                                         <Link href={`/doctor/consultation/${appt.id}`}>
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-neutral-400 hover:text-blue-600">
-                                                <ChevronRight className="h-5 w-5" />
+                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm h-8 gap-2 px-4 transition-all hover:pr-5">
+                                                <Play className="h-3.5 w-3.5 fill-current" /> Start
                                             </Button>
                                         </Link>
+                                    )}
+                                    {appt.status === 'ONGOING' && (
+                                        <Link href={`/doctor/consultation/${appt.id}`}>
+                                            <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm h-8 gap-2 px-4">
+                                                <Play className="h-3.5 w-3.5 fill-current" /> Resume
+                                            </Button>
+                                        </Link>
+                                    )}
+                                    {appt.status === 'COMPLETED' && (
+                                        <Link href={`/doctor/consultation/${appt.id}`}>
+                                            <Button size="sm" variant="secondary" className="text-neutral-600 hover:text-blue-600 h-8 gap-2">
+                                                <Eye className="h-4 w-4" /> View
+                                            </Button>
+                                        </Link>
+                                    )}
+                                    {(appt.status === 'CANCELLED' || appt.status === 'ABSENT') && (
+                                        <span className="text-neutral-400 text-sm px-2">-</span>
                                     )}
                                 </div>
                             </div>
@@ -167,34 +207,44 @@ export default function DoctorAppointmentsPage() {
     );
 }
 
-function FilterButton({ active, children, onClick }: { active: boolean, children: React.ReactNode, onClick: () => void }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`
-                px-6 py-2 rounded-lg font-medium text-sm transition-all border
-                ${active
-                    ? 'bg-green-500 text-white border-green-500 shadow-sm'
-                    : 'bg-white text-green-600 border-green-600 hover:bg-green-50'
-                }
-            `}
-        >
-            {children}
-        </button>
-    )
-}
+function StatusPill({ status }: { status: string }) {
+    // Dot + Text strategy
+    let color = 'bg-gray-100 text-gray-500';
+    let dot = 'bg-gray-400';
+    let label = status;
 
-function StatusBadge({ status }: { status: string }) {
-    const styles = {
-        'PENDING': 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100',
-        'COMPLETED': 'bg-blue-100 text-blue-700 hover:bg-blue-100',
-        'CANCELLED': 'bg-red-100 text-red-700 hover:bg-red-100',
-        'ABSENT': 'bg-gray-100 text-gray-700 hover:bg-gray-100',
-    }[status] || 'bg-gray-100 text-gray-700';
+    switch (status) {
+        case 'PENDING':
+            color = 'bg-yellow-50 text-yellow-700 border border-yellow-100';
+            dot = 'bg-yellow-500';
+            label = 'Pending';
+            break;
+        case 'CHECKED_IN':
+            color = 'bg-green-50 text-green-700 border border-green-100';
+            dot = 'bg-green-500 animate-pulse';
+            label = 'Checked In';
+            break;
+        case 'ONGOING':
+            color = 'bg-amber-50 text-amber-700 border border-amber-100';
+            dot = 'bg-amber-500';
+            label = 'Ongoing';
+            break;
+        case 'COMPLETED':
+            color = 'bg-blue-50 text-blue-700 border border-blue-100';
+            dot = 'bg-blue-500';
+            label = 'Completed';
+            break;
+        case 'CANCELLED':
+            color = 'bg-red-50 text-red-700 border border-red-100';
+            dot = 'bg-red-400';
+            label = 'Cancelled';
+            break;
+    }
 
     return (
-        <Badge variant="secondary" className={`${styles} border-none`}>
-            {status}
-        </Badge>
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full w-fit ${color}`}>
+            <span className={`h-2 w-2 rounded-full ${dot}`}></span>
+            <span className="text-xs font-semibold">{label}</span>
+        </div>
     )
 }

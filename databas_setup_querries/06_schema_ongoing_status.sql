@@ -1,0 +1,3 @@
+-- Add ONGOING status to appointments
+ALTER TABLE `appointments` 
+MODIFY COLUMN `status` ENUM('PENDING', 'CHECKED_IN', 'ONGOING', 'COMPLETED', 'CANCELLED', 'ABSENT') DEFAULT 'PENDING';
