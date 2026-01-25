@@ -11,7 +11,8 @@ import {
     Settings,
     LogOut,
     Menu,
-    Stethoscope
+    Stethoscope,
+    User
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -26,8 +27,8 @@ export default function DoctorLayout({
     const sidebarItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor' },
         { icon: Calendar, label: 'Appointments', href: '/doctor/appointments' },
-        // { icon: Users, label: 'Patients', href: '/doctor/patients' }, // Can add later
-        // { icon: Settings, label: 'Settings', href: '/doctor/settings' },
+        { icon: User, label: 'Profile & Schedule', href: '/doctor/profile' },
+        // { icon: Users, label: 'Patients', href: '/doctor/patients' }, 
     ];
 
     return (
