@@ -26,6 +26,8 @@ export default function InventoryPage() {
         stock: '',
         min_stock_level: '10',
         unit: 'tablets',
+        dosage_form: '',
+        strength: '',
         price_per_unit: '',
         buying_price: '',
         expiry_date: ''
@@ -121,6 +123,8 @@ export default function InventoryPage() {
             stock: med.stock,
             min_stock_level: med.min_stock_level || '10',
             unit: med.unit,
+            dosage_form: med.dosage_form || '',
+            strength: med.strength || '',
             price_per_unit: med.price_per_unit,
             buying_price: med.buying_price || '',
             expiry_date: med.expiry_date ? new Date(med.expiry_date).toISOString().split('T')[0] : ''
@@ -138,6 +142,8 @@ export default function InventoryPage() {
             stock: '',
             min_stock_level: '10',
             unit: 'tablets',
+            dosage_form: '',
+            strength: '',
             price_per_unit: '',
             buying_price: '',
             expiry_date: ''
@@ -215,6 +221,25 @@ export default function InventoryPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2"><Label>Unit</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. tablets" /></div>
                                 <div className="space-y-2"><Label>Min Stock Level</Label><Input type="number" value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Dosage Form</Label>
+                                    <select
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        value={formData.dosage_form}
+                                        onChange={e => setFormData({ ...formData, dosage_form: e.target.value })}
+                                    >
+                                        <option value="">Select...</option>
+                                        <option value="TABLET">Tablet</option>
+                                        <option value="SYRUP">Syrup</option>
+                                        <option value="CAPSULE">Capsule</option>
+                                        <option value="INJECTION">Injection</option>
+                                        <option value="CREAM">Cream</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="e.g. 500mg" /></div>
                             </div>
                             {/* Standard Selling Price is optional but good for default. Buying Price and Stock are batch specific. */}
                             <div className="space-y-2"><Label>Standard Selling Price ($)</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>

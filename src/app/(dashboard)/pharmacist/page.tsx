@@ -9,7 +9,9 @@ export default function PharmacistDashboard() {
     const [stats, setStats] = useState({
         pendingPrescriptions: 0,
         lowStockCount: 0,
-        totalMedicines: 0
+        totalMedicines: 0,
+        expiredBatchesCount: 0,
+        expiringSoonCount: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -32,12 +34,30 @@ export default function PharmacistDashboard() {
             href: '/pharmacist/prescriptions'
         },
         {
+            title: 'Expired Batches',
+            value: stats.expiredBatchesCount,
+            icon: AlertTriangle,
+            description: 'Need immediate removal',
+            color: 'text-red-600',
+            bg: 'bg-red-50',
+            href: '/pharmacist/alerts'
+        },
+        {
+            title: 'Expiring Soon',
+            value: stats.expiringSoonCount,
+            icon: AlertTriangle,
+            description: 'Within 30 days',
+            color: 'text-amber-600',
+            bg: 'bg-amber-50',
+            href: '/pharmacist/alerts'
+        },
+        {
             title: 'Low Stock Alerts',
             value: stats.lowStockCount,
             icon: AlertTriangle,
             description: 'Items below threshold',
-            color: 'text-amber-600',
-            bg: 'bg-amber-50',
+            color: 'text-orange-600',
+            bg: 'bg-orange-50',
             href: '/pharmacist/inventory'
         },
         {
@@ -60,7 +80,7 @@ export default function PharmacistDashboard() {
                 <p className="text-neutral-500">Overview of pharmacy operations and inventory.</p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                 {cards.map((card, i) => (
                     <Link key={i} href={card.href} className="block transition-transform hover:-translate-y-1">
                         <Card>

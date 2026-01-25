@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { query, pool } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 
@@ -10,6 +10,45 @@ async function checkAuth() {
     const user = await AuthService.verifyToken(token || '');
     if (!user || user.role !== 'PHARMACIST') return false;
     return true;
+}
+
+// GET endpoint to fetch batches for a specific medicine
+export async function GET(req: Request) {
+    try {
+        if (!await checkAuth()) {
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const medicineId = searchParams.get('medicineId');
+
+        if (!medicineId) {
+            return NextResponse.json({ message: 'medicineId is required' }, { status: 400 });
+        }
+
+        const batches = await query(`
+            SELECT 
+                id,
+                batch_number,
+                expiry_date,
+                quantity_initial,
+                quantity_current,
+                buying_price,
+                selling_price,
+                status,
+                received_at,
+                DATEDIFF(expiry_date, CURDATE()) as days_until_expiry
+            FROM inventory_batches
+            WHERE medicine_id = ?
+            ORDER BY expiry_date ASC
+        `, [medicineId]);
+
+        return NextResponse.json(batches);
+
+    } catch (error) {
+        console.error('Fetch Batches Error:', error);
+        return NextResponse.json({ message: 'Error fetching batches' }, { status: 500 });
+    }
 }
 
 export async function POST(req: Request) {

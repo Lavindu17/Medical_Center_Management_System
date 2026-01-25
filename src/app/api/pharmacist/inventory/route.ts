@@ -39,19 +39,21 @@ export async function POST(req: Request) {
     try {
         if (!await checkAuth()) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         const body = await req.json();
-        const { name, unit, price_per_unit, generic_name, manufacturer, min_stock_level, location, category } = body;
+        const { name, unit, price_per_unit, generic_name, manufacturer, min_stock_level, location, category, dosage_form, strength } = body;
 
         // Create Master Record Only (Stock = 0)
         await query(
             `INSERT INTO medicines 
-            (name, generic_name, manufacturer, stock, min_stock_level, unit, selling_price, buying_price, expiry_date, location, category) 
-            VALUES (?, ?, ?, 0, ?, ?, ?, 0, NULL, ?, ?)`, // Default stock 0, expiry NULL
+            (name, generic_name, manufacturer, stock, min_stock_level, unit, dosage_form, strength, selling_price, buying_price, expiry_date, location, category) 
+            VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`, // Default stock 0, expiry NULL
             [
                 name,
                 generic_name || null,
                 manufacturer || null,
                 min_stock_level || 10,
                 unit,
+                dosage_form || null,
+                strength || null,
                 price_per_unit || 0, // Standard selling price
                 location || null,
                 category || null
