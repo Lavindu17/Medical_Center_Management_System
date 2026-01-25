@@ -16,51 +16,49 @@ export async function GET(req: Request) {
         }
 
         // 2. Fetch Stats
-        const today = new Date().toISOString().split('T')[0];
+        // Use Local Date YYYY-MM-DD
+        const today = new Date().toLocaleDateString('en-CA');
 
         // Today's Appointments
-        const [todayRows]: any = await query(
-            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND date = ? AND status != "CANCELLED"',
+        // Use DATE_FORMAT to match only the date part string-wise
+        const todayRows = await query<any[]>(
+            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND DATE_FORMAT(date, "%Y-%m-%d") = ? AND status != "CANCELLED"',
             [user.id, today]
         );
 
         // Upcoming Appointments
-        const [upcomingRows]: any = await query(
-            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND date > ? AND status != "CANCELLED"',
+        const upcomingRows = await query<any[]>(
+            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND DATE_FORMAT(date, "%Y-%m-%d") > ? AND status != "CANCELLED"',
             [user.id, today]
         );
 
         // Total Patients (Unique)
-        const [patientRows]: any = await query(
+        const patientRows = await query<any[]>(
             'SELECT COUNT(DISTINCT patient_id) as count FROM appointments WHERE doctor_id = ?',
             [user.id]
         );
 
-        // Revenue (Based on Bills for this doctor)
-        // If bills track doctor_fee, use that.
-        // Schema: bills -> appointment_id -> doctor_id (via join)
-        // Actually bills schema has doctor_fee. We need to join with appointments to filter by doctor_id is NOT in bills table... 
-        // Wait, bills table schema:
-        // CREATE TABLE `bills` (
-        //   `id` INT AUTO_INCREMENT PRIMARY KEY,
-        //   `appointment_id` INT NOT NULL UNIQUE,
-        //   ...
-        //   FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`)
-        // )
-        // So we need to join appointments to check doctor_id.
-        const [revenueRows]: any = await query(
-            `SELECT SUM(b.doctor_fee) as total 
-             FROM bills b
-             JOIN appointments a ON b.appointment_id = a.id
-             WHERE a.doctor_id = ? AND b.status = 'PAID'`, // Count only PAID for realized revenue? Or all? Let's do PAID.
+        // Revenue Calculation
+        // Option A: Realized (Paid Bills) -> Might be 0 if billing not used yet.
+        // Option B: Projected (Appointments * Fee). Let's use Projected for better UX now.
+
+        // Get Doctor Fee
+        const docFeeRows = await query<any[]>('SELECT consultation_fee FROM doctors WHERE user_id = ?', [user.id]);
+        const fee = docFeeRows[0]?.consultation_fee || 0;
+
+        // Count all valid appointments (Past + Future)
+        const totalApptRows = await query<any[]>(
+            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND status != "CANCELLED"',
             [user.id]
         );
+
+        const totalRevenue = totalApptRows[0].count * fee;
 
         return NextResponse.json({
             todayAppointments: todayRows[0].count,
             upcomingAppointments: upcomingRows[0].count,
             totalPatients: patientRows[0].count,
-            revenue: revenueRows[0].total || 0
+            revenue: totalRevenue // Projected Revenue
         });
 
     } catch (error) {
