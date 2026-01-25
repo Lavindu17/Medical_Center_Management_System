@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea'; // Assuming Textarea exists or use standard
+import { CheckCircle2, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 
 interface Doctor {
     id: number;
@@ -28,12 +29,15 @@ export default function BookAppointmentPage() {
 
     // Data
     const [doctors, setDoctors] = useState<Doctor[]>([]);
+    const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
     const [slots, setSlots] = useState<Slot[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Selection
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedSlot, setSelectedSlot] = useState<string>('');
+    const [reason, setReason] = useState<string>('');
 
     // Fetch User Session & Doctors on Mount
     useEffect(() => {
@@ -54,10 +58,25 @@ export default function BookAppointmentPage() {
             if (res.ok) {
                 const data = await res.json();
                 setDoctors(data);
+                setFilteredDoctors(data);
             }
         }
         fetchDoctors();
     }, []);
+
+    // Filter Doctors
+    useEffect(() => {
+        if (!searchQuery) {
+            setFilteredDoctors(doctors);
+        } else {
+            const lower = searchQuery.toLowerCase();
+            setFilteredDoctors(doctors.filter(d =>
+                d.name.toLowerCase().includes(lower) ||
+                d.specialization.toLowerCase().includes(lower)
+            ));
+        }
+    }, [searchQuery, doctors]);
+
 
     // Fetch Slots when Date/Doctor changes
     useEffect(() => {
@@ -98,7 +117,8 @@ export default function BookAppointmentPage() {
                     patientId: user.id, // Use dynamic ID
                     doctorId: selectedDoctor?.id,
                     date: selectedDate,
-                    timeSlot: selectedSlot
+                    timeSlot: selectedSlot,
+                    reason: reason // Send reason
                 })
             });
 
@@ -127,7 +147,7 @@ export default function BookAppointmentPage() {
                 <div className="h-0.5 w-8 bg-neutral-200" />
                 <span className={`px-3 py-1 rounded-full ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>2. Date & Time</span>
                 <div className="h-0.5 w-8 bg-neutral-200" />
-                <span className={`px-3 py-1 rounded-full ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>3. Confirm</span>
+                <span className={`px-3 py-1 rounded-full ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>3. Reason & Confirm</span>
             </div>
 
             <div className="grid gap-6">
@@ -136,30 +156,48 @@ export default function BookAppointmentPage() {
                         <CardHeader>
                             <CardTitle>Select a Doctor</CardTitle>
                             <CardDescription>Choose a specialist for your consultation.</CardDescription>
+
+                            {/* Search Bar */}
+                            <div className="relative mt-2">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search by name or specialization..."
+                                    className="pl-9"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
                         </CardHeader>
-                        <CardContent className="grid md:grid-cols-2 gap-4">
-                            {doctors.map(doc => (
-                                <div
-                                    key={doc.id}
-                                    onClick={() => setSelectedDoctor(doc)}
-                                    className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50
-                    ${selectedDoctor?.id === doc.id ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-neutral-200'}
-                  `}
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                                            DR
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold">{doc.name}</h3>
-                                            <p className="text-sm text-neutral-500">{doc.specialization}</p>
-                                            <div className="mt-2 text-xs font-mono bg-white inline-block px-1 rounded border">
-                                                Fee: ${doc.consultationFee}
+                        <CardContent className="grid md:grid-cols-2 gap-4 h-[400px] overflow-y-auto pr-2">
+                            {filteredDoctors.length === 0 ? (
+                                <div className="col-span-2 text-center py-8 text-neutral-500">
+                                    No doctors found matching "{searchQuery}"
+                                </div>
+                            ) : (
+                                filteredDoctors.map(doc => (
+                                    <div
+                                        key={doc.id}
+                                        onClick={() => setSelectedDoctor(doc)}
+                                        className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50
+                        ${selectedDoctor?.id === doc.id ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-neutral-200'}
+                      `}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                                DR
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold">{doc.name}</h3>
+                                                <p className="text-sm text-neutral-500">{doc.specialization}</p>
+                                                <div className="mt-2 text-xs font-mono bg-white inline-block px-1 rounded border">
+                                                    Fee: ${doc.consultationFee}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </CardContent>
                         <div className="p-6 border-t flex justify-end">
                             <Button disabled={!selectedDoctor} onClick={() => setStep(2)}>
@@ -231,7 +269,7 @@ export default function BookAppointmentPage() {
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Back
                             </Button>
                             <Button disabled={!selectedDate || !selectedSlot} onClick={() => setStep(3)}>
-                                Review & Confirm <ChevronRight className="ml-2 h-4 w-4" />
+                                Next: Details <ChevronRight className="ml-2 h-4 w-4" />
                             </Button>
                         </div>
                     </Card>
@@ -240,10 +278,24 @@ export default function BookAppointmentPage() {
                 {step === 3 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Confirm Appointment</CardTitle>
-                            <CardDescription>Please review your booking details.</CardDescription>
+                            <CardTitle>Reason & Confirm</CardTitle>
+                            <CardDescription>Please explain your visit regarding and review details.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
+                            {/* Reason Input */}
+                            <div className="space-y-2">
+                                <Label htmlFor="reason">Reason for Visit (Symptoms, etc.)</Label>
+                                <div className="relative">
+                                    <textarea
+                                        id="reason"
+                                        className="flex min-h-[80px] w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-offset-neutral-950 dark:placeholder:text-neutral-400 dark:focus-visible:ring-neutral-300"
+                                        placeholder="e.g. Severe headache, Fever since yesterday..."
+                                        value={reason}
+                                        onChange={(e) => setReason(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="bg-neutral-50 p-6 rounded-lg space-y-4 max-w-lg mx-auto border">
                                 <div className="flex justify-between border-b pb-2">
                                     <span className="text-neutral-500">Doctor</span>

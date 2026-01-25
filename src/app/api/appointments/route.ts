@@ -7,6 +7,7 @@ const appointmentSchema = z.object({
     doctorId: z.number(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     timeSlot: z.string(),
+    reason: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Invalid input', errors: validation.error.flatten() }, { status: 400 });
         }
 
-        const { patientId, doctorId, date, timeSlot } = validation.data;
+        const { patientId, doctorId, date, timeSlot, reason } = validation.data;
 
         const connection = await pool.getConnection();
         await connection.beginTransaction();
@@ -43,8 +44,8 @@ export async function POST(req: Request) {
 
             // 3. Insert Appointment
             await connection.execute(
-                'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, ?, ?, ?, "PENDING")',
-                [patientId, doctorId, date, timeSlot, nextQueue]
+                'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status, reason) VALUES (?, ?, ?, ?, ?, "PENDING", ?)',
+                [patientId, doctorId, date, timeSlot, nextQueue, reason || null]
             );
 
             await connection.commit();
