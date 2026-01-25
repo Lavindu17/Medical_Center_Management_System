@@ -8,15 +8,24 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Trash2, Edit } from 'lucide-react';
 import { User } from '@/types';
 
 export default function UserManagementPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Create Dialog
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [formData, setFormData] = useState({
         name: '', email: '', password: '', role: 'DOCTOR', phone: '', specialization: '', licenseNumber: ''
+    });
+
+    // Edit Dialog
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editFormData, setEditFormData] = useState({
+        name: '', email: '', role: '', phone: ''
     });
 
     useEffect(() => {
@@ -55,6 +64,50 @@ export default function UserManagementPage() {
             setFormData({ name: '', email: '', password: '', role: 'DOCTOR', phone: '', specialization: '', licenseNumber: '' });
         } catch (error: any) {
             alert(error.message);
+        }
+    }
+
+    const handleEditClick = (user: User) => {
+        setEditingUser(user);
+        setEditFormData({
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            phone: user.phone || ''
+        });
+        setIsEditOpen(true);
+    };
+
+    async function handleUpdateUser(e: React.FormEvent) {
+        e.preventDefault();
+        if (!editingUser) return;
+
+        try {
+            const res = await fetch('/api/users', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...editFormData, id: editingUser.id }),
+            });
+
+            if (!res.ok) throw new Error('Failed to update');
+
+            setIsEditOpen(false);
+            fetchUsers();
+        } catch (error: any) {
+            alert('Error updating user');
+        }
+    }
+
+    async function handleDeleteUser(id: string) {
+        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+
+        try {
+            const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete');
+
+            fetchUsers();
+        } catch (error) {
+            alert('Error deleting user');
         }
     }
 
@@ -156,12 +209,13 @@ export default function UserManagementPage() {
                                 <TableHead>Role</TableHead>
                                 <TableHead>Phone</TableHead>
                                 <TableHead>Joined</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">Loading...</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
                             ) : users.map((user) => (
                                 <TableRow key={user.id}>
@@ -177,12 +231,76 @@ export default function UserManagementPage() {
                                     </TableCell>
                                     <TableCell>{user.phone || '-'}</TableCell>
                                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(user)}>
+                                            <Edit className="h-4 w-4 text-neutral-500" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
+                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
                     </Table>
                 </CardContent>
             </Card>
+
+            {/* Edit User Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit User</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleUpdateUser} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label>Name</Label>
+                            <Input
+                                value={editFormData.name}
+                                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Email</Label>
+                            <Input
+                                value={editFormData.email}
+                                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Phone</Label>
+                            <Input
+                                value={editFormData.phone}
+                                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Role</Label>
+                            <Select
+                                value={editFormData.role}
+                                onValueChange={(val) => setEditFormData({ ...editFormData, role: val })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="DOCTOR">Doctor</SelectItem>
+                                    <SelectItem value="PHARMACIST">Pharmacist</SelectItem>
+                                    <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
+                                    <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
+                                    <SelectItem value="ADMIN">Admin</SelectItem>
+                                    <SelectItem value="PATIENT">Patient</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit">Update User</Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
