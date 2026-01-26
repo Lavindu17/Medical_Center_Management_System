@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LockReset } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 export default function ResetPasswordPage() {
     const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +51,7 @@ export default function ResetPasswordPage() {
             <Card className="w-full max-w-md shadow-lg border-neutral-200 dark:border-neutral-800">
                 <CardHeader className="space-y-1 items-center text-center">
                     <div className="h-12 w-12 bg-red-600 rounded-xl flex items-center justify-center text-white mb-4">
-                        <LockReset className="h-7 w-7" />
+                        <Lock className="h-7 w-7" />
                     </div>
                     <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
                     <CardDescription>
