@@ -28,8 +28,7 @@ export async function GET(req: Request) {
             JOIN appointments a ON lr.appointment_id = a.id
             JOIN users p ON a.patient_id = p.id
             JOIN users d ON a.doctor_id = d.id
-            WHERE lr.status = 'PENDING'
-            ORDER BY lr.requested_at ASC
+            ORDER BY lr.requested_at DESC
         `);
 
         return NextResponse.json(requests);

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         const cookieStore = await cookies();
         const token = cookieStore.get('token')?.value;
         const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'LAB_ASSISTANT') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        if (!user || (user.role !== 'LAB_ASSISTANT' && user.role !== 'DOCTOR' && user.role !== 'ADMIN')) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         const { name, description, price } = await req.json();
 
