@@ -1,0 +1,36 @@
+. The Core Architecture (Your "Idea" Refined)You are essentially building two distinct layers:Medicine Registry (Master Data): The "What". (e.g., "Panadol 500mg"). This data rarely changes.Inventory Batches (Transactional Data): The "How much & Which one". (e.g., "500 tablets of Panadol arriving today, expiring in 2027").2. Database Schema & ColumnsHere is how you should structure your tables (Entities).A. Table: Medicines (The Master Data)This stores the "Definition" of the medicine as you described.Column NameData TypeDescriptionMedicineIDINT (PK)Unique ID for the system.BrandNameVARCHARe.g., "Panadol".GenericNameVARCHARe.g., "Paracetamol". Crucial for pharmacists to find substitutes.ManufacturerVARCHARe.g., "GSK".DosageFormENUMTablet, Syrup, Capsule, Injection, Cream.StrengthVARCHARe.g., "500mg", "10ml".ReorderLevelINTThe minimum stock quantity. If stock drops below this, alert the user.MeasurementUnitVARCHARHow do you sell it? (e.g., "Per Tablet", "Per Strip", "Per Bottle").B. Table: InventoryBatches (The "Adding Inventory" Part)Every time you buy new stock, you create a new row here. You NEVER update an old row simply to increase count; you add a new batch.Column NameData TypeDescriptionBatchIDINT (PK)Unique system ID for this specific stock entry.MedicineIDINT (FK)Links back to the Medicines table.BatchNumberVARCHARThe physical batch number printed on the medicine box (for tracking recalls).ExpiryDateDATECritical. Used for FEFO (First Expired, First Out) logic.QuantityInitialINTHow many units came in originally.QuantityCurrentINTHow many units are left right now.BuyPriceDECIMALCost per unit (e.g., per tablet) for this specific batch.SellPriceDECIMALSelling price per unit for this specific batch.StatusENUM'Active', 'Expired', 'Depleted'.3. Key Business Functions (The Logic)To manage this successfully, you need to implement these specific functions in your backend:Function 1: Medicine Registration (One-time setup)Action: User creates a new medicine profile.Logic: Check if the BrandName + Strength already exists to prevent duplicates.Function 2: Goods Received Note (GRN) / Adding StockAction: The user selects a medicine (from Table A) and adds the new stock details (Table B).The Challenge: Unit Conversion.Scenario: The pharmacy buys a "Box" containing 10 "Strips", and each strip has 10 "Tablets".Solution: Your interface should ask: "How many boxes?" and "How many tablets per box?". The system should calculate the total tablets and store that in QuantityCurrent.Why? Because you sell by the tablet/strip, not usually by the wholesale box.Function 3: Dispensing (Selling) - The FEFO RuleThis is the most complex part of a pharmacy system. When a customer asks for "10 Panadol":Query: Find all batches of 'Panadol' where QuantityCurrent > 0.Sort: Order them by ExpiryDate ASC (Ascending).Deduct: Take the 10 tablets from the batch that expires soonest.Note: If the first batch only has 4 pills, take 4 from there, and the remaining 6 from the next batch.Function 4: Expiry ManagementJob: Run a daily check.Logic: IF ExpiryDate < Today AND QuantityCurrent > 0 THEN Set Status = 'Expired'.Alert: Notify the pharmacist to remove these items from the physical shelf.4. Summary of FlowCreate Medicine: "Amoxicillin 500mg" (Done once).Add Batch 1: Bought 1000 pills, Expires Dec 2025, Buy $5, Sell $10.Add Batch 2: Bought 500 pills, Expires Jan 2026, Buy $6, Sell $12.(Note how costs can change between batches—this design handles that perfectly).Sell: Customer buys. System subtracts from Batch 1 first (because it expires sooner).
+
+This is the single most critical logic in pharmacy management. In inventory terms, this is called FEFO (First Expired, First Out).
+
+Most standard retail systems use FIFO (First In, First Out), but pharmacies must prioritize expiration dates over arrival dates.
+
+Here is the exact algorithm and logic flow you need to code to handle this automatically without the pharmacist having to choose manually.
+
+The Scenario
+Imagine a customer wants 50 Tablets of "Panadol". You have two batches in your database:
+
+Batch A: 20 tablets left (Expires: Aug 2026)
+
+Batch B: 100 tablets left (Expires: Dec 2027)
+
+The Algorithm (Step-by-Step)
+When the "Sell" button is clicked, your backend code must follow this loop:
+
+Fetch & Sort: Query the database for "Panadol". Crucially, ORDER BY ExpiryDate ASC (Ascending). This puts the batch expiring soonest (Batch A) at the top of the list.
+
+Iterate & Deduct:
+
+Step 1: Look at the first batch (Batch A). It has 20 tablets. The user wants 50.
+
+Action: Take all 20 from Batch A. Mark Batch A as Depleted (Quantity = 0).
+
+Remaining Need: You still need 30 tablets (50 - 20).
+
+Step 2: Look at the next batch (Batch B). It has 100 tablets. You need 30.
+
+Action: Take 30 from Batch B. Update Batch B quantity to 70 (100 - 30).
+
+Remaining Need: 0. The loop ends.
+
+critical : system must alert user when batch expires.
+        System must alert when there are multiple batches of the same medicine and one expires earlier than the other.

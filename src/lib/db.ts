@@ -13,7 +13,8 @@ export const pool = mysql.createPool({
   port: Number(process.env.MYSQL_PORT) || 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  multipleStatements: true // Enable for transactions if needed inline, but pool.execute works fine.
 });
 
 export async function query<T>(sql: string, params: any[] = []): Promise<T> {

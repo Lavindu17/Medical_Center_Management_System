@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Users, DollarSign, Activity } from 'lucide-react';
+import { Calendar, Users, Banknote, Activity } from 'lucide-react';
+import { formatLKR } from '@/lib/utils';
 
 export default function DoctorDashboard() {
     const [stats, setStats] = useState({
@@ -79,10 +80,10 @@ export default function DoctorDashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                        <DollarSign className="h-4 w-4 text-neutral-500" />
+                        <Banknote className="h-4 w-4 text-neutral-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{loading ? '-' : `$${stats.revenue.toLocaleString()}`}</div>
+                        <div className="text-2xl font-bold">{loading ? '-' : formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                         <p className="text-xs text-neutral-500">From paid bills</p>
                     </CardContent>
                 </Card>

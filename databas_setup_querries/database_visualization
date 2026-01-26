@@ -1,0 +1,144 @@
+Table: appointments
+Columns:
+id int AI PK 
+patient_id int 
+doctor_id int 
+date date 
+time_slot varchar(20) 
+queue_number int 
+status enum('PENDING','CHECKED_IN','ONGOING','COMPLETED','CANCELLED','ABSENT') 
+reason text 
+notes text 
+created_at timestamp 
+weight decimal(5,2) 
+blood_pressure varchar(20) 
+temperature decimal(4,1) 
+pulse int
+
+
+Table: bills
+Columns:
+id int AI PK 
+appointment_id int 
+doctor_fee decimal(10,2) 
+service_charge decimal(10,2) 
+pharmacy_total decimal(10,2) 
+lab_total decimal(10,2) 
+total_amount decimal(10,2) 
+status enum('PENDING','PAID') 
+generated_at timestamp 
+paid_at timestamp
+
+Table: doctor_leaves
+Columns:
+id int AI PK 
+doctor_id int 
+date date 
+reason varchar(255) 
+created_at timestamp
+
+Table: doctors
+Columns:
+user_id int PK 
+specialization varchar(100) 
+license_number varchar(50) 
+consultation_fee decimal(10,2) 
+commission_rate decimal(5,2) 
+start_time time 
+end_time time 
+slot_duration int 
+working_days json
+
+Table: inventory_batches
+Columns:
+id int AI PK 
+medicine_id int 
+batch_number varchar(100) 
+expiry_date date 
+quantity_initial int 
+quantity_current int 
+buying_price decimal(10,2) 
+selling_price decimal(10,2) 
+received_at timestamp 
+status enum('ACTIVE','EXPIRED','DEPLETED')
+
+Table: lab_requests
+Columns:
+id int AI PK 
+appointment_id int 
+test_id int 
+status enum('PENDING','COMPLETED') 
+result_url varchar(512) 
+requested_at timestamp 
+completed_at timestamp
+
+Table: lab_tests
+Columns:
+id int AI PK 
+name varchar(255) 
+description text 
+price decimal(10,2) 
+created_at timestamp
+
+Table: medicines
+Columns:
+id int AI PK 
+name varchar(255) 
+generic_name varchar(255) 
+manufacturer varchar(255) 
+stock int 
+min_stock_level int 
+reorder_level int 
+buying_price decimal(10,2) 
+unit varchar(50) 
+dosage_form enum('TABLET','SYRUP','CAPSULE','INJECTION','CREAM','OTHER') 
+strength varchar(50) 
+price_per_unit decimal(10,2) 
+expiry_date date 
+location varchar(100) 
+created_at timestamp
+
+Table: patients
+Columns:
+user_id int PK 
+date_of_birth date 
+gender enum('MALE','FEMALE','OTHER') 
+address text 
+medical_history text
+
+Table: patients
+Columns:
+user_id int PK 
+date_of_birth date 
+gender enum('MALE','FEMALE','OTHER') 
+address text 
+medical_history text
+
+Table: prescriptions
+Columns:
+id int AI PK 
+appointment_id int 
+doctor_id int 
+status enum('PENDING','DISPENSED') 
+issued_at timestamp
+
+Table: users
+Columns:
+id int AI PK 
+email varchar(255) 
+password_hash varchar(255) 
+name varchar(255) 
+role enum('PATIENT','DOCTOR','PHARMACIST','LAB_ASSISTANT','RECEPTIONIST','ADMIN') 
+phone varchar(20) 
+created_at timestamp 
+updated_at timestamp
+
+Table: prescription_items
+Columns:
+id int AI PK 
+prescription_id int 
+medicine_id int 
+dosage varchar(100) 
+frequency varchar(100) 
+duration varchar(50) 
+quantity int

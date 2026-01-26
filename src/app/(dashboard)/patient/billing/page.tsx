@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatLKR } from '@/lib/utils';
 
 export default function BillingPage() {
     const [data, setData] = useState<any[]>([]);
@@ -37,7 +38,7 @@ export default function BillingPage() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="font-bold text-xl">${item.total_amount}</div>
+                                        <div className="font-bold text-xl">{formatLKR(item.total_amount)}</div>
                                         <Badge variant={item.status === 'PAID' ? 'default' : 'destructive'}>
                                             {item.status}
                                         </Badge>
@@ -47,19 +48,19 @@ export default function BillingPage() {
                                 <div className="border-t pt-4 text-sm grid grid-cols-2 gap-2 text-neutral-600">
                                     <div className="flex justify-between">
                                         <span>Doctor Fee</span>
-                                        <span>${item.doctor_fee}</span>
+                                        <span>{formatLKR(item.doctor_fee)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Pharmacy</span>
-                                        <span>${item.pharmacy_total}</span>
+                                        <span>{formatLKR(item.pharmacy_total)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Lab Charges</span>
-                                        <span>${item.lab_total}</span>
+                                        <span>{formatLKR(item.lab_total)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Service Charge</span>
-                                        <span>${item.service_charge}</span>
+                                        <span>{formatLKR(item.service_charge)}</span>
                                     </div>
                                 </div>
                             </CardContent>
