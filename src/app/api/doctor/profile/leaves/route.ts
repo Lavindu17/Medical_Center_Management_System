@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
         const { date, reason } = await req.json();
 
-        const [res]: any = await query(
+        const res: any = await query(
             'INSERT INTO doctor_leaves (doctor_id, date, reason) VALUES (?, ?, ?)',
             [user.id, date, reason]
         );
