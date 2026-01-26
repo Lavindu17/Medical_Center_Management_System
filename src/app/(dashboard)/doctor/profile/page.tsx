@@ -9,6 +9,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trash2, Save, Clock, Ban, User, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
+import { CalendarGrid } from '@/components/doctor/CalendarGrid';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function DoctorProfilePage() {
     const [loading, setLoading] = useState(true);
@@ -29,8 +39,13 @@ export default function DoctorProfilePage() {
 
     const [slotDuration, setSlotDuration] = useState('15');
 
+    // Leaves State
     const [blockedDates, setBlockedDates] = useState<any[]>([]);
-    const [newBlockDate, setNewBlockDate] = useState('');
+
+    // Calendar State
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [blockReason, setBlockReason] = useState('');
 
     const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -98,36 +113,51 @@ export default function DoctorProfilePage() {
         }
     };
 
-    const handleBlockDate = async () => {
-        if (!newBlockDate) return;
+    // --- LEAVE MANAGEMENT ---
+
+    const handleDateClick = async (date: Date, isBlocked: boolean, isWorking: boolean) => {
+        if (isBlocked) {
+            // Unblock Logic
+            const dateStr = format(date, 'yyyy-MM-dd');
+            const leave = blockedDates.find(b => b.date && b.date.slice(0, 10) === dateStr);
+            if (leave && confirm(`Unblock ${dateStr}?`)) {
+                try {
+                    const res = await fetch(`/api/doctor/profile/leaves?id=${leave.id}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        setBlockedDates(blockedDates.filter(b => b.id !== leave.id));
+                    }
+                } catch (err) { console.error(err); }
+            }
+        } else {
+            // Block Logic (Open Dialog)
+            setSelectedDate(date);
+            setBlockReason('');
+            setIsBlockDialogOpen(true);
+        }
+    };
+
+    const confirmBlockDate = async () => {
+        if (!selectedDate) return;
+        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+
         try {
             const res = await fetch('/api/doctor/profile/leaves', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ date: newBlockDate, reason: blockReason })
+                body: JSON.stringify({ date: dateStr, reason: blockReason })
             });
 
             if (res.ok) {
                 const newLeave = await res.json();
                 setBlockedDates([...blockedDates, newLeave]);
-                setNewBlockDate('');
-                setBlockReason('');
+                setIsBlockDialogOpen(false);
             }
         } catch (err) {
             console.error(err);
         }
     };
 
-    const handleRemoveBlock = async (id: number) => {
-        try {
-            const res = await fetch(`/api/doctor/profile/leaves?id=${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setBlockedDates(blockedDates.filter(b => b.id !== id));
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    // --- SCHEDULE HELPERS ---
 
     const addScheduleBlock = () => {
         setSchedules([...schedules, { id: Math.random(), days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], start_time: '09:00', end_time: '17:00' }]);
@@ -169,7 +199,7 @@ export default function DoctorProfilePage() {
                 <TabsList className="mb-4">
                     <TabsTrigger value="general">General Info</TabsTrigger>
                     <TabsTrigger value="schedule">Schedule & Availability</TabsTrigger>
-                    <TabsTrigger value="leaves">Blocked Dates</TabsTrigger>
+                    <TabsTrigger value="leaves">Blocked Dates (Calendar)</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general">
@@ -303,49 +333,46 @@ export default function DoctorProfilePage() {
                 <TabsContent value="leaves">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Blocked Dates</CardTitle>
-                            <CardDescription>Set unavailable dates for holidays or leave.</CardDescription>
+                            <CardTitle>Block Dates</CardTitle>
+                            <CardDescription>Click on a date to block/unblock it. Red dates are already blocked.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="flex gap-4 items-end bg-neutral-50 p-4 rounded-lg border">
-                                <div className="space-y-2 flex-1">
-                                    <Label>Select Date</Label>
-                                    <Input type="date" value={newBlockDate} onChange={e => setNewBlockDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
-                                </div>
-                                <div className="space-y-2 flex-[2]">
-                                    <Label>Reason (Optional)</Label>
-                                    <Input placeholder="e.g. Vacation" value={blockReason} onChange={e => setBlockReason(e.target.value)} />
-                                </div>
-                                <Button onClick={handleBlockDate} disabled={!newBlockDate} className="bg-red-600 hover:bg-red-700">
-                                    <Ban className="mr-2 h-4 w-4" /> Block Date
-                                </Button>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Upcoming Blocked Dates</Label>
-                                {blockedDates.length === 0 ? (
-                                    <p className="text-sm text-neutral-400 italic">No future dates blocked.</p>
-                                ) : (
-                                    <div className="grid gap-2">
-                                        {blockedDates.map((leave) => (
-                                            <div key={leave.id} className="flex items-center justify-between p-3 bg-white border rounded-md shadow-sm">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="font-mono font-medium text-neutral-700">{new Date(leave.date).toLocaleDateString()}</div>
-                                                    <Badge variant="outline">{new Date(leave.date).toLocaleDateString(undefined, { weekday: 'long' })}</Badge>
-                                                    <span className="text-sm text-neutral-500">{leave.reason || 'Unavailable'}</span>
-                                                </div>
-                                                <Button size="icon" variant="ghost" className="text-red-500 hover:text-red-700 h-8 w-8" onClick={() => handleRemoveBlock(leave.id)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                        <CardContent>
+                            <CalendarGrid
+                                currentMonth={currentMonth}
+                                onMonthChange={setCurrentMonth}
+                                schedules={schedules}
+                                blockedDates={blockedDates}
+                                onDateClick={handleDateClick}
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Block Date: {selectedDate ? format(selectedDate, 'MMM dd, yyyy') : ''}</DialogTitle>
+                        <DialogDescription>
+                            Prevent appointments from being booked on this date.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Reason (Optional)</Label>
+                            <Input
+                                placeholder="vacation, personal leave, conference..."
+                                value={blockReason}
+                                onChange={e => setBlockReason(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsBlockDialogOpen(false)}>Cancel</Button>
+                        <Button variant="destructive" onClick={confirmBlockDate}>Block Date</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
