@@ -28,6 +28,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
         }
 
+        // Check verification status
+        if (!user.is_verified) {
+            return NextResponse.json({ message: 'Email not verified. Please verify your email to log in.' }, { status: 403 });
+        }
+
         // 3. Verify Password
         const isValid = await AuthService.comparePassword(password, user.password_hash);
         if (!isValid) {

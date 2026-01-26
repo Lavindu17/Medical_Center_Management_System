@@ -4,6 +4,8 @@ import { query, pool } from '@/lib/db';
 import { handleError } from '@/lib/errors';
 import { User } from '@/types';
 import { z } from 'zod';
+import crypto from 'crypto';
+import { EmailService } from '@/services/email.service';
 
 const registerSchema = z.object({
     firstName: z.string().min(2),
@@ -43,7 +45,7 @@ export async function POST(req: Request) {
 
             // Insert into users
             const [userResult]: any = await connection.execute(
-                'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
+                'INSERT INTO users (email, password_hash, name, role, is_verified) VALUES (?, ?, ?, ?, FALSE)',
                 [email, hashedPassword, name, 'PATIENT']
             );
 
@@ -57,7 +59,11 @@ export async function POST(req: Request) {
 
             await connection.commit();
 
-            return NextResponse.json({ message: 'Account created successfully' }, { status: 201 });
+            // 4. Send Verification Email via Service
+            // Note: This also handles OTP generation and hashing
+            await AuthService.initiateEmailVerification(userId, email);
+
+            return NextResponse.json({ message: 'Account created. Please check your email for the verification code.' }, { status: 201 });
 
         } catch (err) {
             await connection.rollback();
