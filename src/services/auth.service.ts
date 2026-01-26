@@ -146,6 +146,27 @@ export class AuthService {
         await EmailService.sendPasswordResetEmail(email, code);
     }
 
+    static async validateResetCode(email: string, code: string): Promise<{ success: boolean; message: string }> {
+        const user: any = await this.findUserByEmail(email);
+        if (!user) return { success: false, message: 'Invalid request' };
+
+        const codes = await query<any[]>('SELECT * FROM auth_codes WHERE user_id = ? AND type = ?', [user.id, 'PASSWORD_RESET']);
+        const authCode = codes.length > 0 ? codes[0] : null;
+
+        if (!authCode) return { success: false, message: 'Invalid reset code' };
+
+        if (new Date() > new Date(authCode.expires_at)) {
+            return { success: false, message: 'Code expired' };
+        }
+
+        const hashedInput = this.hashOTP(code);
+        if (hashedInput !== authCode.code_hash) {
+            return { success: false, message: 'Invalid reset code' };
+        }
+
+        return { success: true, message: 'Code is valid' };
+    }
+
     static async resetPassword(email: string, code: string, newPassword: string): Promise<{ success: boolean; message: string }> {
         const user: any = await this.findUserByEmail(email);
         if (!user) return { success: false, message: 'Invalid request' };

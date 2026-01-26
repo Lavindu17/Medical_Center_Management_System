@@ -6,28 +6,69 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock } from 'lucide-react';
+import { Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export default function ResetPasswordPage() {
+    const [step, setStep] = useState<1 | 2>(1);
     const [isLoading, setIsLoading] = useState(false);
+    const [verifiedCode, setVerifiedCode] = useState('');
+
     const router = useRouter();
     const searchParams = useSearchParams();
     const emailFromQuery = searchParams.get('email') || '';
 
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    // Step 1: Verify Code
+    async function handleVerifyCode(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsLoading(true);
 
         const formData = new FormData(event.currentTarget);
-        const code = formData.get('code');
-        const email = formData.get('email');
-        const newPassword = formData.get('newPassword');
+        const code = formData.get('code') as string;
+        const email = formData.get('email') as string;
+
+        try {
+            const response = await fetch('/api/auth/verify-reset-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || 'Invalid code');
+            }
+
+            setVerifiedCode(code);
+            setStep(2);
+        } catch (error: any) {
+            alert(error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    // Step 2: Reset Password
+    async function handleResetPassword(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setIsLoading(true);
+
+        const formData = new FormData(event.currentTarget);
+        const newPassword = formData.get('newPassword') as string;
+        const confirmPassword = formData.get('confirmPassword') as string;
+        const email = formData.get('email') as string; // Hidden input
+
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match');
+            setIsLoading(false);
+            return;
+        }
 
         try {
             const response = await fetch('/api/auth/reset', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, code, newPassword }),
+                body: JSON.stringify({ email, code: verifiedCode, newPassword }),
             });
 
             const data = await response.json();
@@ -36,7 +77,7 @@ export default function ResetPasswordPage() {
                 throw new Error(data.message || 'Reset failed');
             }
 
-            alert('Password reset successfully! Please log in with your new password.');
+            alert('Password reset successfully! Please log in.');
             router.push('/login');
 
         } catch (error: any) {
@@ -55,47 +96,73 @@ export default function ResetPasswordPage() {
                     </div>
                     <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
                     <CardDescription>
-                        Enter the code sent to your email and your new password
+                        {step === 1 ? 'Enter the code sent to your email' : 'Create a new secure password'}
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                defaultValue={emailFromQuery}
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="code">Reset Code</Label>
-                            <Input
-                                id="code"
-                                name="code"
-                                type="text"
-                                placeholder="Enter 6-character code"
-                                className="text-center text-lg tracking-widest uppercase"
-                                required
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword">New Password</Label>
-                            <Input
-                                id="newPassword"
-                                name="newPassword"
-                                type="password"
-                                placeholder="******"
-                                minLength={6}
-                                required
-                            />
-                        </div>
-                        <Button disabled={isLoading} className="w-full bg-red-600 hover:bg-red-700">
-                            {isLoading ? 'Resetting...' : 'Set New Password'}
-                        </Button>
-                    </form>
+                    {step === 1 ? (
+                        <form onSubmit={handleVerifyCode} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email</Label>
+                                <Input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    defaultValue={emailFromQuery}
+                                    readOnly={!!emailFromQuery} // If email provided in URL, make it reasonably fixed
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="code">Reset Code</Label>
+                                <Input
+                                    id="code"
+                                    name="code"
+                                    type="text"
+                                    placeholder="Enter 6-character code"
+                                    className="text-center text-lg tracking-widest uppercase"
+                                    required
+                                />
+                            </div>
+                            <Button disabled={isLoading} className="w-full bg-red-600 hover:bg-red-700">
+                                {isLoading ? 'Verifying...' : (
+                                    <span className="flex items-center gap-2">Verify Code <ArrowRight className="w-4 h-4" /></span>
+                                )}
+                            </Button>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleResetPassword} className="space-y-4">
+                            <input type="hidden" name="email" value={emailFromQuery} />
+
+                            <div className="space-y-2">
+                                <Label htmlFor="newPassword">New Password</Label>
+                                <Input
+                                    id="newPassword"
+                                    name="newPassword"
+                                    type="password"
+                                    placeholder="******"
+                                    minLength={6}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                                <Input
+                                    id="confirmPassword"
+                                    name="confirmPassword"
+                                    type="password"
+                                    placeholder="******"
+                                    minLength={6}
+                                    required
+                                />
+                            </div>
+                            <Button disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700">
+                                {isLoading ? 'Resetting...' : (
+                                    <span className="flex items-center gap-2">Set New Password <CheckCircle2 className="w-4 h-4" /></span>
+                                )}
+                            </Button>
+                        </form>
+                    )}
                 </CardContent>
             </Card>
         </div>
