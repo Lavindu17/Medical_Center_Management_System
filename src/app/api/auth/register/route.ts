@@ -36,11 +36,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'User already exists' }, { status: 409 });
         }
 
-        // 3. Generate OTP
-        const verificationCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 chars hex
-        const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-
-        // 4. Create User & Patient Profile (Transaction)
+        // 3. Create User & Patient Profile (Transaction)
         const connection = await pool.getConnection();
         await connection.beginTransaction();
 
@@ -49,8 +45,8 @@ export async function POST(req: Request) {
 
             // Insert into users
             const [userResult]: any = await connection.execute(
-                'INSERT INTO users (email, password_hash, name, role, is_verified, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [email, hashedPassword, name, 'PATIENT', false, verificationCode, verificationExpires]
+                'INSERT INTO users (email, password_hash, name, role, is_verified) VALUES (?, ?, ?, ?, FALSE)',
+                [email, hashedPassword, name, 'PATIENT']
             );
 
             const userId = userResult.insertId;
@@ -63,8 +59,9 @@ export async function POST(req: Request) {
 
             await connection.commit();
 
-            // 5. Send Verification Email (Non-blocking usually, but await here for certainty)
-            await EmailService.sendVerificationEmail(email, verificationCode);
+            // 4. Send Verification Email via Service
+            // Note: This also handles OTP generation and hashing
+            await AuthService.initiateEmailVerification(userId, email);
 
             return NextResponse.json({ message: 'Account created. Please check your email for the verification code.' }, { status: 201 });
 

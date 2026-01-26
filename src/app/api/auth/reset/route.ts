@@ -20,28 +20,11 @@ export async function POST(req: Request) {
 
         const { email, code, newPassword } = validation.data;
 
-        // Check DB
-        const users = await query<any[]>('SELECT * FROM users WHERE email = ?', [email]);
-        if (users.length === 0) {
-            return NextResponse.json({ message: 'Invalid request' }, { status: 400 });
+        const result = await AuthService.resetPassword(email, code, newPassword);
+
+        if (!result.success) {
+            return NextResponse.json({ message: result.message }, { status: 400 });
         }
-
-        const user = users[0];
-
-        // Validate OTP
-        if (user.reset_code !== code) {
-            return NextResponse.json({ message: 'Invalid reset code' }, { status: 400 });
-        }
-
-        if (new Date() > new Date(user.reset_expires)) {
-            return NextResponse.json({ message: 'Reset code expired' }, { status: 400 });
-        }
-
-        // Hash new password
-        const hashedPassword = await AuthService.hashPassword(newPassword);
-
-        // Update User (Clear reset code, set new password)
-        await query('UPDATE users SET password_hash = ?, reset_code = NULL, reset_expires = NULL WHERE id = ?', [hashedPassword, user.id]);
 
         return NextResponse.json({ message: 'Password reset successfully' });
 

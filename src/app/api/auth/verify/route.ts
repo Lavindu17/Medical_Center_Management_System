@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { AuthService } from '@/services/auth.service';
 import { z } from 'zod';
 
 const verifySchema = z.object({
@@ -18,41 +18,13 @@ export async function POST(req: Request) {
 
         const { email, code } = validation.data;
 
-        // Check DB
-        const users = await query<any[]>('SELECT * FROM users WHERE email = ?', [email]);
-        if (users.length === 0) {
-            console.log('DEBUG: User not found for email:', email);
-            return NextResponse.json({ message: 'User not found' }, { status: 404 });
+        const result = await AuthService.verifyEmail(email, code);
+
+        if (!result.success) {
+            return NextResponse.json({ message: result.message }, { status: 400 });
         }
 
-        const user = users[0];
-        console.log('DEBUG: User found.', {
-            id: user.id,
-            is_verified: user.is_verified,
-            stored_code: user.verification_code,
-            received_code: code,
-            expires: user.verification_expires
-        });
-
-        if (user.is_verified) {
-            return NextResponse.json({ message: 'Email already verified' }, { status: 200 });
-        }
-
-        // Validate OTP (Case insensitive for better UX)
-        if (user.verification_code?.toUpperCase() !== code.toUpperCase()) {
-            console.log('DEBUG: Code mismatch.');
-            return NextResponse.json({ message: 'Invalid verification code' }, { status: 400 });
-        }
-
-        if (new Date() > new Date(user.verification_expires)) {
-            console.log('DEBUG: Code expired.');
-            return NextResponse.json({ message: 'Verification code expired' }, { status: 400 });
-        }
-
-        // Update User
-        await query('UPDATE users SET is_verified = TRUE, verification_code = NULL, verification_expires = NULL WHERE id = ?', [user.id]);
-
-        return NextResponse.json({ message: 'Email verified successfully' });
+        return NextResponse.json({ message: result.message }, { status: 200 });
 
     } catch (error) {
         console.error('Verify Error:', error);
