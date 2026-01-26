@@ -12,6 +12,8 @@ export default function InventoryPage() {
     const [medicines, setMedicines] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+    const [stockFilter, setStockFilter] = useState<string>('ALL');
 
     // Form State
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -72,9 +74,17 @@ export default function InventoryPage() {
             .finally(() => setLoading(false));
     };
 
-    const handleSearch = medicines.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const handleSearch = medicines.filter(m => {
+        const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (m.generic_name && m.generic_name.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesCategory = categoryFilter === 'ALL' || m.category === categoryFilter;
+        const matchesStock = stockFilter === 'ALL' ||
+            (stockFilter === 'LOW' && m.batch_stock <= m.min_stock_level) ||
+            (stockFilter === 'OUT' && m.batch_stock === 0);
+        return matchesSearch && matchesCategory && matchesStock;
+    });
+
+    const categories = ['ALL', ...new Set(medicines.map(m => m.category).filter(Boolean))];
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -242,10 +252,54 @@ export default function InventoryPage() {
                 </Dialog>
             </div>
 
-            <div className="flex gap-4 mb-6">
-                <div className="relative max-w-md flex-1">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
-                    <Input placeholder="Search inventory..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            {/* Enhanced Search and Filters */}
+            <div className="bg-white rounded-lg border p-4 shadow-sm">
+                <div className="flex flex-wrap gap-4">
+                    <div className="relative flex-1 min-w-[300px]">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
+                        <Input
+                            placeholder="Search by name or generic name..."
+                            className="pl-9"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    <select
+                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[160px]"
+                        value={categoryFilter}
+                        onChange={e => setCategoryFilter(e.target.value)}
+                    >
+                        {categories.map(cat => (
+                            <option key={cat} value={cat}>{cat === 'ALL' ? 'All Categories' : cat}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[160px]"
+                        value={stockFilter}
+                        onChange={e => setStockFilter(e.target.value)}
+                    >
+                        <option value="ALL">All Stock Levels</option>
+                        <option value="LOW">Low Stock Only</option>
+                        <option value="OUT">Out of Stock</option>
+                    </select>
+
+                    {(searchTerm || categoryFilter !== 'ALL' || stockFilter !== 'ALL') && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setSearchTerm(''); setCategoryFilter('ALL'); setStockFilter('ALL'); }}
+                            className="text-neutral-500 hover:text-neutral-700"
+                        >
+                            Clear Filters
+                        </Button>
+                    )}
+                </div>
+                <div className="mt-3 text-xs text-neutral-500 flex items-center gap-2">
+                    <span>Showing {handleSearch.length} of {medicines.length} medicines</span>
+                    {stockFilter === 'LOW' && <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">Low Stock Filter Active</span>}
+                    {stockFilter === 'OUT' && <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">Out of Stock Filter Active</span>}
                 </div>
             </div>
 
@@ -259,10 +313,11 @@ export default function InventoryPage() {
                 </div>
                 <div className="divide-y">
                     {loading ? <div className="p-8 text-center text-neutral-400">Loading...</div> : handleSearch.map((med) => (
-                        <div key={med.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors">
+                        <div key={med.id} className="grid grid-cols-12 gap-4 px-6 py-5 items-center hover:bg-emerald-50/30 transition-colors group">
                             <div className="col-span-4">
-                                <div className="font-medium text-neutral-900">{med.name}</div>
-                                {med.generic_name && <div className="text-xs text-neutral-500">{med.generic_name}</div>}
+                                <div className="font-semibold text-neutral-900 group-hover:text-emerald-700 transition-colors">{med.name}</div>
+                                {med.generic_name && <div className="text-sm text-neutral-500 mt-0.5">{med.generic_name}</div>}
+                                {med.category && <div className="text-xs text-neutral-400 mt-1">🏷️ {med.category}</div>}
                             </div>
                             <div className="col-span-2">
                                 <span className={`font-mono font-bold ${med.batch_stock <= med.min_stock_level ? 'text-red-600' :

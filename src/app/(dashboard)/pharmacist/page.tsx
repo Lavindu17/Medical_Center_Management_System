@@ -81,20 +81,29 @@ export default function PharmacistDashboard() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                {cards.map((card, i) => (
-                    <Link key={i} href={card.href} className="block transition-transform hover:-translate-y-1">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium text-neutral-600">{card.title}</CardTitle>
-                                <card.icon className={`h-4 w-4 ${card.color}`} />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{card.value}</div>
-                                <p className="text-xs text-neutral-400 mt-1">{card.description}</p>
-                            </CardContent>
-                        </Card>
-                    </Link>
-                ))}
+                {cards.map((card, i) => {
+                    const isUrgent = (card.title === 'Expired Batches' && card.value > 0);
+                    return (
+                        <Link key={i} href={card.href} className="block group">
+                            <Card className={`transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${card.bg} border-none ${isUrgent ? 'animate-pulse' : ''}`}>
+                                <CardHeader className="flex flex-row items-start justify-between pb-3">
+                                    <div className="space-y-1 flex-1">
+                                        <CardTitle className="text-sm font-semibold text-neutral-700">{card.title}</CardTitle>
+                                        <p className="text-xs text-neutral-500">{card.description}</p>
+                                    </div>
+                                    <div className={`p-3 rounded-lg ${card.bg} ring-2 ring-white/50`}>
+                                        <card.icon className={`h-6 w-6 ${card.color}`} />
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className={`text-4xl font-bold tracking-tight ${card.color}`}>
+                                        {card.value}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    );
+                })}
             </div>
 
             {/* Actions / Recent */}
