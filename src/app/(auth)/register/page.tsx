@@ -49,8 +49,10 @@ export default function RegisterPage() {
                 throw new Error(data.message || 'Registration failed');
             }
 
-            alert('Account created successfully! Please sign in.');
-            router.push('/login');
+            alert('Account created successfully! Please verify your email.');
+            // Get email from form to pass to verify page
+            const email = (formData.get('email') as string) || '';
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`);
 
         } catch (error: any) {
             alert(error.message);

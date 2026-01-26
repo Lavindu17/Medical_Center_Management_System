@@ -4,6 +4,8 @@ import { query, pool } from '@/lib/db';
 import { handleError } from '@/lib/errors';
 import { User } from '@/types';
 import { z } from 'zod';
+import crypto from 'crypto';
+import { EmailService } from '@/services/email.service';
 
 const registerSchema = z.object({
     firstName: z.string().min(2),
@@ -34,7 +36,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'User already exists' }, { status: 409 });
         }
 
-        // 3. Create User & Patient Profile (Transaction)
+        // 3. Generate OTP
+        const verificationCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 chars hex
+        const verificationExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+        // 4. Create User & Patient Profile (Transaction)
         const connection = await pool.getConnection();
         await connection.beginTransaction();
 
@@ -43,8 +49,8 @@ export async function POST(req: Request) {
 
             // Insert into users
             const [userResult]: any = await connection.execute(
-                'INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, ?)',
-                [email, hashedPassword, name, 'PATIENT']
+                'INSERT INTO users (email, password_hash, name, role, is_verified, verification_code, verification_expires) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [email, hashedPassword, name, 'PATIENT', false, verificationCode, verificationExpires]
             );
 
             const userId = userResult.insertId;
@@ -57,7 +63,10 @@ export async function POST(req: Request) {
 
             await connection.commit();
 
-            return NextResponse.json({ message: 'Account created successfully' }, { status: 201 });
+            // 5. Send Verification Email (Non-blocking usually, but await here for certainty)
+            await EmailService.sendVerificationEmail(email, verificationCode);
+
+            return NextResponse.json({ message: 'Account created. Please check your email for the verification code.' }, { status: 201 });
 
         } catch (err) {
             await connection.rollback();
