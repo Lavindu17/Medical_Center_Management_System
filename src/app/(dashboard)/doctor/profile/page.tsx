@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Using our custom Tabs
-import { Trash2, Save, Clock, Ban, User } from 'lucide-react';
+import { Trash2, Save, Clock, Ban, User, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 export default function DoctorProfilePage() {
     const [loading, setLoading] = useState(true);
@@ -22,12 +23,11 @@ export default function DoctorProfilePage() {
         license_number: ''
     });
 
-    const [schedule, setSchedule] = useState({
-        start_time: '09:00',
-        end_time: '17:00',
-        slot_duration: '15',
-        working_days: [] as string[]
-    });
+    // Schedule State (Advanced Multi-Slot)
+    // Structure: { id: number/string, days: string[], start_time: string, end_time: string }[]
+    const [schedules, setSchedules] = useState<any[]>([]);
+
+    const [slotDuration, setSlotDuration] = useState('15');
 
     const [blockedDates, setBlockedDates] = useState<any[]>([]);
     const [newBlockDate, setNewBlockDate] = useState('');
@@ -41,18 +41,34 @@ export default function DoctorProfilePage() {
             .then(data => {
                 if (data.user) {
                     setProfile({
-                        name: data.user.name,
-                        phone: data.user.phone,
-                        specialization: data.doctor.specialization,
-                        consultation_fee: data.doctor.consultation_fee,
-                        license_number: data.doctor.license_number
+                        name: data.user.name || '',
+                        phone: data.user.phone || '',
+                        specialization: data.doctor.specialization || '',
+                        consultation_fee: data.doctor.consultation_fee || '',
+                        license_number: data.doctor.license_number || ''
                     });
-                    setSchedule({
-                        start_time: data.doctor.start_time?.slice(0, 5) || '09:00',
-                        end_time: data.doctor.end_time?.slice(0, 5) || '17:00',
-                        slot_duration: data.doctor.slot_duration?.toString() || '15',
-                        working_days: data.doctor.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-                    });
+                    setSlotDuration(data.doctor.slot_duration?.toString() || '15');
+
+                    // Group Raw Schedules into Blocks
+                    if (data.schedules && Array.isArray(data.schedules)) {
+                        const grouped: any[] = [];
+                        data.schedules.forEach((row: any) => {
+                            // Check if matching block exists (same start/end)
+                            const existing = grouped.find(g => g.start_time.slice(0, 5) === row.start_time.slice(0, 5) && g.end_time.slice(0, 5) === row.end_time.slice(0, 5));
+                            if (existing) {
+                                if (!existing.days.includes(row.day)) existing.days.push(row.day);
+                            } else {
+                                grouped.push({
+                                    id: Math.random(), // Temp UI ID
+                                    start_time: row.start_time.slice(0, 5),
+                                    end_time: row.end_time.slice(0, 5),
+                                    days: [row.day]
+                                });
+                            }
+                        });
+                        setSchedules(grouped);
+                    }
+
                     setBlockedDates(data.leaves || []);
                 }
             })
@@ -69,7 +85,8 @@ export default function DoctorProfilePage() {
                 body: JSON.stringify({
                     type: 'profile',
                     ...profile,
-                    ...schedule
+                    slot_duration: slotDuration,
+                    schedules: schedules
                 })
             });
             if (res.ok) alert('Profile updated successfully');
@@ -112,12 +129,31 @@ export default function DoctorProfilePage() {
         }
     };
 
-    const toggleDay = (day: string) => {
-        if (schedule.working_days.includes(day)) {
-            setSchedule({ ...schedule, working_days: schedule.working_days.filter(d => d !== day) });
+    const addScheduleBlock = () => {
+        setSchedules([...schedules, { id: Math.random(), days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], start_time: '09:00', end_time: '17:00' }]);
+    };
+
+    const removeScheduleBlock = (idx: number) => {
+        const newSched = [...schedules];
+        newSched.splice(idx, 1);
+        setSchedules(newSched);
+    };
+
+    const toggleScheduleDay = (idx: number, day: string) => {
+        const newSched = [...schedules];
+        const block = newSched[idx];
+        if (block.days.includes(day)) {
+            block.days = block.days.filter((d: string) => d !== day);
         } else {
-            setSchedule({ ...schedule, working_days: [...schedule.working_days, day] });
+            block.days.push(day);
         }
+        setSchedules(newSched);
+    };
+
+    const updateScheduleTime = (idx: number, field: 'start_time' | 'end_time', value: string) => {
+        const newSched = [...schedules];
+        newSched[idx][field] = value;
+        setSchedules(newSched);
     };
 
     if (loading) return <div className="p-8">Loading Profile...</div>;
@@ -178,33 +214,17 @@ export default function DoctorProfilePage() {
                 <TabsContent value="schedule">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Weekly Schedule</CardTitle>
-                            <CardDescription>Configure your standard working hours.</CardDescription>
+                            <CardTitle>Schedule & Availability</CardTitle>
+                            <CardDescription>Configure your working hours. Add multiple blocks for different shifts (e.g., Morning/Evening).</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label>Start Time</Label>
-                                    <div className="relative">
-                                        <Clock className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
-                                        <Input type="time" className="pl-9" value={schedule.start_time} onChange={e => setSchedule({ ...schedule, start_time: e.target.value })} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>End Time</Label>
-                                    <div className="relative">
-                                        <Clock className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
-                                        <Input type="time" className="pl-9" value={schedule.end_time} onChange={e => setSchedule({ ...schedule, end_time: e.target.value })} />
-                                    </div>
-                                </div>
-                            </div>
 
                             <div className="space-y-2">
                                 <Label>Slot Duration (Minutes)</Label>
                                 <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    value={schedule.slot_duration}
-                                    onChange={e => setSchedule({ ...schedule, slot_duration: e.target.value })}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm max-w-xs"
+                                    value={slotDuration}
+                                    onChange={e => setSlotDuration(e.target.value)}
                                 >
                                     <option value="15">15 Minutes</option>
                                     <option value="20">20 Minutes</option>
@@ -214,28 +234,65 @@ export default function DoctorProfilePage() {
                                 </select>
                             </div>
 
-                            <div className="space-y-3">
-                                <Label>Working Days</Label>
-                                <div className="flex flex-wrap gap-2">
-                                    {daysOfWeek.map(day => (
-                                        <div
-                                            key={day}
-                                            onClick={() => toggleDay(day)}
-                                            className={`
-                                                cursor-pointer px-4 py-2 rounded-md border text-sm font-medium transition-colors
-                                                ${schedule.working_days.includes(day)
-                                                    ? 'bg-blue-600 text-white border-blue-600'
-                                                    : 'bg-white text-neutral-600 border-neutral-200 hover:border-blue-400'}
-                                            `}
+                            <Separator className="my-4" />
+
+                            <div className="space-y-4">
+                                {schedules.map((block, idx) => (
+                                    <div key={block.id || idx} className="p-4 border rounded-lg bg-neutral-50 space-y-3 relative group">
+                                        <Button
+                                            size="icon" variant="ghost"
+                                            className="absolute top-2 right-2 text-neutral-400 hover:text-red-500 h-8 w-8"
+                                            onClick={() => removeScheduleBlock(idx)}
                                         >
-                                            {day}
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+
+                                        <div className="grid grid-cols-2 gap-4 max-w-md">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">Start Time</Label>
+                                                <div className="relative">
+                                                    <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
+                                                    <Input type="time" className="pl-8 h-9" value={block.start_time} onChange={e => updateScheduleTime(idx, 'start_time', e.target.value)} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-xs">End Time</Label>
+                                                <div className="relative">
+                                                    <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
+                                                    <Input type="time" className="pl-8 h-9" value={block.end_time} onChange={e => updateScheduleTime(idx, 'end_time', e.target.value)} />
+                                                </div>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Active Days</Label>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {daysOfWeek.map(day => (
+                                                    <div
+                                                        key={day}
+                                                        onClick={() => toggleScheduleDay(idx, day)}
+                                                        className={`
+                                                            cursor-pointer px-3 py-1.5 rounded text-xs font-medium transition-colors border select-none
+                                                            ${block.days.includes(day)
+                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                                                : 'bg-white text-neutral-500 border-neutral-200 hover:border-blue-300'}
+                                                        `}
+                                                    >
+                                                        {day.slice(0, 3)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <Button variant="outline" onClick={addScheduleBlock} className="w-full border-dashed border-2 hover:bg-neutral-50 mt-2">
+                                    <Plus className="mr-2 h-4 w-4" /> Add Another Schedule Block
+                                </Button>
                             </div>
 
-                            <div className="pt-4">
-                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-blue-600">
+                            <div className="pt-4 flex justify-end">
+                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-blue-600 min-w-[120px]">
                                     <Save className="mr-2 h-4 w-4" /> Save Schedule
                                 </Button>
                             </div>
