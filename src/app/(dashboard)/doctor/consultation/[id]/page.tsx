@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Save, CheckCircle, Plus, Trash2, History, Activity, Pill, FlaskConical } from 'lucide-react';
+import { formatLKR } from '@/lib/utils';
 
 // Interfaces
 interface Medicine {
@@ -410,7 +411,7 @@ export default function ConsultationPage() {
                                                         className="rounded border-gray-300"
                                                     />
                                                     <span>{test.name}</span>
-                                                    <span className="text-xs text-neutral-400 ml-auto">${test.price}</span>
+                                                    <span className="text-xs text-neutral-400 ml-auto">{formatLKR(test.price)}</span>
                                                 </label>
                                             ))}
                                         </div>

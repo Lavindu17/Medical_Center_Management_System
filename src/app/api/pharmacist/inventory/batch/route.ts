@@ -58,7 +58,16 @@ export async function POST(req: Request) {
         const { medicine_id, batch_number, quantity, buying_price, selling_price, expiry_date } = body;
 
         if (!medicine_id || !quantity || !expiry_date) {
-            return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
+            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+        }
+
+        // Validate expiry date is in the future
+        const expiryDateObj = new Date(expiry_date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        if (expiryDateObj <= today) {
+            return NextResponse.json({ message: 'Expiry date must be in the future' }, { status: 400 });
         }
 
         const connection = await pool.getConnection();
@@ -77,27 +86,18 @@ export async function POST(req: Request) {
                     quantity,
                     quantity,
                     buying_price || 0,
-                    selling_price || 0 // Default to 0 or fetch from medicine master? Better to require it or fallback.
+                    selling_price || 0
                 ]
             );
 
-            // 2. Update Master Stock
+            // 2. Update Master Stock (Aggregate from all active batches)
             await connection.execute(
                 'UPDATE medicines SET stock = stock + ? WHERE id = ?',
                 [quantity, medicine_id]
             );
 
-            // 3. Update Master Prices ?? Optional. User might want latest batch price to be "Current Price".
-            // Let's update Master Price to reflect latest batch (LIFO for replacement cost visibility)
-            if (selling_price) {
-                await connection.execute(
-                    'UPDATE medicines SET selling_price = ? WHERE id = ?',
-                    [selling_price, medicine_id]
-                );
-            }
-
             await connection.commit();
-            return NextResponse.json({ message: 'Batch Added' });
+            return NextResponse.json({ message: 'Batch added successfully' });
         } catch (err) {
             await connection.rollback();
             throw err;
@@ -106,6 +106,6 @@ export async function POST(req: Request) {
         }
     } catch (error) {
         console.error('Add Batch Error:', error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Error adding batch' }, { status: 500 });
     }
 }

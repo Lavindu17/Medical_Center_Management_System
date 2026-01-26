@@ -102,16 +102,37 @@ export async function GET() {
             ORDER BY expiry_gap_days DESC
         `);
 
+        // 5. Low Stock Alerts (at or below min_stock_level)
+        const lowStockAlerts: any = await query(`
+            SELECT 
+                m.id as medicine_id,
+                m.name as medicine_name,
+                m.generic_name,
+                m.category,
+                m.min_stock_level,
+                COALESCE(SUM(b.quantity_current), 0) as current_stock,
+                m.unit
+            FROM medicines m
+            LEFT JOIN inventory_batches b ON m.id = b.medicine_id 
+                AND b.status = 'ACTIVE' 
+                AND b.quantity_current > 0
+            GROUP BY m.id
+            HAVING current_stock <= m.min_stock_level
+            ORDER BY current_stock ASC
+        `);
+
         return NextResponse.json({
             expired: expiredBatches,
             expiringSoon,
             expiringLater,
             multiBatchWarnings,
+            lowStock: lowStockAlerts,
             summary: {
                 expiredCount: (expiredBatches as any[]).length,
                 expiringSoonCount: (expiringSoon as any[]).length,
                 expiringLaterCount: (expiringLater as any[]).length,
-                multiBatchWarningsCount: (multiBatchWarnings as any[]).length
+                multiBatchWarningsCount: (multiBatchWarnings as any[]).length,
+                lowStockCount: (lowStockAlerts as any[]).length
             }
         });
 

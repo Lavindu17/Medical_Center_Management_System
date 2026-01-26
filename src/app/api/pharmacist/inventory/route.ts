@@ -41,29 +41,35 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { name, unit, price_per_unit, generic_name, manufacturer, min_stock_level, location, category, dosage_form, strength } = body;
 
-        // Create Master Record Only (Stock = 0)
+        // Validate required fields
+        if (!name || !unit || !price_per_unit) {
+            return NextResponse.json({ message: 'Name, unit, and price are required' }, { status: 400 });
+        }
+
+        // Create Master Record Only (Stock = 0, no expiry until batch added)
+        // Set a far future expiry_date as placeholder (will be updated by batches)
         await query(
             `INSERT INTO medicines 
-            (name, generic_name, manufacturer, stock, min_stock_level, unit, dosage_form, strength, selling_price, buying_price, expiry_date, location, category) 
-            VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`, // Default stock 0, expiry NULL
+            (name, generic_name, manufacturer, category, stock, min_stock_level, unit, dosage_form, strength, price_per_unit, buying_price, expiry_date, location) 
+            VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, 0, '9999-12-31', ?)`,
             [
                 name,
                 generic_name || null,
                 manufacturer || null,
+                category || null,
                 min_stock_level || 10,
                 unit,
                 dosage_form || null,
                 strength || null,
-                price_per_unit || 0, // Standard selling price
-                location || null,
-                category || null
+                price_per_unit,
+                location || null
             ]
         );
 
-        return NextResponse.json({ message: 'Medicine Registered. Please add stock via batches.' });
+        return NextResponse.json({ message: 'Medicine registered successfully. Add stock via batches.' });
     } catch (error) {
         console.error('Create Medicine Error:', error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+        return NextResponse.json({ message: 'Error creating medicine' }, { status: 500 });
     }
 }
 
@@ -73,19 +79,37 @@ export async function PUT(req: Request) {
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
         const body = await req.json();
-        const { name, unit, price_per_unit, buying_price, expiry_date } = body;
+        const { name, generic_name, manufacturer, category, unit, price_per_unit, min_stock_level, location, dosage_form, strength } = body;
 
-        // NOTE: We do NOT update stock here anymore. Stock is managed via Batches.
-        // We only update Master Data (Name, Unit, Prices, etc.)
+        if (!id) {
+            return NextResponse.json({ message: 'Medicine ID is required' }, { status: 400 });
+        }
 
+        // Update ONLY Master Data - Stock, buying_price, and expiry_date are batch-specific
         await query(
-            'UPDATE medicines SET name=?, unit=?, price_per_unit=?, buying_price=?, expiry_date=? WHERE id=?',
-            [name, unit, price_per_unit, buying_price || 0, expiry_date, id]
+            `UPDATE medicines 
+             SET name=?, generic_name=?, manufacturer=?, category=?, unit=?, 
+                 dosage_form=?, strength=?, price_per_unit=?, min_stock_level=?, location=? 
+             WHERE id=?`,
+            [
+                name,
+                generic_name || null,
+                manufacturer || null,
+                category || null,
+                unit,
+                dosage_form || null,
+                strength || null,
+                price_per_unit,
+                min_stock_level || 10,
+                location || null,
+                id
+            ]
         );
 
-        return NextResponse.json({ message: 'Updated' });
+        return NextResponse.json({ message: 'Medicine updated successfully' });
     } catch (error) {
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+        console.error('Update Medicine Error:', error);
+        return NextResponse.json({ message: 'Error updating medicine' }, { status: 500 });
     }
 }
 

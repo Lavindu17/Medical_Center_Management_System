@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Plus, Edit2, Trash2, Package } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { formatLKR } from '@/lib/utils';
 
 export default function InventoryPage() {
     const [medicines, setMedicines] = useState<any[]>([]);
@@ -23,14 +24,11 @@ export default function InventoryPage() {
         manufacturer: '',
         category: '',
         location: '',
-        stock: '',
         min_stock_level: '10',
         unit: 'tablets',
         dosage_form: '',
         strength: '',
-        price_per_unit: '',
-        buying_price: '',
-        expiry_date: ''
+        price_per_unit: ''
     });
     const [restockForm, setRestockForm] = useState({
         batch_number: '',
@@ -120,14 +118,11 @@ export default function InventoryPage() {
             manufacturer: med.manufacturer || '',
             category: med.category || '',
             location: med.location || '',
-            stock: med.stock,
             min_stock_level: med.min_stock_level || '10',
             unit: med.unit,
             dosage_form: med.dosage_form || '',
             strength: med.strength || '',
-            price_per_unit: med.price_per_unit,
-            buying_price: med.buying_price || '',
-            expiry_date: med.expiry_date ? new Date(med.expiry_date).toISOString().split('T')[0] : ''
+            price_per_unit: med.price_per_unit
         });
         setIsEditOpen(true);
     };
@@ -139,14 +134,11 @@ export default function InventoryPage() {
             manufacturer: '',
             category: '',
             location: '',
-            stock: '',
             min_stock_level: '10',
             unit: 'tablets',
             dosage_form: '',
             strength: '',
-            price_per_unit: '',
-            buying_price: '',
-            expiry_date: ''
+            price_per_unit: ''
         });
         setCurrentMed(null);
     };
@@ -242,7 +234,7 @@ export default function InventoryPage() {
                                 <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="e.g. 500mg" /></div>
                             </div>
                             {/* Standard Selling Price is optional but good for default. Buying Price and Stock are batch specific. */}
-                            <div className="space-y-2"><Label>Standard Selling Price ($)</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Standard Selling Price (LKR)</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>
 
                             <Button type="submit" className="w-full bg-emerald-600">Register Medicine</Button>
                         </form>
@@ -268,17 +260,36 @@ export default function InventoryPage() {
                 <div className="divide-y">
                     {loading ? <div className="p-8 text-center text-neutral-400">Loading...</div> : handleSearch.map((med) => (
                         <div key={med.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors">
-                            <div className="col-span-4 font-medium text-neutral-900">{med.name}</div>
-                            <div className="col-span-2">
-                                <span className={`font-mono font-bold ${med.stock < 20 ? 'text-red-600' : 'text-emerald-700'}`}>
-                                    {med.stock}
-                                </span> <span className="text-xs text-neutral-400">{med.unit}</span>
+                            <div className="col-span-4">
+                                <div className="font-medium text-neutral-900">{med.name}</div>
+                                {med.generic_name && <div className="text-xs text-neutral-500">{med.generic_name}</div>}
                             </div>
-                            <div className="col-span-2 text-neutral-700">${med.price_per_unit}</div>
+                            <div className="col-span-2">
+                                <span className={`font-mono font-bold ${med.batch_stock <= med.min_stock_level ? 'text-red-600' :
+                                    med.batch_stock <= (med.min_stock_level * 1.5) ? 'text-amber-600' :
+                                        'text-emerald-700'
+                                    }`}>
+                                    {med.batch_stock || 0}
+                                </span> <span className="text-xs text-neutral-400">{med.unit}</span>
+                                {med.batch_stock <= med.min_stock_level && (
+                                    <div className="text-xs text-red-600 font-semibold">LOW STOCK</div>
+                                )}
+                            </div>
+                            <div className="col-span-2 text-neutral-700">{formatLKR(med.price_per_unit)}</div>
                             <div className="col-span-2 text-sm text-neutral-600">
-                                {med.earliest_expiry
-                                    ? new Date(med.earliest_expiry).toLocaleDateString()
-                                    : <span className="text-neutral-400 italic">No Stock</span>}
+                                {med.earliest_expiry ? (
+                                    <span className={(() => {
+                                        const expiryDate = new Date(med.earliest_expiry);
+                                        const today = new Date();
+                                        const daysUntil = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                        if (daysUntil < 0) return 'text-red-700 font-semibold';
+                                        if (daysUntil < 30) return 'text-red-600';
+                                        if (daysUntil < 90) return 'text-amber-600';
+                                        return '';
+                                    })()}>
+                                        {new Date(med.earliest_expiry).toLocaleDateString()}
+                                    </span>
+                                ) : <span className="text-neutral-400 italic">No Stock</span>}
                             </div>
                             <div className="col-span-2 flex justify-end gap-2">
                                 <Button size="icon" variant="ghost" className="h-8 w-8 text-neutral-500" onClick={() => openBatches(med)} title="View Batches">
@@ -301,34 +312,56 @@ export default function InventoryPage() {
 
             {/* View Batches Dialog */}
             <Dialog open={isBatchesOpen} onOpenChange={setIsBatchesOpen}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-4xl">
                     <DialogHeader><DialogTitle>Batch History: {currentMed?.name}</DialogTitle></DialogHeader>
+                    <p className="text-sm text-neutral-500">Batches are sorted by expiry date (FEFO order). Oldest expiry first.</p>
                     <div className="border rounded-md overflow-hidden mt-4">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-neutral-50 text-neutral-500 font-semibold border-b">
                                 <tr>
                                     <th className="p-3">Batch #</th>
-                                    <th className="p-3">Expiry</th>
+                                    <th className="p-3">Expiry Date</th>
+                                    <th className="p-3">Days Until</th>
                                     <th className="p-3">Qty (Initial)</th>
                                     <th className="p-3">Qty (Current)</th>
+                                    <th className="p-3">Prices</th>
                                     <th className="p-3">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {batches.map(b => (
-                                    <tr key={b.id} className="hover:bg-neutral-50">
-                                        <td className="p-3 font-medium">{b.batch_number}</td>
-                                        <td className="p-3">{new Date(b.expiry_date).toLocaleDateString()}</td>
-                                        <td className="p-3 text-neutral-500">{b.quantity_initial}</td>
-                                        <td className="p-3 font-bold">{b.quantity_current}</td>
-                                        <td className="p-3">
-                                            <span className={`px-2 py-1 rounded text-xs border ${b.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                b.status === 'EXPIRED' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-neutral-100 text-neutral-500'
-                                                }`}>{b.status}</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {batches.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-neutral-400">No batches found</td></tr>}
+                                {batches.map(b => {
+                                    const expiryDate = new Date(b.expiry_date);
+                                    const today = new Date();
+                                    const daysUntil = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                    const isExpired = daysUntil < 0;
+                                    const isExpiringSoon = daysUntil >= 0 && daysUntil < 30;
+                                    const isExpiringLater = daysUntil >= 30 && daysUntil < 90;
+
+                                    return (
+                                        <tr key={b.id} className={`hover:bg-neutral-50 ${isExpired ? 'bg-red-50' : isExpiringSoon ? 'bg-amber-50' : ''}`}>
+                                            <td className="p-3 font-medium">{b.batch_number}</td>
+                                            <td className={`p-3 ${isExpired ? 'text-red-700 font-bold' : isExpiringSoon ? 'text-amber-700' : ''}`}>
+                                                {expiryDate.toLocaleDateString()}
+                                            </td>
+                                            <td className={`p-3 font-mono ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-neutral-600'}`}>
+                                                {isExpired ? `EXPIRED (${Math.abs(daysUntil)}d ago)` : `${daysUntil} days`}
+                                            </td>
+                                            <td className="p-3 text-neutral-500">{b.quantity_initial}</td>
+                                            <td className="p-3 font-bold">{b.quantity_current}</td>
+                                            <td className="p-3 text-xs">
+                                                <div>Buy: {formatLKR(b.buying_price)}</div>
+                                                <div>Sell: {formatLKR(b.selling_price)}</div>
+                                            </td>
+                                            <td className="p-3">
+                                                <span className={`px-2 py-1 rounded text-xs border ${b.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    b.status === 'EXPIRED' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                        'bg-neutral-100 text-neutral-500 border-neutral-200'
+                                                    }`}>{b.status}</span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {batches.length === 0 && <tr><td colSpan={7} className="p-4 text-center text-neutral-400">No batches found</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -337,25 +370,44 @@ export default function InventoryPage() {
 
             {/* Edit Dialog - No Stock Editing */}
             <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) resetForm(); }}>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader><DialogTitle>Edit Medicine Details</DialogTitle></DialogHeader>
+                    <p className="text-sm text-neutral-500">Note: Stock and prices are managed through batches.</p>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                        <div className="space-y-2"><Label>Name</Label><Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
+                        <div className="space-y-2"><Label>Brand Name *</Label><Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Generic Name</Label><Input value={formData.generic_name} onChange={e => setFormData({ ...formData, generic_name: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Manufacturer</Label><Input value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Generic Name</Label><Input value={formData.generic_name} onChange={e => setFormData({ ...formData, generic_name: e.target.value })} placeholder="e.g., Paracetamol" /></div>
+                            <div className="space-y-2"><Label>Manufacturer</Label><Input value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} placeholder="e.g., GSK" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Category</Label><Input value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Unit</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Category</Label><Input value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="e.g., Antibiotic" /></div>
+                            <div className="space-y-2"><Label>Location</Label><Input value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Shelf A1" /></div>
                         </div>
-
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2"><Label>Unit *</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="tablets" /></div>
+                            <div className="space-y-2">
+                                <Label>Dosage Form</Label>
+                                <select
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    value={formData.dosage_form}
+                                    onChange={e => setFormData({ ...formData, dosage_form: e.target.value })}
+                                >
+                                    <option value="">Select...</option>
+                                    <option value="TABLET">Tablet</option>
+                                    <option value="SYRUP">Syrup</option>
+                                    <option value="CAPSULE">Capsule</option>
+                                    <option value="INJECTION">Injection</option>
+                                    <option value="CREAM">Cream</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="500mg" /></div>
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Buying Price ($)</Label><Input type="number" step="0.01" value={formData.buying_price} onChange={e => setFormData({ ...formData, buying_price: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Selling Price ($)</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Selling Price (LKR) *</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>
+                            <div className="space-y-2"><Label>Min Stock Level *</Label><Input type="number" required value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} /></div>
                         </div>
-                        <div className="space-y-2"><Label>Expiry Date (Master)</Label><Input type="date" required value={formData.expiry_date} onChange={e => setFormData({ ...formData, expiry_date: e.target.value })} /></div>
-                        <Button type="submit" className="w-full bg-blue-600">Update Details</Button>
+                        <Button type="submit" className="w-full bg-blue-600">Update Medicine</Button>
                     </form>
                 </DialogContent>
             </Dialog>
@@ -363,19 +415,44 @@ export default function InventoryPage() {
             {/* Restock Dialog (Add Batch) */}
             <Dialog open={isRestockOpen} onOpenChange={(open) => { setIsRestockOpen(open); if (!open) resetRestockForm(); }}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Restock (Add Batch)</DialogTitle></DialogHeader>
-                    {currentMed && <p className="text-sm text-neutral-500 mb-4">Adding stock for: <strong>{currentMed.name}</strong></p>}
+                    <DialogHeader><DialogTitle>Add New Batch</DialogTitle></DialogHeader>
+                    {currentMed && (
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <p className="text-sm"><strong className="text-blue-900">{currentMed.name}</strong></p>
+                            {currentMed.generic_name && <p className="text-xs text-blue-700">{currentMed.generic_name}</p>}
+                        </div>
+                    )}
                     <form onSubmit={handleRestockSubmit} className="space-y-4">
-                        <div className="space-y-2"><Label>Batch Number</Label><Input placeholder="Auto-generated if empty" value={restockForm.batch_number} onChange={e => setRestockForm({ ...restockForm, batch_number: e.target.value })} /></div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Quantity</Label><Input type="number" required value={restockForm.quantity} onChange={e => setRestockForm({ ...restockForm, quantity: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Expiry Date</Label><Input type="date" required value={restockForm.expiry_date} onChange={e => setRestockForm({ ...restockForm, expiry_date: e.target.value })} /></div>
+                        <div className="space-y-2">
+                            <Label>Batch Number</Label>
+                            <Input placeholder="Auto-generated if empty" value={restockForm.batch_number} onChange={e => setRestockForm({ ...restockForm, batch_number: e.target.value })} />
+                            <p className="text-xs text-neutral-500">Leave empty to auto-generate</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Buying Price ($)</Label><Input type="number" step="0.01" value={restockForm.buying_price} onChange={e => setRestockForm({ ...restockForm, buying_price: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Selling Price ($)</Label><Input type="number" step="0.01" value={restockForm.selling_price} onChange={e => setRestockForm({ ...restockForm, selling_price: e.target.value })} /></div>
+                            <div className="space-y-2">
+                                <Label>Quantity *</Label>
+                                <Input type="number" required value={restockForm.quantity} onChange={e => setRestockForm({ ...restockForm, quantity: e.target.value })} placeholder="100" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Expiry Date *</Label>
+                                <Input type="date" required value={restockForm.expiry_date} onChange={e => setRestockForm({ ...restockForm, expiry_date: e.target.value })} />
+                                <p className="text-xs text-neutral-500">Must be a future date</p>
+                            </div>
                         </div>
-                        <Button type="submit" className="w-full bg-emerald-600">Add Batch</Button>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Buying Price (LKR)</Label>
+                                <Input type="number" step="0.01" value={restockForm.buying_price} onChange={e => setRestockForm({ ...restockForm, buying_price: e.target.value })} placeholder="0.00" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Selling Price (LKR) *</Label>
+                                <Input type="number" step="0.01" required value={restockForm.selling_price} onChange={e => setRestockForm({ ...restockForm, selling_price: e.target.value })} placeholder={currentMed?.price_per_unit || '0.00'} />
+                            </div>
+                        </div>
+                        <div className="bg-amber-50 p-3 rounded border border-amber-200 text-xs text-amber-900">
+                            <strong>Note:</strong> Stock will be added to inventory. Dispensing follows FEFO (First Expired, First Out) order.
+                        </div>
+                        <Button type="submit" className="w-full bg-emerald-600">Add Batch to Inventory</Button>
                     </form>
                 </DialogContent>
             </Dialog>

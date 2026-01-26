@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { formatLKR } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -191,7 +192,7 @@ export default function BookAppointmentPage() {
                                                 <h3 className="font-semibold">{doc.name}</h3>
                                                 <p className="text-sm text-neutral-500">{doc.specialization}</p>
                                                 <div className="mt-2 text-xs font-mono bg-white inline-block px-1 rounded border">
-                                                    Fee: ${doc.consultationFee}
+                                                    Fee: {formatLKR(doc.consultationFee)}
                                                 </div>
                                             </div>
                                         </div>
@@ -315,7 +316,7 @@ export default function BookAppointmentPage() {
                                 </div>
                                 <div className="flex justify-between pt-2">
                                     <span className="text-neutral-500">Consultation Fee</span>
-                                    <span className="font-mono text-lg">${selectedDoctor?.consultationFee}</span>
+                                    <span className="font-mono text-lg">{formatLKR(selectedDoctor?.consultationFee)}</span>
                                 </div>
                             </div>
                         </CardContent>

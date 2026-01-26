@@ -12,11 +12,13 @@ export default function ExpiryAlertsPage() {
         expiringSoon: [],
         expiringLater: [],
         multiBatchWarnings: [],
+        lowStock: [],
         summary: {
             expiredCount: 0,
             expiringSoonCount: 0,
             expiringLaterCount: 0,
-            multiBatchWarningsCount: 0
+            multiBatchWarningsCount: 0,
+            lowStockCount: 0
         }
     });
     const [loading, setLoading] = useState(true);
@@ -99,11 +101,23 @@ export default function ExpiryAlertsPage() {
                         </div>
                     </CardContent>
                 </Card>
+
+                <Card className="border-orange-200 bg-orange-50">
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-3">
+                            <Package className="h-8 w-8 text-orange-600" />
+                            <div>
+                                <p className="text-2xl font-bold text-orange-900">{alerts.summary.lowStockCount}</p>
+                                <p className="text-xs text-orange-700">Low Stock Items</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Tabs for Different Categories */}
             <Tabs defaultValue="expired" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="expired">
                         Expired ({alerts.summary.expiredCount})
                     </TabsTrigger>
@@ -115,6 +129,9 @@ export default function ExpiryAlertsPage() {
                     </TabsTrigger>
                     <TabsTrigger value="multi">
                         Multi-Batch ({alerts.summary.multiBatchWarningsCount})
+                    </TabsTrigger>
+                    <TabsTrigger value="lowstock">
+                        Low Stock ({alerts.summary.lowStockCount})
                     </TabsTrigger>
                 </TabsList>
 
@@ -265,6 +282,50 @@ export default function ExpiryAlertsPage() {
                                             <p className="mt-2 text-xs text-blue-700">
                                                 ⚠️ Use FEFO logic: Dispense from earliest expiring batch first
                                             </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* Low Stock Alerts */}
+                <TabsContent value="lowstock" className="mt-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-orange-900 flex items-center gap-2">
+                                <Package className="h-5 w-5" />
+                                Medicines Below Minimum Stock Level
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            {alerts.lowStock.length === 0 ? (
+                                <p className="text-center text-neutral-500 py-8">All medicines are adequately stocked!</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {alerts.lowStock.map((med: any) => (
+                                        <div key={med.medicine_id} className="p-4 border border-orange-200 bg-orange-50 rounded-lg">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-semibold text-neutral-900">{med.medicine_name}</h3>
+                                                    {med.generic_name && <p className="text-xs text-neutral-600">{med.generic_name}</p>}
+                                                    {med.category && <p className="text-xs text-neutral-500">Category: {med.category}</p>}
+                                                </div>
+                                                <Badge variant="destructive">Reorder</Badge>
+                                            </div>
+                                            <div className="mt-2 flex gap-4 text-sm">
+                                                <span className="text-neutral-600">Min Level: {med.min_stock_level} {med.unit}</span>
+                                                <span className={`font-semibold ${med.current_stock === 0 ? 'text-red-700' :
+                                                        med.current_stock <= (med.min_stock_level * 0.5) ? 'text-red-600' :
+                                                            'text-orange-600'
+                                                    }`}>
+                                                    Current: {med.current_stock} {med.unit}
+                                                </span>
+                                                <span className="text-orange-600 font-semibold">
+                                                    {med.current_stock === 0 ? 'OUT OF STOCK' : `${med.min_stock_level - med.current_stock} needed`}
+                                                </span>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>

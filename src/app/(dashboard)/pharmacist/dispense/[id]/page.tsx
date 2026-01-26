@@ -7,6 +7,7 @@ import { Link, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { formatLKR } from '@/lib/utils';
 
 export default function DispensePage({ params }: { params: { id: string } }) {
     const router = useRouter();
@@ -142,7 +143,7 @@ export default function DispensePage({ params }: { params: { id: string } }) {
                                                 <p className="text-sm text-neutral-500">{item.dosage} - {item.frequency} for {item.duration}</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-mono text-lg font-bold text-emerald-700">${item.selling_price}</p>
+                                                <p className="font-mono text-lg font-bold text-emerald-700">{formatLKR(item.selling_price)}</p>
                                                 <p className="text-xs text-neutral-400">per unit</p>
                                             </div>
                                         </div>
@@ -206,7 +207,7 @@ export default function DispensePage({ params }: { params: { id: string } }) {
                         <div className="flex justify-between items-center">
                             <div className="text-right flex-1 pr-4">
                                 <p className="text-sm text-neutral-500">Total Pharmacy Cost</p>
-                                <p className="text-2xl font-bold text-neutral-900">${calculateTotal().toFixed(2)}</p>
+                                <p className="text-2xl font-bold text-neutral-900">{formatLKR(calculateTotal())}</p>
                             </div>
                             <Button
                                 className="bg-emerald-600 hover:bg-emerald-700 h-12 px-8 text-lg"

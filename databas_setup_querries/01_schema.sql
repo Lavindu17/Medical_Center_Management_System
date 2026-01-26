@@ -38,16 +38,26 @@ CREATE TABLE `doctors` (
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 4. Medicines Table (Inventory)
+-- 4. Medicines Table (Inventory Master Data)
 DROP TABLE IF EXISTS `medicines`;
 CREATE TABLE `medicines` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,
-  `stock` INT NOT NULL DEFAULT 0,
+  `generic_name` VARCHAR(255),
+  `manufacturer` VARCHAR(255),
+  `category` VARCHAR(100), -- e.g., 'Antibiotic', 'Analgesic'
+  `stock` INT NOT NULL DEFAULT 0, -- Aggregate from batches
+  `min_stock_level` INT DEFAULT 10, -- Reorder threshold
   `unit` VARCHAR(50) NOT NULL, -- e.g., 'tablets', 'ml', 'bottles'
-  `price_per_unit` DECIMAL(10, 2) NOT NULL,
-  `expiry_date` DATE NOT NULL,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `dosage_form` ENUM('TABLET','SYRUP','CAPSULE','INJECTION','CREAM','OTHER'),
+  `strength` VARCHAR(50), -- e.g., '500mg', '10ml'
+  `price_per_unit` DECIMAL(10, 2) NOT NULL, -- Standard selling price
+  `buying_price` DECIMAL(10, 2) DEFAULT 0, -- Latest/average buying cost
+  `expiry_date` DATE, -- Earliest expiry from active batches (can be NULL if no stock)
+  `location` VARCHAR(100), -- Physical location: 'Shelf A1'
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_generic_name (`generic_name`),
+  INDEX idx_category (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. Lab Tests Table (Catalog)
