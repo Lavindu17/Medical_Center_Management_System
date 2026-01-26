@@ -19,13 +19,19 @@ export async function GET() {
         if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         // Fetch Profile
-        const [docRows]: any = await query(
+        const docRows: any = await query(
             'SELECT * FROM doctors WHERE user_id = ?',
             [user.id]
         );
 
-        const [userRows]: any = await query(
+        const userRows: any = await query(
             'SELECT name, phone, email FROM users WHERE id = ?',
+            [user.id]
+        );
+
+        // Fetch Schedules
+        const schedules: any = await query(
+            'SELECT * FROM doctor_schedules WHERE doctor_id = ? ORDER BY day ASC, start_time ASC',
             [user.id]
         );
 
@@ -35,19 +41,10 @@ export async function GET() {
             [user.id]
         );
 
-        // Ensure working_days is an array
-        let docData = docRows[0];
-        if (docData && typeof docData.working_days === 'string') {
-            try {
-                docData.working_days = JSON.parse(docData.working_days);
-            } catch (e) {
-                docData.working_days = [];
-            }
-        }
-
         return NextResponse.json({
             user: userRows[0],
-            doctor: docData,
+            doctor: docRows[0],
+            schedules: schedules,
             leaves: leaves
         });
 
@@ -62,7 +59,9 @@ export async function POST(req: Request) {
         if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        const { name, phone, consultation_fee, license_number, start_time, end_time, slot_duration, working_days } = body;
+
+        // Handle Profile Update vs LEAVES (Leaves handled in separate route, so this is just profile + schedule)
+        const { name, phone, consultation_fee, license_number, slot_duration, schedules } = body;
 
         const connection = await pool.getConnection();
         await connection.beginTransaction();
@@ -74,16 +73,41 @@ export async function POST(req: Request) {
                 [name, phone, user.id]
             );
 
-            // Update Doctor
-            // Ensure working_days is stringified if array
-            const daysJson = JSON.stringify(working_days);
-
+            // Update Doctor (Profile Settings)
+            // Note: start_time, end_time, working_days are deprecated but we might keep them or ignore them. 
+            // We update slot_duration.
             await connection.execute(
                 `UPDATE doctors 
-                 SET consultation_fee = ?, license_number = ?, start_time = ?, end_time = ?, slot_duration = ?, working_days = ?
+                 SET consultation_fee = ?, license_number = ?, slot_duration = ?
                  WHERE user_id = ?`,
-                [consultation_fee, license_number, start_time, end_time, slot_duration, daysJson, user.id]
+                [consultation_fee, license_number, slot_duration, user.id]
             );
+
+            // Update Schedules
+            // 1. Delete existing
+            await connection.execute('DELETE FROM doctor_schedules WHERE doctor_id = ?', [user.id]);
+
+            // 2. Insert new
+            if (schedules && Array.isArray(schedules) && schedules.length > 0) {
+                // Prepare Insert Statement
+                // Input format expected: [{ days: ['Monday', 'Tuesday'], start_time: '09:00', end_time: '17:00' }]
+                // OR flattened: [{ day: 'Monday', start_time: '09:00', end_time: '17:00' }]
+                // Let's assume the Frontend sends FLATTENED rows or BLOCKS.
+                // Plan said Frontend will send Blocks, but Backend usually wants Rows or expands them.
+                // Let's make Backend robust: Expand Blocks if needed, or assume Frontend sends Blocks and we expand loop.
+
+                // Let's assume input is "Blocks" as per plan: `{ days, start_time, end_time }`
+                for (const block of schedules) {
+                    if (block.days && Array.isArray(block.days)) {
+                        for (const day of block.days) {
+                            await connection.execute(
+                                'INSERT INTO doctor_schedules (doctor_id, day, start_time, end_time) VALUES (?, ?, ?, ?)',
+                                [user.id, day, block.start_time, block.end_time]
+                            );
+                        }
+                    }
+                }
+            }
 
             await connection.commit();
             return NextResponse.json({ message: 'Updated' });
