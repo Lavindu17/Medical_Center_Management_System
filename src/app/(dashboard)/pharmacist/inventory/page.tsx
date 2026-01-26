@@ -244,7 +244,11 @@ export default function InventoryPage() {
                                 <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="e.g. 500mg" /></div>
                             </div>
                             {/* Standard Selling Price is optional but good for default. Buying Price and Stock are batch specific. */}
-                            <div className="space-y-2"><Label>Standard Selling Price (LKR)</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>
+                            <div className="space-y-2">
+                                <Label>Standard Selling Price per Unit (LKR) *</Label>
+                                <Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} placeholder="e.g., 15.50" />
+                                <p className="text-xs text-neutral-500">Price per single {formData.unit || 'unit'} (not per batch)</p>
+                            </div>
 
                             <Button type="submit" className="w-full bg-emerald-600">Register Medicine</Button>
                         </form>
@@ -320,43 +324,89 @@ export default function InventoryPage() {
                                 {med.category && <div className="text-xs text-neutral-400 mt-1">🏷️ {med.category}</div>}
                             </div>
                             <div className="col-span-2">
-                                <span className={`font-mono font-bold ${med.batch_stock <= med.min_stock_level ? 'text-red-600' :
-                                    med.batch_stock <= (med.min_stock_level * 1.5) ? 'text-amber-600' :
-                                        'text-emerald-700'
-                                    }`}>
-                                    {med.batch_stock || 0}
-                                </span> <span className="text-xs text-neutral-400">{med.unit}</span>
-                                {med.batch_stock <= med.min_stock_level && (
-                                    <div className="text-xs text-red-600 font-semibold">LOW STOCK</div>
-                                )}
+                                {/* Stock Level with Progress Bar */}
+                                <div className="space-y-2">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className={`font-mono font-bold text-lg ${med.batch_stock === 0 ? 'text-red-700' :
+                                            med.batch_stock <= (med.min_stock_level * 0.5) ? 'text-red-600' :
+                                                med.batch_stock <= med.min_stock_level ? 'text-amber-600' :
+                                                    'text-emerald-700'
+                                            }`}>
+                                            {med.batch_stock || 0}
+                                        </span>
+                                        <span className="text-xs text-neutral-400">/ {med.min_stock_level}</span>
+                                        <span className="text-xs text-neutral-500">{med.unit}</span>
+                                    </div>
+                                    {/* Progress Bar */}
+                                    <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-300 ${med.batch_stock === 0 ? 'bg-red-600' :
+                                                med.batch_stock <= (med.min_stock_level * 0.5) ? 'bg-red-500' :
+                                                    med.batch_stock <= med.min_stock_level ? 'bg-amber-500' :
+                                                        'bg-emerald-600'
+                                                }`}
+                                            style={{ width: `${Math.min((med.batch_stock / med.min_stock_level) * 100, 100)}%` }}
+                                        />
+                                    </div>
+                                    {/* Status Label */}
+                                    {med.batch_stock === 0 && (
+                                        <div className="text-xs font-bold text-red-700">OUT OF STOCK</div>
+                                    )}
+                                    {med.batch_stock > 0 && med.batch_stock <= (med.min_stock_level * 0.5) && (
+                                        <div className="text-xs font-bold text-red-600">CRITICAL</div>
+                                    )}
+                                    {med.batch_stock > (med.min_stock_level * 0.5) && med.batch_stock <= med.min_stock_level && (
+                                        <div className="text-xs font-semibold text-amber-600">LOW STOCK</div>
+                                    )}
+                                </div>
                             </div>
-                            <div className="col-span-2 text-neutral-700">{formatLKR(med.price_per_unit)}</div>
-                            <div className="col-span-2 text-sm text-neutral-600">
+                            <div className="col-span-2">
+                                <div className="font-semibold text-neutral-900">{formatLKR(med.price_per_unit)}</div>
+                                <div className="text-xs text-neutral-500">per {med.unit}</div>
+                            </div>
+                            <div className="col-span-2">
                                 {med.earliest_expiry ? (
-                                    <span className={(() => {
+                                    (() => {
                                         const expiryDate = new Date(med.earliest_expiry);
                                         const today = new Date();
                                         const daysUntil = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                                        if (daysUntil < 0) return 'text-red-700 font-semibold';
-                                        if (daysUntil < 30) return 'text-red-600';
-                                        if (daysUntil < 90) return 'text-amber-600';
-                                        return '';
-                                    })()}>
-                                        {new Date(med.earliest_expiry).toLocaleDateString()}
-                                    </span>
-                                ) : <span className="text-neutral-400 italic">No Stock</span>}
+                                        const isExpired = daysUntil < 0;
+                                        const isExpiringSoon = daysUntil >= 0 && daysUntil < 30;
+                                        const isExpiringLater = daysUntil >= 30 && daysUntil < 90;
+
+                                        return (
+                                            <div>
+                                                <div className={`text-sm font-medium ${isExpired ? 'text-red-700 font-bold' :
+                                                    isExpiringSoon ? 'text-amber-700' :
+                                                        isExpiringLater ? 'text-amber-600' :
+                                                            'text-neutral-700'
+                                                    }`}>
+                                                    {expiryDate.toLocaleDateString()}
+                                                </div>
+                                                <div className={`text-xs font-semibold mt-0.5 ${isExpired ? 'text-red-600' :
+                                                    isExpiringSoon ? 'text-amber-600' :
+                                                        'text-neutral-500'
+                                                    }`}>
+                                                    {isExpired ? '⚠️ EXPIRED' : `${daysUntil}d remaining`}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()
+                                ) : (
+                                    <span className="text-neutral-400 text-sm italic">No stock</span>
+                                )}
                             </div>
-                            <div className="col-span-2 flex justify-end gap-2">
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-neutral-500" onClick={() => openBatches(med)} title="View Batches">
-                                    <Search className="h-4 w-4" />
+                            <div className="col-span-2 flex gap-2 justify-end">
+                                <Button size="sm" variant="outline" onClick={() => openBatches(med)} className="border-emerald-600 text-emerald-700 hover:bg-emerald-50" title="View Batches">
+                                    <Package className="h-4 w-4 mr-1" /> Batches
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600" onClick={() => openRestock(med)} title="Restock">
-                                    <Package className="h-4 w-4" />
+                                <Button size="sm" onClick={() => openRestock(med)} className="bg-emerald-600 hover:bg-emerald-700">
+                                    Restock
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => openEdit(med)}>
+                                <Button size="sm" variant="ghost" onClick={() => openEdit(med)} className="hover:bg-neutral-100">
                                     <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => handleDelete(med.id)}>
+                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(med.id)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -459,8 +509,15 @@ export default function InventoryPage() {
                             <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="500mg" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Selling Price (LKR) *</Label><Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} /></div>
-                            <div className="space-y-2"><Label>Min Stock Level *</Label><Input type="number" required value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} /></div>
+                            <div className="space-y-2">
+                                <Label>Selling Price per Unit (LKR) *</Label>
+                                <Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} placeholder="e.g., 15.50" />
+                                <p className="text-xs text-neutral-500">Standard price per unit</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Min Stock Level *</Label>
+                                <Input type="number" required value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} />
+                            </div>
                         </div>
                         <Button type="submit" className="w-full bg-blue-600">Update Medicine</Button>
                     </form>
@@ -496,16 +553,23 @@ export default function InventoryPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Buying Price (LKR)</Label>
-                                <Input type="number" step="0.01" value={restockForm.buying_price} onChange={e => setRestockForm({ ...restockForm, buying_price: e.target.value })} placeholder="0.00" />
+                                <Label>Buying Price per Unit (LKR)</Label>
+                                <Input type="number" step="0.01" value={restockForm.buying_price} onChange={e => setRestockForm({ ...restockForm, buying_price: e.target.value })} placeholder="e.g., 10.00" />
+                                <p className="text-xs text-neutral-500">Cost price per single unit</p>
                             </div>
                             <div className="space-y-2">
-                                <Label>Selling Price (LKR) *</Label>
+                                <Label>Selling Price per Unit (LKR) *</Label>
                                 <Input type="number" step="0.01" required value={restockForm.selling_price} onChange={e => setRestockForm({ ...restockForm, selling_price: e.target.value })} placeholder={currentMed?.price_per_unit || '0.00'} />
+                                <p className="text-xs text-neutral-500">Selling price per single unit</p>
                             </div>
                         </div>
-                        <div className="bg-amber-50 p-3 rounded border border-amber-200 text-xs text-amber-900">
-                            <strong>Note:</strong> Stock will be added to inventory. Dispensing follows FEFO (First Expired, First Out) order.
+                        <div className="bg-emerald-50 p-3 rounded border border-emerald-200 text-xs">
+                            <div className="font-semibold text-emerald-900 mb-1">💡 Pricing Info</div>
+                            <ul className="text-emerald-800 space-y-1 ml-4 list-disc">
+                                <li>All prices are <strong>per unit</strong>, not per batch</li>
+                                <li>Total batch cost = Buying Price × Quantity</li>
+                                <li>Selling price can vary between batches</li>
+                            </ul>
                         </div>
                         <Button type="submit" className="w-full bg-emerald-600">Add Batch to Inventory</Button>
                     </form>
