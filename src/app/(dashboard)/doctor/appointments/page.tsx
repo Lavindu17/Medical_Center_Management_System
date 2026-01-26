@@ -78,8 +78,8 @@ export default function DoctorAppointmentsPage() {
                             key={f}
                             onClick={() => setFilter(f)}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === f
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-gray-50'
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'text-neutral-500 hover:text-neutral-900 hover:bg-gray-50'
                                 }`}
                         >
                             {f.charAt(0).toUpperCase() + f.slice(1)}

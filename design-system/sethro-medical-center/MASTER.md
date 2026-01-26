@@ -7,7 +7,7 @@
 ---
 
 **Project:** Sethro Medical Center
-**Generated:** 2026-01-26 15:43:22
+**Generated:** 2026-01-26 17:36:18
 **Category:** Healthcare App
 
 ---
@@ -18,13 +18,13 @@
 
 | Role | Hex | CSS Variable |
 |------|-----|--------------|
-| Primary | `#3B82F6` | `--color-primary` |
-| Secondary | `#60A5FA` | `--color-secondary` |
-| CTA/Accent | `#F97316` | `--color-cta` |
-| Background | `#F8FAFC` | `--color-background` |
-| Text | `#1E293B` | `--color-text` |
+| Primary | `#0891B2` | `--color-primary` |
+| Secondary | `#22D3EE` | `--color-secondary` |
+| CTA/Accent | `#059669` | `--color-cta` |
+| Background | `#ECFEFF` | `--color-background` |
+| Text | `#164E63` | `--color-text` |
 
-**Color Notes:** Pharmacy Green + Trust Blue + Clean White
+**Color Notes:** Calm blue + health green + trust
 
 ### Typography
 
@@ -68,7 +68,7 @@
 ```css
 /* Primary Button */
 .btn-primary {
-  background: #F97316;
+  background: #059669;
   color: white;
   padding: 12px 24px;
   border-radius: 8px;
@@ -85,8 +85,8 @@
 /* Secondary Button */
 .btn-secondary {
   background: transparent;
-  color: #3B82F6;
-  border: 2px solid #3B82F6;
+  color: #0891B2;
+  border: 2px solid #0891B2;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -99,7 +99,7 @@
 
 ```css
 .card {
-  background: #F8FAFC;
+  background: #ECFEFF;
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow-md);
@@ -125,9 +125,9 @@
 }
 
 .input:focus {
-  border-color: #3B82F6;
+  border-color: #0891B2;
   outline: none;
-  box-shadow: 0 0 0 3px #3B82F620;
+  box-shadow: 0 0 0 3px #0891B220;
 }
 ```
 
@@ -163,11 +163,11 @@
 
 ### Page Pattern
 
-**Pattern Name:** Minimal Single Column
+**Pattern Name:** Product Demo + Features
 
-- **Conversion Strategy:** Single CTA focus. Large typography. Lots of whitespace. No nav clutter. Mobile-first.
-- **CTA Placement:** Center, large CTA button
-- **Section Order:** 1. Hero headline, 2. Short description, 3. Benefit bullets (3 max), 4. CTA, 5. Footer
+- **Conversion Strategy:** Embedded product demo increases engagement. Use interactive mockup if possible. Auto-play video muted.
+- **CTA Placement:** Video center + CTA right/bottom
+- **Section Order:** 1. Hero, 2. Product video/mockup (center), 3. Feature breakdown per section, 4. Comparison (optional), 5. CTA
 
 ---
 
