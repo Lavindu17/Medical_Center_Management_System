@@ -440,33 +440,43 @@ export default function ConsultationPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Frequency Inputs */}
-                                            <div className="space-y-1">
-                                                <Label className="text-xs font-semibold text-neutral-600">Frequency ({medForm.frequency})</Label>
-                                                <div className="grid grid-cols-4 gap-2">
+                                            {/* Frequency Options Matrix */}
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-xs font-semibold text-neutral-600">Frequency ({medForm.frequency})</Label>
+                                                    <span className="text-[10px] text-neutral-400">Qty per dose</span>
+                                                </div>
+                                                <div className="bg-neutral-50 p-2 rounded-lg border space-y-2">
                                                     {[
-                                                        { key: 'morning', label: 'Morn' },
+                                                        { key: 'morning', label: 'Morning' },
                                                         { key: 'noon', label: 'Noon' },
-                                                        { key: 'evening', label: 'Eve' },
+                                                        { key: 'evening', label: 'Evening' },
                                                         { key: 'night', label: 'Night' }
                                                     ].map((time) => (
-                                                        <div key={time.key} className="space-y-1">
-                                                            <div className="text-[10px] text-center text-neutral-500 font-medium">{time.label}</div>
-                                                            <Input
-                                                                className="h-8 text-center text-xs px-1"
-                                                                value={freqValues[time.key as keyof typeof freqValues]}
-                                                                onChange={(e) => setFreqValues(prev => ({
-                                                                    ...prev,
-                                                                    [time.key]: e.target.value
-                                                                }))}
-                                                                placeholder="0"
-                                                            />
+                                                        <div key={time.key} className="flex items-center justify-between text-xs">
+                                                            <span className="w-16 font-medium text-neutral-600">{time.label}</span>
+                                                            <div className="flex gap-1">
+                                                                {['0', '1/2', '1', '2'].map((opt) => {
+                                                                    const isActive = freqValues[time.key as keyof typeof freqValues] === opt;
+                                                                    return (
+                                                                        <button
+                                                                            key={opt}
+                                                                            className={cn(
+                                                                                "h-6 w-8 rounded flex items-center justify-center border transition-colors",
+                                                                                isActive
+                                                                                    ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                                                                                    : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-100"
+                                                                            )}
+                                                                            onClick={() => setFreqValues(prev => ({ ...prev, [time.key]: opt }))}
+                                                                        >
+                                                                            {opt}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
-                                                <p className="text-[10px] text-neutral-400 text-center pt-1">
-                                                    Enter quantity (e.g. 1, 0.5, 2)
-                                                </p>
                                             </div>
                                         </div>
 
