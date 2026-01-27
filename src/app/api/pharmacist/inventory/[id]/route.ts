@@ -15,8 +15,9 @@ async function getPharmacist() {
 
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const user = await getPharmacist();
         if (!user) {
@@ -65,10 +66,41 @@ export async function PUT(
     }
 }
 
+export async function GET(
+    request: Request,
+    props: { params: Promise<{ id: string }> }
+) {
+    const params = await props.params;
+    try {
+        const user = await getPharmacist();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const { id } = params;
+
+        const result = await query('SELECT * FROM medicines WHERE id = ?', [id]);
+
+        // @ts-ignore
+        if (result.length === 0) {
+            return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+        }
+
+        // @ts-ignore
+        return NextResponse.json(result[0]);
+    } catch (error) {
+        console.error('Error fetching medicine:', error);
+        return NextResponse.json(
+            { error: 'Failed to fetch medicine' },
+            { status: 500 }
+        );
+    }
+}
+
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const user = await getPharmacist();
         if (!user) {

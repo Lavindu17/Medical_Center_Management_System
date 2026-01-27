@@ -6,13 +6,13 @@ export async function GET() {
         // Fetch doctors with their user details
         const doctors: any = await query(`
             SELECT 
-                d.id, 
+                d.user_id as id, 
                 u.name, 
                 d.specialization, 
                 d.consultation_fee 
             FROM doctors d 
             JOIN users u ON d.user_id = u.id 
-            WHERE u.role = 'doctor'
+            WHERE u.role = 'doctor' OR u.role = 'DOCTOR'
         `);
 
         return NextResponse.json(doctors);
