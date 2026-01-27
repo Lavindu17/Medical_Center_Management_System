@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { DollarSign, CreditCard, Printer } from 'lucide-react';
+import { Banknote, CreditCard, Printer } from 'lucide-react';
 
 export default function BillingPage() {
     const [bills, setBills] = useState<any[]>([]);
@@ -34,7 +34,7 @@ export default function BillingPage() {
 
     const handlePay = async () => {
         if (!selectedBill) return;
-        if (!confirm(`Confirm payment of $${selectedBill.total_amount} via ${paymentMethod}?`)) return;
+        if (!confirm(`Confirm payment of LKR ${selectedBill.total_amount} via ${paymentMethod}?`)) return;
 
         try {
             const res = await fetch('/api/receptionist/billing', {
@@ -87,14 +87,14 @@ export default function BillingPage() {
                             </div>
                             <div className="col-span-3 text-sm text-neutral-700">{bill.doctor_name}</div>
                             <div className="col-span-3 text-xs text-neutral-500 space-y-1">
-                                <div>Doc Fee: ${bill.doctor_fee}</div>
-                                <div>Pharmacy: ${bill.pharmacy_total}</div>
-                                <div>Lab: ${bill.lab_total}</div>
+                                <div>Doc Fee: LKR {bill.doctor_fee}</div>
+                                <div>Pharmacy: LKR {bill.pharmacy_total}</div>
+                                <div>Lab: LKR {bill.lab_total}</div>
                             </div>
-                            <div className="col-span-1 font-bold text-lg text-emerald-700">${bill.total_amount}</div>
+                            <div className="col-span-1 font-bold text-lg text-emerald-700">LKR {bill.total_amount}</div>
                             <div className="col-span-2 flex justify-end gap-2">
                                 <Button className="bg-emerald-600 hover:bg-emerald-700 h-8 px-3 text-xs" onClick={() => openPay(bill)}>
-                                    <DollarSign className="h-3 w-3 mr-1" /> Pay
+                                    <Banknote className="h-3 w-3 mr-1" /> Pay
                                 </Button>
                             </div>
                         </div>
@@ -108,11 +108,11 @@ export default function BillingPage() {
                     {selectedBill && (
                         <div className="space-y-4 pt-4">
                             <div className="bg-neutral-50 p-4 rounded-lg space-y-2 text-sm">
-                                <div className="flex justify-between"><span>Doctor Fee:</span> <span>${selectedBill.doctor_fee}</span></div>
-                                <div className="flex justify-between"><span>Pharmacy:</span> <span>${selectedBill.pharmacy_total}</span></div>
-                                <div className="flex justify-between"><span>Lab Charges:</span> <span>${selectedBill.lab_total}</span></div>
-                                <div className="flex justify-between"><span>Service Charge:</span> <span>${selectedBill.service_charge}</span></div>
-                                <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg"><span>Total:</span> <span>${selectedBill.total_amount}</span></div>
+                                <div className="flex justify-between"><span>Doctor Fee:</span> <span>LKR {selectedBill.doctor_fee}</span></div>
+                                <div className="flex justify-between"><span>Pharmacy:</span> <span>LKR {selectedBill.pharmacy_total}</span></div>
+                                <div className="flex justify-between"><span>Lab Charges:</span> <span>LKR {selectedBill.lab_total}</span></div>
+                                <div className="flex justify-between"><span>Service Charge:</span> <span>LKR {selectedBill.service_charge}</span></div>
+                                <div className="border-t pt-2 mt-2 flex justify-between font-bold text-lg"><span>Total:</span> <span>LKR {selectedBill.total_amount}</span></div>
                             </div>
 
                             <div className="space-y-2">

@@ -56,7 +56,7 @@ export default async function Home() {
         <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50/50 to-white pt-16 pb-32">
           {/* Background Decor */}
           <div className="absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-[800px] h-[800px] bg-emerald-100/40 rounded-full blur-3xl -z-10" />
-          <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[600px] h-[600px] bg-blue-50/40 rounded-full blur-3xl -z-10" />
+          <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[600px] h-[600px] bg-teal-50/40 rounded-full blur-3xl -z-10" />
 
           <div className="container mx-auto px-6">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
@@ -165,7 +165,7 @@ export default async function Home() {
                 icon="👨‍⚕️"
                 title="Consultation"
                 description="Expert medical consultations with experienced healthcare professionals"
-                color="blue"
+                color="teal"
               />
               <ServiceCard
                 icon="🔬"
@@ -248,8 +248,8 @@ export default async function Home() {
                 icon={Clock}
                 title="Real-time Scheduling"
                 description="Smart appointment management system that reduces wait times and optimizes doctor availability."
-                className="bg-blue-50/50 border-blue-100"
-                iconColor="text-blue-600"
+                className="bg-teal-50/50 border-teal-100"
+                iconColor="text-teal-600"
               />
               <FeatureCard
                 icon={UserCheck}
@@ -322,7 +322,7 @@ function FeatureCard({ icon: Icon, title, description, className, iconColor }: a
 function ServiceCard({ icon, title, description, color }: { icon: string; title: string; description: string; color: string }) {
   const colorClasses = {
     emerald: 'bg-emerald-50 border-emerald-200 hover:border-emerald-300',
-    blue: 'bg-blue-50 border-blue-200 hover:border-blue-300',
+    teal: 'bg-teal-50 border-teal-200 hover:border-teal-300',
     purple: 'bg-purple-50 border-purple-200 hover:border-purple-300',
     red: 'bg-red-50 border-red-200 hover:border-red-300'
   };

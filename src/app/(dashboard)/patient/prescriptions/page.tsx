@@ -35,7 +35,7 @@ export default function PrescriptionsPage() {
                             <CardContent className="pt-6">
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
-                                        <h3 className="font-bold text-lg text-blue-700">{item.medicineName}</h3>
+                                        <h3 className="font-bold text-lg text-emerald-700">{item.medicineName}</h3>
                                         <div className="flex gap-4 text-sm text-neutral-600 mt-1">
                                             <span>{item.dosage}</span>
                                             <span>•</span>

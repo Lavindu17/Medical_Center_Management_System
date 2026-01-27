@@ -7,7 +7,7 @@ import {
     LayoutDashboard,
     Users,
     Calendar,
-    DollarSign,
+    Banknote,
     LogOut,
     Menu,
     HeartPulse,
@@ -22,7 +22,7 @@ const sidebarItems = [
     { icon: Calendar, label: 'Appointments', href: '/receptionist/appointments' },
     { icon: UserPlus, label: 'Register Patient', href: '/receptionist/register' },
     { icon: Users, label: 'Patient Directory', href: '/receptionist/patients' },
-    { icon: DollarSign, label: 'Billing', href: '/receptionist/billing' },
+    { icon: Banknote, label: 'Billing', href: '/receptionist/billing' },
 ];
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {

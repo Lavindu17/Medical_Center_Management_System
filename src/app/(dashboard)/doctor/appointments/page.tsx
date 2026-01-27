@@ -78,7 +78,7 @@ export default function DoctorAppointmentsPage() {
                             key={f}
                             onClick={() => setFilter(f)}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === f
-                                ? 'bg-blue-600 text-white shadow-sm'
+                                ? 'bg-emerald-600 text-white shadow-sm'
                                 : 'text-neutral-500 hover:text-neutral-900 hover:bg-gray-50'
                                 }`}
                         >
@@ -94,7 +94,7 @@ export default function DoctorAppointmentsPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
                     <Input
                         placeholder="Search by Patient Name or Date..."
-                        className="pl-9 bg-white border-neutral-200 focus:border-blue-500 transition-colors"
+                        className="pl-9 bg-white border-neutral-200 focus:border-emerald-500 transition-colors"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -123,17 +123,17 @@ export default function DoctorAppointmentsPage() {
                         </div>
                     ) : (
                         filteredData.map((appt) => (
-                            <div key={appt.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-blue-50/30 transition-colors group">
+                            <div key={appt.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-emerald-50/30 transition-colors group">
                                 {/* Queue Number */}
                                 <div className="col-span-1 flex justify-center">
-                                    <div className="h-8 w-8 rounded-full bg-neutral-100 text-neutral-600 font-bold flex items-center justify-center text-sm border border-neutral-200 group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                                    <div className="h-8 w-8 rounded-full bg-neutral-100 text-neutral-600 font-bold flex items-center justify-center text-sm border border-neutral-200 group-hover:bg-emerald-100 group-hover:text-emerald-700 transition-colors">
                                         {appt.queueNumber}
                                     </div>
                                 </div>
 
                                 {/* Patient */}
                                 <div className="col-span-4 flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center text-blue-700 font-bold text-sm shrink-0 border border-white shadow-sm">
+                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0 border border-white shadow-sm">
                                         {appt.patientName ? appt.patientName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
                                     </div>
                                     <div>
@@ -175,7 +175,7 @@ export default function DoctorAppointmentsPage() {
                                     )}
                                     {appt.status === 'CHECKED_IN' && (
                                         <Link href={`/doctor/consultation/${appt.id}`}>
-                                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm h-8 gap-2 px-4 transition-all hover:pr-5">
+                                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm h-8 gap-2 px-4 transition-all hover:pr-5">
                                                 <Play className="h-3.5 w-3.5 fill-current" /> Start
                                             </Button>
                                         </Link>
@@ -189,7 +189,7 @@ export default function DoctorAppointmentsPage() {
                                     )}
                                     {appt.status === 'COMPLETED' && (
                                         <Link href={`/doctor/consultation/${appt.id}`}>
-                                            <Button size="sm" variant="secondary" className="text-neutral-600 hover:text-blue-600 h-8 gap-2">
+                                            <Button size="sm" variant="secondary" className="text-neutral-600 hover:text-emerald-600 h-8 gap-2">
                                                 <Eye className="h-4 w-4" /> View
                                             </Button>
                                         </Link>
@@ -230,8 +230,8 @@ function StatusPill({ status }: { status: string }) {
             label = 'Ongoing';
             break;
         case 'COMPLETED':
-            color = 'bg-blue-50 text-blue-700 border border-blue-100';
-            dot = 'bg-blue-500';
+            color = 'bg-emerald-50 text-emerald-700 border border-emerald-100';
+            dot = 'bg-emerald-500';
             label = 'Completed';
             break;
         case 'CANCELLED':

@@ -231,7 +231,7 @@ export default function DoctorProfilePage() {
                                     <p className="text-xs text-neutral-500">Contact admin to change specialization.</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Consultation Fee ($)</Label>
+                                    <Label>Consultation Fee (LKR)</Label>
                                     <Input type="number" value={profile.consultation_fee} onChange={e => setProfile({ ...profile, consultation_fee: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
@@ -240,7 +240,7 @@ export default function DoctorProfilePage() {
                                 </div>
                             </div>
                             <div className="pt-4">
-                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-blue-600">
+                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
                                     <Save className="mr-2 h-4 w-4" /> Save Changes
                                 </Button>
                             </div>
@@ -311,8 +311,8 @@ export default function DoctorProfilePage() {
                                                         className={`
                                                             cursor-pointer px-3 py-1.5 rounded text-xs font-medium transition-colors border select-none
                                                             ${block.days.includes(day)
-                                                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                                                : 'bg-white text-neutral-500 border-neutral-200 hover:border-blue-300'}
+                                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                                                : 'bg-white text-neutral-500 border-neutral-200 hover:border-emerald-300'}
                                                         `}
                                                     >
                                                         {day.slice(0, 3)}
@@ -329,7 +329,7 @@ export default function DoctorProfilePage() {
                             </div>
 
                             <div className="pt-4 flex justify-end">
-                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-blue-600 min-w-[120px]">
+                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 min-w-[120px]">
                                     <Save className="mr-2 h-4 w-4" /> Save Schedule
                                 </Button>
                             </div>

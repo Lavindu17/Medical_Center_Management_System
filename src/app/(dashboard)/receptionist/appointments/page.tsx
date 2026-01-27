@@ -113,13 +113,13 @@ export default function ReceptionistAppointments() {
                             </div>
                             <div className="col-span-3">
                                 <div className="text-sm font-medium">{appt.doctor_name}</div>
-                                <Badge variant="outline" className="text-xs font-normal bg-blue-50 text-blue-700 border-blue-200">{appt.specialization}</Badge>
+                                <Badge variant="outline" className="text-xs font-normal bg-emerald-50 text-emerald-700 border-emerald-200">{appt.specialization}</Badge>
                             </div>
                             <div className="col-span-2">
                                 <Badge className={`
                                     ${appt.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : ''}
                                     ${appt.status === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''}
-                                    ${appt.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : ''}
+                                    ${appt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''}
                                     ${appt.status === 'CANCELLED' ? 'bg-red-100 text-red-800 hover:bg-red-100' : ''}
                                 `}>
                                     {appt.status.replace('_', ' ')}

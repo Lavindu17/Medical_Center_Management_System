@@ -141,7 +141,7 @@ export default function PatientBookAppointment() {
                     </h1>
                     <div className="flex gap-2 mt-1">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1.5 w-8 rounded-full ${step >= i ? 'bg-blue-600' : 'bg-neutral-200'}`} />
+                            <div key={i} className={`h-1.5 w-8 rounded-full ${step >= i ? 'bg-emerald-600' : 'bg-neutral-200'}`} />
                         ))}
                     </div>
                 </div>
@@ -165,25 +165,25 @@ export default function PatientBookAppointment() {
                             <div
                                 key={doctor.id}
                                 onClick={() => { setSelectedDoctor(doctor); nextStep(); }}
-                                className="border rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all bg-white group"
+                                className="border rounded-lg p-4 cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all bg-white group"
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">
+                                        <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold">
                                             {doctor.name.charAt(0)}
                                         </div>
                                         <div>
-                                            <h3 className="font-semibold text-neutral-900 group-hover:text-blue-700">{doctor.name}</h3>
+                                            <h3 className="font-semibold text-neutral-900 group-hover:text-emerald-700">{doctor.name}</h3>
                                             <p className="text-sm text-neutral-500">{doctor.specialization}</p>
                                         </div>
                                     </div>
-                                    <div className="text-neutral-300 group-hover:text-blue-500">
+                                    <div className="text-neutral-300 group-hover:text-emerald-500">
                                         <ArrowRight className="h-5 w-5" />
                                     </div>
                                 </div>
                                 <div className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
                                     <Badge variant="secondary" className="font-normal text-neutral-500 bg-neutral-100">
-                                        Fee: $ {doctor.consultation_fee}
+                                        Fee: LKR {doctor.consultation_fee}
                                     </Badge>
                                 </div>
                             </div>
@@ -202,7 +202,7 @@ export default function PatientBookAppointment() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+                                <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold">
                                     {selectedDoctor?.name.charAt(0)}
                                 </div>
                                 <div>
@@ -241,7 +241,7 @@ export default function PatientBookAppointment() {
                                                 ${slot.status === 'booked'
                                                     ? 'bg-red-50 text-red-300 border-red-100 hover:bg-red-50 hover:text-red-300'
                                                     : selectedSlot === slot.time
-                                                        ? 'bg-blue-600 hover:bg-blue-700'
+                                                        ? 'bg-emerald-600 hover:bg-emerald-700'
                                                         : ''}
                                             `}
                                         >
@@ -254,7 +254,7 @@ export default function PatientBookAppointment() {
                     )}
 
                     <div className="pt-4 flex justify-end">
-                        <Button onClick={nextStep} disabled={!selectedSlot} className="w-full sm:w-auto bg-blue-600">
+                        <Button onClick={nextStep} disabled={!selectedSlot} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
                             Continue <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </div>
@@ -285,7 +285,7 @@ export default function PatientBookAppointment() {
                                 </div>
                                 <div>
                                     <span className="text-neutral-500">Fee</span>
-                                    <div className="font-medium text-lg">$ {selectedDoctor?.consultation_fee}</div>
+                                    <div className="font-medium text-lg">LKR {selectedDoctor?.consultation_fee}</div>
                                 </div>
                             </div>
 
@@ -300,7 +300,7 @@ export default function PatientBookAppointment() {
                         </CardContent>
                         <CardFooter>
                             <Button
-                                className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg"
+                                className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-lg"
                                 onClick={handleBook}
                                 disabled={isLoading}
                             >

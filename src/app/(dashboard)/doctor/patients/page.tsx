@@ -67,7 +67,7 @@ export default function DoctorPatientsPage() {
                         patients.map(patient => ( // Explicitly any in state definition, implied here
                             <div key={patient.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors">
                                 <div className="col-span-4 flex items-center gap-3">
-                                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">
+                                    <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
                                         {patient.name.charAt(0)}
                                     </div>
                                     <span className="font-medium text-neutral-900">{patient.name}</span>
