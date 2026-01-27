@@ -54,8 +54,15 @@ export default function PatientDashboard() {
         }
     }
 
-    const upcoming = appointments.filter(a => new Date(a.date) >= new Date(new Date().setHours(0, 0, 0, 0)));
-    const past = appointments.filter(a => new Date(a.date) < new Date(new Date().setHours(0, 0, 0, 0)));
+    const upcoming = appointments.filter(a =>
+        a.status !== 'CANCELLED' &&
+        new Date(a.date) >= new Date(new Date().setHours(0, 0, 0, 0))
+    );
+
+    const past = appointments.filter(a =>
+        a.status === 'CANCELLED' ||
+        (new Date(a.date) < new Date(new Date().setHours(0, 0, 0, 0)))
+    );
 
     return (
         <div className="p-8 space-y-8 max-w-5xl mx-auto">
@@ -118,7 +125,7 @@ export default function PatientDashboard() {
                                                     method: 'PUT',
                                                     body: JSON.stringify({ appointmentId: apt.id })
                                                 });
-                                                fetchAppointments(3); // Refresh
+                                                if (user?.id) fetchAppointments(user.id); // Fixed: Use correct User ID
                                             }}
                                         >
                                             Cancel
@@ -131,7 +138,7 @@ export default function PatientDashboard() {
 
                     {/* Past History */}
                     <div className="pt-8">
-                        <h2 className="text-xl font-semibold mb-4 text-neutral-400">Past History</h2>
+                        <h2 className="text-xl font-semibold mb-4 text-neutral-400">Appointment History</h2>
                         {past.length === 0 ? (
                             <p className="text-neutral-400 text-sm">No past history found.</p>
                         ) : (
@@ -143,7 +150,7 @@ export default function PatientDashboard() {
                                                 <span className="font-semibold block">{apt.doctorName}</span>
                                                 <span className="text-neutral-500">{new Date(apt.date).toLocaleDateString()}</span>
                                             </div>
-                                            <Badge variant="secondary">{apt.status}</Badge>
+                                            <Badge variant={apt.status === 'CANCELLED' ? 'destructive' : 'secondary'}>{apt.status}</Badge>
                                         </CardContent>
                                     </Card>
                                 ))}
