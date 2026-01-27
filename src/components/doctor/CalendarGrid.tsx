@@ -29,8 +29,16 @@ export function CalendarGrid({ currentMonth, onMonthChange, schedules, blockedDa
         const isPast = isBefore(date, startOfDay(new Date()));
         const dateStr = format(date, 'yyyy-MM-dd');
 
-        // Check if Blocked
-        const blocked = blockedDates.find(b => b.date && b.date.slice(0, 10) === dateStr);
+        // Check if Blocked - with normalized date comparison
+        const blocked = blockedDates.find(b => {
+            if (!b.date) return false;
+            // Extract just the date part, handling both DATE and DATETIME formats
+            // This handles: "2026-01-27", "2026-01-27T00:00:00", "2026-01-27 00:00:00"
+            const blockedDateStr = typeof b.date === 'string'
+                ? b.date.split('T')[0].split(' ')[0]  // Handle both ISO and MySQL formats
+                : format(new Date(b.date), 'yyyy-MM-dd');
+            return blockedDateStr === dateStr;
+        });
         if (blocked) return { status: 'blocked', reason: blocked.reason };
 
         // Check if Working

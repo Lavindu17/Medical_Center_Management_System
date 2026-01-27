@@ -35,9 +35,9 @@ export async function GET() {
             [user.id]
         );
 
-        // Fetch Leaves (Future only)
+        // Fetch Leaves (Future only) - normalize date format
         const leaves = await query(
-            'SELECT * FROM doctor_leaves WHERE doctor_id = ? AND date >= CURDATE() ORDER BY date ASC',
+            'SELECT id, doctor_id, DATE_FORMAT(date, "%Y-%m-%d") as date, reason FROM doctor_leaves WHERE doctor_id = ? AND date >= CURDATE() ORDER BY date ASC',
             [user.id]
         );
 
