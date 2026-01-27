@@ -62,7 +62,7 @@ This document provides a detailed breakdown of the Doctor Module in the Medical 
     - Doctor's Consultation Fee.
     - Standard Service Charge (500.00 LKR).
     - *Note: Pharmacy/Lab costs are added later by respective depts.*
-
+    
 ## 4. Patient Directory
 **Path:** `/doctor/patients`  
 **Purpose:** Access to global patient records.

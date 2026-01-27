@@ -11,9 +11,10 @@ import {
     CreditCard,
     LogOut,
     Menu,
-    CalendarCheck
+    CalendarCheck,
+    User
 } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 // import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function PatientLayout({
@@ -30,6 +31,7 @@ export default function PatientLayout({
         { icon: Pill, label: 'Prescriptions', href: '/patient/prescriptions' },
         { icon: FileText, label: 'Lab Reports', href: '/patient/labs' },
         { icon: CreditCard, label: 'Billing', href: '/patient/billing' },
+        { icon: User, label: 'Edit Profile', href: '/patient/profile' },
     ];
 
     return (
@@ -80,7 +82,7 @@ export default function PatientLayout({
                         </SheetTrigger>
                         <SheetContent side="left" className="w-64 p-0">
                             <div className="h-16 flex items-center px-6 border-b">
-                                <span className="font-bold text-xl">Menu</span>
+                                <SheetTitle className="font-bold text-xl">Menu</SheetTitle>
                             </div>
                             <nav className="p-4 space-y-2">
                                 {sidebarItems.map((item) => (
