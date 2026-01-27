@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
         // 3. Create Appointment
         const result: any = await query(
-            'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, ?, ?, ?, "CONFIRMED")',
+            'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, ?, ?, ?, "PENDING")',
             [patient_id, doctor_id, date, time_slot, queue_number]
         );
 

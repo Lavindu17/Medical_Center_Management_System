@@ -11,7 +11,7 @@ async function getStats() {
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) as pending,
-            SUM(CASE WHEN status = 'ARRIVED' OR status = 'CHECKED_IN' THEN 1 ELSE 0 END) as arrived,
+            SUM(CASE WHEN status = 'CHECKED_IN' THEN 1 ELSE 0 END) as checked_in,
             SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) as completed
         FROM appointments 
         WHERE date = ?
@@ -46,7 +46,7 @@ export default async function ReceptionistDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.appointments.total}</div>
-                        <p className="text-xs text-neutral-500">{stats.appointments.arrived} Arrived / {stats.appointments.pending} Pending</p>
+                        <p className="text-xs text-neutral-500">{stats.appointments.checked_in} Checked In / {stats.appointments.pending} Pending</p>
                     </CardContent>
                 </Card>
 
