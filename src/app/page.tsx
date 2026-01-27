@@ -2,8 +2,22 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { HeartPulse, ShieldCheck, Clock, UserCheck, ArrowRight, CheckCircle2, Phone } from 'lucide-react';
+import { query } from '@/lib/db';
 
-export default function Home() {
+interface Doctor {
+  name: string;
+  specialization: string;
+}
+
+export default async function Home() {
+  // Fetch real doctors from database
+  const doctors = await query<Doctor[]>(
+    `SELECT u.name, d.specialization 
+     FROM users u 
+     JOIN doctors d ON u.id = d.user_id 
+     WHERE u.role = 'DOCTOR'
+     LIMIT 3`
+  ).catch(() => []);
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50 font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Navbar with Glassmorphism */}
@@ -19,9 +33,9 @@ export default function Home() {
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-neutral-600">
-            <Link href="#" className="hover:text-emerald-600 transition-colors">Doctors</Link>
-            <Link href="#" className="hover:text-emerald-600 transition-colors">Services</Link>
-            <Link href="#" className="hover:text-emerald-600 transition-colors">About Us</Link>
+            <Link href="#doctors" className="hover:text-emerald-600 transition-colors">Doctors</Link>
+            <Link href="#services" className="hover:text-emerald-600 transition-colors">Services</Link>
+            <Link href="#about" className="hover:text-emerald-600 transition-colors">About Us</Link>
           </nav>
 
           <div className="flex items-center gap-4">
@@ -122,11 +136,93 @@ export default function Home() {
                           </div>
                         ))}
                       </div>
-                      <div className="text-sm font-bold text-neutral-900">10k+ Patients</div>
+                      <div className="text-sm font-bold text-neutral-900">1000+ Patients</div>
                     </div>
-                    <p className="text-xs text-neutral-500">Trusted by thousands of families for their daily healthcare needs.</p>
+                    <p className="text-xs text-neutral-500">Trusted by hundreds of families for their daily healthcare needs.</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Services Section */}
+        <section id="services" className="py-24 bg-white">
+          <div className="container mx-auto px-6">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <h2 className="text-4xl font-bold text-neutral-900 mb-4">Our Services</h2>
+              <p className="text-neutral-600">Comprehensive healthcare solutions tailored to your needs</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              <ServiceCard
+                icon="💊"
+                title="Pharmacy"
+                description="Access to a wide range of medications with expert pharmaceutical care"
+                color="emerald"
+              />
+              <ServiceCard
+                icon="👨‍⚕️"
+                title="Consultation"
+                description="Expert medical consultations with experienced healthcare professionals"
+                color="blue"
+              />
+              <ServiceCard
+                icon="🔬"
+                title="Lab Tests"
+                description="State-of-the-art laboratory services for accurate diagnostics"
+                color="purple"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Our Doctors Section */}
+        <section id="doctors" className="py-24 bg-gradient-to-b from-emerald-50/30 to-white">
+          <div className="container mx-auto px-6">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <h2 className="text-4xl font-bold text-neutral-900 mb-4">Meet Our Doctors</h2>
+              <p className="text-neutral-600">Experienced healthcare professionals dedicated to your wellbeing</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {doctors.length > 0 ? (
+                doctors.map((doctor, index) => (
+                  <DoctorCard key={index} name={doctor.name} specialization={doctor.specialization} />
+                ))
+              ) : (
+                <div className="col-span-3 text-center text-neutral-500">
+                  <p>No doctors available at the moment.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* About Us Section */}
+        <section id="about" className="py-24 bg-gradient-to-br from-emerald-900 to-emerald-800 text-white relative overflow-hidden">
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent" />
+
+          <div className="container mx-auto px-6 relative z-10">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div>
+                <h2 className="text-4xl font-bold mb-6">About Sethro Medical Center</h2>
+                <p className="text-emerald-100 text-lg leading-relaxed mb-6">
+                  We are committed to providing exceptional healthcare services with a patient-first approach.
+                  Our state-of-the-art facilities and experienced medical professionals ensure you receive
+                  the best possible care.
+                </p>
+                <p className="text-emerald-100 text-lg leading-relaxed">
+                  With years of experience and thousands of satisfied patients, we continue to set the
+                  standard for quality healthcare in our community.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <StatCard number="15+" label="Years of Service" />
+                <StatCard number="50+" label="Expert Doctors" />
+                <StatCard number="1000+" label="Happy Patients" />
+                <StatCard number="365Day" label="Emergency Care" />
               </div>
             </div>
           </div>
@@ -222,3 +318,42 @@ function FeatureCard({ icon: Icon, title, description, className, iconColor }: a
     </div>
   )
 }
+
+function ServiceCard({ icon, title, description, color }: { icon: string; title: string; description: string; color: string }) {
+  const colorClasses = {
+    emerald: 'bg-emerald-50 border-emerald-200 hover:border-emerald-300',
+    blue: 'bg-blue-50 border-blue-200 hover:border-blue-300',
+    purple: 'bg-purple-50 border-purple-200 hover:border-purple-300',
+    red: 'bg-red-50 border-red-200 hover:border-red-300'
+  };
+
+  return (
+    <div className={`p-6 rounded-2xl border-2 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${colorClasses[color as keyof typeof colorClasses]}`}>
+      <div className="text-4xl mb-4">{icon}</div>
+      <h3 className="text-xl font-bold text-neutral-900 mb-2">{title}</h3>
+      <p className="text-neutral-600 text-sm leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function DoctorCard({ name, specialization }: { name: string; specialization: string }) {
+  return (
+    <div className="bg-white p-8 rounded-2xl border border-neutral-200 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+      <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold">
+        {name.split(' ')[1]?.[0] || 'D'}
+      </div>
+      <h3 className="text-xl font-bold text-neutral-900 text-center mb-2">{name}</h3>
+      <p className="text-emerald-600 text-center font-medium">{specialization}</p>
+    </div>
+  );
+}
+
+function StatCard({ number, label }: { number: string; label: string }) {
+  return (
+    <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20">
+      <div className="text-4xl font-bold mb-2">{number}</div>
+      <div className="text-emerald-100 text-sm">{label}</div>
+    </div>
+  );
+}
+
