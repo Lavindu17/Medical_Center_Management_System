@@ -56,7 +56,7 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
             <Card className="w-full max-w-md shadow-lg border-neutral-200 dark:border-neutral-800">
                 <CardHeader className="space-y-1 items-center text-center">
-                    <div className="h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-4">
+                    <div className="h-12 w-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white mb-4">
                         <HeartPulse className="h-7 w-7" />
                     </div>
                     <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
@@ -68,18 +68,18 @@ export default function LoginPage() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="email">Email</Label>
-                            <Input id="email" name="email" type="email" placeholder="m@example.com" required />
+                            <Input id="email" name="email" type="email" placeholder="m@example.com" required className="focus-visible:ring-emerald-500" />
                         </div>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="password">Password</Label>
-                                <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                                <Link href="/forgot-password" className="text-sm text-emerald-600 hover:underline">
                                     Forgot password?
                                 </Link>
                             </div>
-                            <Input id="password" name="password" type="password" required />
+                            <Input id="password" name="password" type="password" required className="focus-visible:ring-emerald-500" />
                         </div>
-                        <Button disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700">
+                        <Button disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                             {isLoading ? 'Signing In...' : 'Sign In'}
                         </Button>
                     </form>
@@ -87,7 +87,7 @@ export default function LoginPage() {
                 <CardFooter className="flex flex-col gap-4 text-center">
                     <div className="text-sm text-neutral-500">
                         Don't have an account?{' '}
-                        <Link href="/register" className="text-blue-600 hover:underline font-medium">
+                        <Link href="/register" className="text-emerald-600 hover:underline font-medium">
                             Create Patient Account
                         </Link>
                     </div>

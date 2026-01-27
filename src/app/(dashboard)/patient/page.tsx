@@ -73,7 +73,7 @@ export default function PatientDashboard() {
                     </h1>
                     <p className="text-neutral-500 mt-1">Manage your appointments and view history.</p>
                 </div>
-                <Button asChild className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto h-11 md:h-10 transition-colors duration-200">
+                <Button asChild className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto h-11 md:h-10 transition-colors duration-200">
                     <Link href="/patient/book">
                         <Plus className="mr-2 h-4 w-4" /> Book New Appointment
                     </Link>
@@ -83,7 +83,7 @@ export default function PatientDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 {/* Quick Stats / Profile Card - First on mobile, last on desktop */}
                 <div className="space-y-6 order-first lg:order-last">
-                    <Card className="bg-gradient-to-br from-blue-600 to-blue-800 text-white border-none">
+                    <Card className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white border-none">
                         <CardHeader>
                             <CardTitle className="text-white">Patient Profile</CardTitle>
                         </CardHeader>
@@ -94,21 +94,21 @@ export default function PatientDashboard() {
                                 </div>
                                 <div>
                                     <div className="font-bold text-lg">{user?.name || 'Loading...'}</div>
-                                    <div className="text-blue-100 text-sm">Patient ID: #{user?.id || '...'}</div>
+                                    <div className="text-emerald-100 text-sm">Patient ID: #{user?.id || '...'}</div>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 md:gap-2 text-center text-sm mt-4 pt-4 border-t border-white/20">
                                 <div>
                                     <div className="font-bold text-2xl">{upcoming.length}</div>
-                                    <div className="text-blue-100 text-xs">Upcoming</div>
+                                    <div className="text-emerald-100 text-xs">Upcoming</div>
                                 </div>
                                 <div>
                                     <div className="font-bold text-2xl">{past.length}</div>
-                                    <div className="text-blue-100 text-xs">Completed</div>
+                                    <div className="text-emerald-100 text-xs">Completed</div>
                                 </div>
                             </div>
                             <div className="mt-4 pt-4 border-t border-white/20">
-                                <Button asChild variant="secondary" className="w-full h-10 md:h-9 text-blue-700 hover:text-blue-900 bg-white hover:bg-neutral-100 transition-colors duration-200">
+                                <Button asChild variant="secondary" className="w-full h-10 md:h-9 text-emerald-700 hover:text-emerald-900 bg-white hover:bg-neutral-100 transition-colors duration-200">
                                     <Link href="/patient/profile">Edit My Profile</Link>
                                 </Button>
                             </div>
@@ -119,7 +119,7 @@ export default function PatientDashboard() {
                 {/* Upcoming Appointments */}
                 <div className="lg:col-span-2 space-y-4">
                     <h2 className="text-lg md:text-xl font-semibold flex items-center">
-                        <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-600" /> Upcoming Visits
+                        <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5 text-emerald-600" /> Upcoming Visits
                     </h2>
 
                     {isLoading ? (
@@ -133,7 +133,7 @@ export default function PatientDashboard() {
                         </Card>
                     ) : (
                         upcoming.map(apt => (
-                            <Card key={apt.id} className="border-l-4 border-l-blue-600 cursor-pointer hover:shadow-md transition-shadow duration-200">
+                            <Card key={apt.id} className="border-l-4 border-l-emerald-600 cursor-pointer hover:shadow-md transition-shadow duration-200">
                                 <CardContent className="p-4 md:pt-6 flex flex-col sm:flex-row justify-between items-start gap-4">
                                     <div className="flex-1 w-full sm:w-auto">
                                         <h3 className="font-bold text-base md:text-lg">{apt.doctorName}</h3>
@@ -147,10 +147,10 @@ export default function PatientDashboard() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="w-full sm:w-auto flex sm:flex-col items-center gap-3 sm:gap-2 text-center bg-blue-50 p-3 rounded-lg sm:min-w-[80px]">
+                                    <div className="w-full sm:w-auto flex sm:flex-col items-center gap-3 sm:gap-2 text-center bg-emerald-50 p-3 rounded-lg sm:min-w-[80px]">
                                         <div className="flex-1 sm:flex-none">
-                                            <div className="text-xs text-blue-600 uppercase font-bold mb-1">Queue</div>
-                                            <div className="text-2xl font-bold text-blue-700">{apt.queueNumber}</div>
+                                            <div className="text-xs text-emerald-600 uppercase font-bold mb-1">Queue</div>
+                                            <div className="text-2xl font-bold text-emerald-700">{apt.queueNumber}</div>
                                         </div>
                                         <Button
                                             variant="destructive"

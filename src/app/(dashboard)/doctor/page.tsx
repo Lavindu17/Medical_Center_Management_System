@@ -38,7 +38,7 @@ export default function DoctorDashboard() {
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
                 <p className="text-neutral-500 mt-2">
-                    Welcome back, <span className="font-semibold text-blue-600">{user?.name || 'Doctor'}</span>. Here is your overview.
+                    Welcome back, <span className="font-semibold text-emerald-600">{user?.name || 'Doctor'}</span>. Here is your overview.
                 </p>
             </div>
 
@@ -109,7 +109,7 @@ export default function DoctorDashboard() {
                         <div className="space-y-4">
                             {/* Placeholder items */}
                             <div className="flex items-center">
-                                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></span>
                                 <div className="text-sm">
                                     <p className="font-medium">Appointment Completed</p>
                                     <p className="text-xs text-neutral-500">John Doe - 10:00 AM</p>

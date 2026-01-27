@@ -124,7 +124,7 @@ export default function UserManagementPage() {
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700">
                             <Plus className="mr-2 h-4 w-4" /> Add Staff
                         </Button>
                     </DialogTrigger>
@@ -224,7 +224,7 @@ export default function UserManagementPage() {
                                     <TableCell>
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                       ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
-                                                user.role === 'DOCTOR' ? 'bg-blue-100 text-blue-800' :
+                                                user.role === 'DOCTOR' ? 'bg-emerald-100 text-emerald-800' :
                                                     user.role === 'PATIENT' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                                             {user.role}
                                         </span>

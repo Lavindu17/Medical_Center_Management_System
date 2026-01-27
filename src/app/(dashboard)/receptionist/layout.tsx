@@ -7,7 +7,7 @@ import {
     LayoutDashboard,
     Users,
     Calendar,
-    DollarSign,
+    Banknote,
     LogOut,
     Menu,
     HeartPulse,
@@ -22,7 +22,7 @@ const sidebarItems = [
     { icon: Calendar, label: 'Appointments', href: '/receptionist/appointments' },
     { icon: UserPlus, label: 'Register Patient', href: '/receptionist/register' },
     { icon: Users, label: 'Patient Directory', href: '/receptionist/patients' },
-    { icon: DollarSign, label: 'Billing', href: '/receptionist/billing' },
+    { icon: Banknote, label: 'Billing', href: '/receptionist/billing' },
 ];
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {
@@ -39,7 +39,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
     const SidebarContent = () => (
         <div className="flex flex-col h-full bg-neutral-900 text-white">
             <div className="flex items-center gap-2 p-6 border-b border-neutral-800">
-                <div className="h-8 w-8 bg-orange-600 rounded-lg flex items-center justify-center text-white">
+                <div className="h-8 w-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white">
                     <HeartPulse className="h-5 w-5" />
                 </div>
                 <span className="font-bold text-lg">Sethro Reception</span>
@@ -53,7 +53,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                ? 'bg-orange-600 text-white'
+                                ? 'bg-emerald-600 text-white'
                                 : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
                                 }`}
                             onClick={() => setIsMobileOpen(false)}

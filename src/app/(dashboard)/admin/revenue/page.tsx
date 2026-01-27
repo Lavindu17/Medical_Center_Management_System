@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, TrendingUp, Activity, Pill } from 'lucide-react';
+import { Banknote, TrendingUp, Activity, Pill } from 'lucide-react';
 
 interface RevenueData {
     breakdown: {
@@ -55,10 +55,10 @@ export default function RevenuePage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                        <DollarSign className="h-4 w-4 text-green-600" />
+                        <Banknote className="h-4 w-4 text-emerald-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${Number(breakdown.total).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">LKR {Number(breakdown.total).toLocaleString()}</div>
                         <p className="text-xs text-neutral-500">Lifetime gross revenue</p>
                     </CardContent>
                 </Card>
@@ -66,10 +66,10 @@ export default function RevenuePage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Consultation</CardTitle>
-                        <Activity className="h-4 w-4 text-blue-600" />
+                        <Activity className="h-4 w-4 text-emerald-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${Number(breakdown.consultation).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">LKR {Number(breakdown.consultation).toLocaleString()}</div>
                         <p className="text-xs text-neutral-500">Doctor fees collected</p>
                     </CardContent>
                 </Card>
@@ -80,7 +80,7 @@ export default function RevenuePage() {
                         <Pill className="h-4 w-4 text-orange-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${Number(breakdown.pharmacy).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">LKR {Number(breakdown.pharmacy).toLocaleString()}</div>
                         <p className="text-xs text-neutral-500">Medicine sales</p>
                     </CardContent>
                 </Card>
@@ -91,7 +91,7 @@ export default function RevenuePage() {
                         <TrendingUp className="h-4 w-4 text-purple-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">${Number(breakdown.lab).toLocaleString()}</div>
+                        <div className="text-2xl font-bold">LKR {Number(breakdown.lab).toLocaleString()}</div>
                         <p className="text-xs text-neutral-500">Diagnostic services</p>
                     </CardContent>
                 </Card>
@@ -117,11 +117,11 @@ export default function RevenuePage() {
                                 <div key={i} className="group relative w-full h-full flex flex-col justify-end items-center mx-0.5">
                                     {/* Tooltip */}
                                     <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 bg-neutral-900 text-white text-xs p-2 rounded z-10 whitespace-nowrap">
-                                        {new Date(day.date).toLocaleDateString()}: ${Number(day.revenue)}
+                                        {new Date(day.date).toLocaleDateString()}: LKR {Number(day.revenue)}
                                     </div>
                                     {/* Bar */}
                                     <div
-                                        className="w-full bg-blue-500 hover:bg-blue-600 transition-all rounded-t-sm"
+                                        className="w-full bg-emerald-500 hover:bg-emerald-600 transition-all rounded-t-sm"
                                         style={{ height: `${height}%` }}
                                     ></div>
                                 </div>

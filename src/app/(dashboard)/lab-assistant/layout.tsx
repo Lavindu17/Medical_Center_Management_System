@@ -37,7 +37,7 @@ export default function LabAssistantLayout({
         <div className="flex min-h-screen w-full flex-col md:flex-row bg-gray-50/40">
             <aside className="w-full md:w-64 border-r bg-white min-h-screen hidden md:flex flex-col">
                 <div className="p-6 border-b">
-                    <h1 className="text-xl font-bold flex items-center gap-2 text-indigo-700">
+                    <h1 className="text-xl font-bold flex items-center gap-2 text-emerald-700">
                         <TestTube className="h-6 w-6" />
                         Sethro Lab
                     </h1>
@@ -52,8 +52,8 @@ export default function LabAssistantLayout({
                                 key={item.href}
                                 href={item.href}
                                 className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${isActive
-                                        ? 'bg-indigo-50 text-indigo-700'
-                                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                                     }`}
                             >
                                 <Icon className="h-4 w-4" />

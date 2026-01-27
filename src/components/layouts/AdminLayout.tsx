@@ -10,7 +10,8 @@ import {
     LogOut,
     Menu,
     HeartPulse,
-    TrendingUp
+    TrendingUp,
+    Banknote
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -18,7 +19,7 @@ import { useState } from 'react';
 
 const sidebarItems = [
     { icon: LayoutDashboard, label: 'Overview', href: '/admin' },
-    { icon: TrendingUp, label: 'Revenue', href: '/admin/revenue' },
+    { icon: Banknote, label: 'Revenue', href: '/admin/revenue' },
     { icon: Users, label: 'User Management', href: '/admin/users' },
     { icon: HeartPulse, label: 'Doctor Fees', href: '/admin/doctors' },
     { icon: FileText, label: 'System Logs', href: '/admin/logs' },
@@ -40,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const SidebarContent = () => (
         <div className="flex flex-col h-full bg-neutral-900 text-white">
             <div className="flex items-center gap-2 p-6 border-b border-neutral-800">
-                <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                <div className="h-8 w-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white">
                     <HeartPulse className="h-5 w-5" />
                 </div>
                 <span className="font-bold text-lg">Sethro Admin</span>
@@ -54,7 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             key={item.href}
                             href={item.href}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-emerald-600 text-white'
                                 : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
                                 }`}
                             onClick={() => setIsMobileOpen(false)}

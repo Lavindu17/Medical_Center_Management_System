@@ -100,7 +100,7 @@ export function CalendarGrid({ currentMonth, onMonthChange, schedules, blockedDa
                     }
 
                     if (isToday) {
-                        bgClass += ' ring-2 ring-inset ring-blue-500';
+                        bgClass += ' ring-2 ring-inset ring-emerald-500';
                     }
 
                     return (

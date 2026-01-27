@@ -212,7 +212,7 @@ export default function PatientProfilePage() {
                             </div>
                         </CardContent>
                         <CardFooter className="flex justify-end border-t pt-4">
-                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-emerald-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>
@@ -282,7 +282,7 @@ export default function PatientProfilePage() {
 
                         </CardContent>
                         <CardFooter className="flex justify-end border-t pt-4">
-                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-emerald-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>
@@ -307,7 +307,7 @@ export default function PatientProfilePage() {
                             </div>
                         </CardContent>
                         <CardFooter className="flex justify-end border-t pt-4">
-                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-emerald-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>

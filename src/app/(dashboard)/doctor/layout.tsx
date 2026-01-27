@@ -36,9 +36,9 @@ export default function DoctorLayout({
             {/* Sidebar for Desktop */}
             <aside className="hidden md:flex w-64 flex-col fixed inset-y-0 z-50 bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800">
                 <div className="h-16 flex items-center px-6 border-b border-neutral-200 dark:border-neutral-800">
-                    <Link href="/doctor" className="flex items-center gap-2 font-bold text-xl tracking-tight text-blue-600 dark:text-blue-400">
+                    <Link href="/doctor" className="flex items-center gap-2 font-bold text-xl tracking-tight text-emerald-600 dark:text-emerald-400">
                         <Stethoscope className="h-6 w-6" />
-                        <span className="text-neutral-900 dark:text-white">Sethro<span className="text-blue-600">Doc</span></span>
+                        <span className="text-neutral-900 dark:text-white">Sethro<span className="text-emerald-600">Doc</span></span>
                     </Link>
                 </div>
                 <div className="flex-1 overflow-y-auto py-6 px-4">
@@ -49,9 +49,9 @@ export default function DoctorLayout({
                                 <Link key={item.href} href={item.href}>
                                     <Button
                                         variant={isActive ? 'secondary' : 'ghost'}
-                                        className={`w-full justify-start gap-3 h-10 ${isActive ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 font-semibold' : 'text-neutral-600 dark:text-neutral-400'}`}
+                                        className={`w-full justify-start gap-3 h-10 ${isActive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 font-semibold' : 'text-neutral-600 dark:text-neutral-400'}`}
                                     >
-                                        <item.icon className={`h-4 w-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+                                        <item.icon className={`h-4 w-4 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
                                         {item.label}
                                     </Button>
                                 </Link>
@@ -76,7 +76,7 @@ export default function DoctorLayout({
                 {/* Mobile Header */}
                 <header className="md:hidden h-16 flex items-center justify-between px-4 border-b bg-white dark:bg-neutral-900 sticky top-0 z-40">
                     <Link href="/doctor" className="font-bold text-lg flex items-center gap-2">
-                        <Stethoscope className="h-5 w-5 text-blue-600" /> SethroDoc
+                        <Stethoscope className="h-5 w-5 text-emerald-600" /> SethroDoc
                     </Link>
                     <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
                         <SheetTrigger asChild>

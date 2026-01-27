@@ -132,10 +132,10 @@ export default function PatientDirectory() {
                             <div className="col-span-2 text-sm text-neutral-600">{new Date(patient.date_of_birth).toLocaleDateString()}</div>
                             <div className="col-span-2 text-sm text-neutral-600">{patient.gender}</div>
                             <div className="col-span-2 flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" className="text-blue-600" onClick={() => openLinkDialog(patient)} title="Link Family">
+                                <Button size="sm" variant="ghost" className="text-emerald-600" onClick={() => openLinkDialog(patient)} title="Link Family">
                                     <LinkIcon className="h-4 w-4" />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-blue-600" title="Edit">
+                                <Button size="sm" variant="ghost" className="text-emerald-600" title="Edit">
                                     <Edit className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -162,7 +162,7 @@ export default function PatientDirectory() {
                                         p.id !== primaryPatient?.id && ( // Prevent linking a patient to themselves
                                             <div
                                                 key={p.id}
-                                                className={`p-2 text-sm cursor-pointer hover:bg-neutral-100 ${selectedLinkPatient?.id === p.id ? 'bg-blue-50' : ''}`}
+                                                className={`p-2 text-sm cursor-pointer hover:bg-neutral-100 ${selectedLinkPatient?.id === p.id ? 'bg-emerald-50' : ''}`}
                                                 onClick={() => setSelectedLinkPatient(p)}
                                             >
                                                 {p.name} ({p.phone})

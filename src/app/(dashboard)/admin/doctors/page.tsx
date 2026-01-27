@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Stethoscope, DollarSign } from 'lucide-react';
+import { Edit, Stethoscope } from 'lucide-react';
 
 interface DoctorData {
     id: number;
@@ -86,13 +86,13 @@ export default function DoctorManagementPage() {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
-                <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900">
+                <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-900 dark:text-blue-300">Total Doctors</CardTitle>
-                        <Stethoscope className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        <CardTitle className="text-sm font-medium text-emerald-900 dark:text-emerald-300">Total Doctors</CardTitle>
+                        <Stethoscope className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{doctors.length}</div>
+                        <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">{doctors.length}</div>
                     </CardContent>
                 </Card>
             </div>
@@ -110,7 +110,7 @@ export default function DoctorManagementPage() {
                             <TableRow>
                                 <TableHead>Doctor Name</TableHead>
                                 <TableHead>Specialization</TableHead>
-                                <TableHead>Fee ($)</TableHead>
+                                <TableHead>Fee (LKR)</TableHead>
                                 <TableHead>Commission (%)</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -129,7 +129,7 @@ export default function DoctorManagementPage() {
                                     <TableCell>
                                         <Badge variant="outline">{doc.specialization}</Badge>
                                     </TableCell>
-                                    <TableCell className="font-mono">${Number(doc.consultationFee).toFixed(2)}</TableCell>
+                                    <TableCell className="font-mono">LKR {Number(doc.consultationFee).toFixed(2)}</TableCell>
                                     <TableCell className="font-mono">{doc.commissionRate}%</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(doc)}>
@@ -158,11 +158,11 @@ export default function DoctorManagementPage() {
                     <form onSubmit={handleSave} className="space-y-4 py-2">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Consultation Fee ($)</Label>
+                                <Label>Consultation Fee (LKR)</Label>
                                 <div className="relative">
-                                    <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-neutral-500" />
+                                    <span className="absolute left-2 top-2.5 text-xs font-bold text-neutral-500">LKR</span>
                                     <Input
-                                        className="pl-8"
+                                        className="pl-10"
                                         type="number"
                                         step="0.01"
                                         value={editForm.consultationFee}

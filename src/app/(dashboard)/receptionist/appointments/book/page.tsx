@@ -201,7 +201,7 @@ export default function ReceptionistBookAppointment() {
                                                     variant={selectedSlot === slot ? "default" : "outline"}
                                                     size="sm"
                                                     onClick={() => setSelectedSlot(slot)}
-                                                    className={selectedSlot === slot ? "bg-blue-600 hover:bg-blue-700" : ""}
+                                                    className={selectedSlot === slot ? "bg-emerald-600 hover:bg-emerald-700" : ""}
                                                 >
                                                     {slot}
                                                 </Button>
