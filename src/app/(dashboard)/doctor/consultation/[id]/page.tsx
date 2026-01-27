@@ -10,8 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Save, CheckCircle, Plus, Trash2, History, Activity, Pill, FlaskConical } from 'lucide-react';
-import { formatLKR } from '@/lib/utils';
+import { Save, CheckCircle, Plus, Trash2, History, Activity, Pill, FlaskConical, Check, ChevronsUpDown, AlertCircle } from 'lucide-react';
+import { formatLKR, cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 // Interfaces
 interface Medicine {
@@ -67,7 +69,18 @@ export default function ConsultationPage() {
     // Form State - Prescription
     const [currentPrescription, setCurrentPrescription] = useState<PrescriptionItem[]>([]);
     const [selectedMed, setSelectedMed] = useState<string>(''); // Med ID
-    const [medForm, setMedForm] = useState({ dosage: '500mg', frequency: '1-0-1', duration: '3 days' });
+    const [openCombobox, setOpenCombobox] = useState(false);
+    const [medForm, setMedForm] = useState({ dosage: '500mg', frequency: '1-0-1-0', duration: '3 days' });
+    const [freqValues, setFreqValues] = useState({ morning: '1', noon: '0', evening: '1', night: '0' });
+
+    // Update frequency string when inputs change
+    useEffect(() => {
+        const { morning, noon, evening, night } = freqValues;
+        setMedForm(prev => ({
+            ...prev,
+            frequency: `${morning}-${noon}-${evening}-${night}`
+        }));
+    }, [freqValues]);
 
     // Form State - Labs
     const [selectedLabs, setSelectedLabs] = useState<number[]>([]); // Lab Test IDs
@@ -131,10 +144,22 @@ export default function ConsultationPage() {
         // Logic: 
         let daily = 0;
         const parts = medForm.frequency.split('-');
-        parts.forEach(p => daily += parseInt(p) || 0);
+        parts.forEach(p => {
+            // Handle "1/2" or "0.5" or "2"
+            if (p.includes('/')) {
+                const [num, den] = p.split('/');
+                daily += (parseFloat(num) / parseFloat(den)) || 0;
+            } else {
+                daily += parseFloat(p) || 0;
+            }
+        });
         if (daily === 0) daily = 1; // Fallback
 
-        const days = parseInt(medForm.duration) || 1;
+        // Parse duration: "3 days" -> 3, "1 week" -> 7
+        let days = parseInt(medForm.duration) || 1;
+        if (medForm.duration.includes('week')) days = days * 7;
+        if (medForm.duration.includes('month')) days = days * 30;
+
         const qty = daily * days;
 
         const newItem: PrescriptionItem = {
@@ -332,58 +357,170 @@ export default function ConsultationPage() {
                                 </CardHeader>
                                 <CardContent className="pt-4 space-y-4">
                                     {/* Add Med Form */}
-                                    <div className="p-3 bg-white border rounded-lg space-y-3 shadow-sm">
-                                        <div className="space-y-1">
-                                            <Label className="text-xs">Medicine</Label>
-                                            <select
-                                                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                value={selectedMed}
-                                                onChange={e => setSelectedMed(e.target.value)}
-                                            >
-                                                <option value="">Select Medicine...</option>
-                                                {medicines.map(m => (
-                                                    <option key={m.id} value={m.id}>{m.name} (Stock: {m.stock})</option>
-                                                ))}
-                                            </select>
+                                    <div className="p-4 bg-white border rounded-lg space-y-4 shadow-sm">
+
+                                        {/* Medicine Search (Combobox) */}
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold text-neutral-600">Select Medicine</Label>
+                                            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openCombobox}
+                                                        className="w-full justify-between font-normal"
+                                                    >
+                                                        {selectedMed
+                                                            ? medicines.find((m) => m.id.toString() === selectedMed)?.name
+                                                            : "Search medicine..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[400px] p-0" align="start">
+                                                    <Command>
+                                                        <CommandInput placeholder="Search medicine name..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No medicine found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {medicines.map((med) => (
+                                                                    <CommandItem
+                                                                        key={med.id}
+                                                                        value={med.name}
+                                                                        keywords={[med.name, med.id.toString()]}
+                                                                        onSelect={() => {
+                                                                            setSelectedMed(med.id.toString());
+                                                                            setOpenCombobox(false);
+                                                                            setMedForm(prev => ({ ...prev, dosage: med.unit === 'tablets' ? '500mg' : '10ml' })); // Smart default
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                selectedMed === med.id.toString() ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        <div className="flex flex-col">
+                                                                            <span>{med.name}</span>
+                                                                            <span className="text-xs text-neutral-400">Stock: <span className={med.stock < 10 ? "text-red-500 font-bold" : ""}>{med.stock}</span> {med.unit}</span>
+                                                                        </div>
+                                                                        {med.stock < 10 && <AlertCircle className="ml-auto h-4 w-4 text-red-500" />}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            {selectedMed && (
+                                                <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded inline-block">
+                                                    Stock: {medicines.find(m => m.id.toString() === selectedMed)?.stock}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div>
-                                                <Label className="text-xs">Dosage</Label>
-                                                <Input className="h-8 text-xs" value={medForm.dosage} onChange={e => setMedForm({ ...medForm, dosage: e.target.value })} />
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Dosage & Duration */}
+                                            <div className="space-y-3">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs font-semibold text-neutral-600">Dosage</Label>
+                                                    <Input className="h-9" value={medForm.dosage} onChange={e => setMedForm({ ...medForm, dosage: e.target.value })} placeholder="e.g. 500mg" />
+                                                    <div className="flex gap-1 flex-wrap">
+                                                        {['250mg', '500mg', '10ml'].map(d => (
+                                                            <Badge key={d} variant="outline" className="cursor-pointer hover:bg-neutral-100 font-normal" onClick={() => setMedForm(prev => ({ ...prev, dosage: d }))}>{d}</Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs font-semibold text-neutral-600">Duration</Label>
+                                                    <Input className="h-9" value={medForm.duration} onChange={e => setMedForm({ ...medForm, duration: e.target.value })} placeholder="e.g. 3 days" />
+                                                    <div className="flex gap-1 flex-wrap">
+                                                        {['3 days', '5 days', '1 week'].map(d => (
+                                                            <Badge key={d} variant="outline" className="cursor-pointer hover:bg-neutral-100 font-normal" onClick={() => setMedForm(prev => ({ ...prev, duration: d }))}>{d}</Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <Label className="text-xs">Freq</Label>
-                                                <Input className="h-8 text-xs" value={medForm.frequency} onChange={e => setMedForm({ ...medForm, frequency: e.target.value })} placeholder="1-0-1" />
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs">Duration</Label>
-                                                <Input className="h-8 text-xs" value={medForm.duration} onChange={e => setMedForm({ ...medForm, duration: e.target.value })} />
+
+                                            {/* Frequency Options Matrix */}
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-xs font-semibold text-neutral-600">Frequency ({medForm.frequency})</Label>
+                                                    <span className="text-[10px] text-neutral-400">Qty per dose</span>
+                                                </div>
+                                                <div className="bg-neutral-50 p-2 rounded-lg border space-y-2">
+                                                    {[
+                                                        { key: 'morning', label: 'Morning' },
+                                                        { key: 'noon', label: 'Noon' },
+                                                        { key: 'evening', label: 'Evening' },
+                                                        { key: 'night', label: 'Night' }
+                                                    ].map((time) => (
+                                                        <div key={time.key} className="flex items-center justify-between text-xs">
+                                                            <span className="w-16 font-medium text-neutral-600">{time.label}</span>
+                                                            <div className="flex gap-1">
+                                                                {['0', '1/2', '1', '2'].map((opt) => {
+                                                                    const isActive = freqValues[time.key as keyof typeof freqValues] === opt;
+                                                                    return (
+                                                                        <button
+                                                                            key={opt}
+                                                                            className={cn(
+                                                                                "h-6 w-8 rounded flex items-center justify-center border transition-colors",
+                                                                                isActive
+                                                                                    ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                                                                                    : "bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-100"
+                                                                            )}
+                                                                            onClick={() => setFreqValues(prev => ({ ...prev, [time.key]: opt }))}
+                                                                        >
+                                                                            {opt}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                        <Button size="sm" className="w-full" onClick={handleAddMedicine} disabled={!selectedMed}>
-                                            <Plus className="mr-2 h-4 w-4" /> Add to List
+
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={handleAddMedicine} disabled={!selectedMed}>
+                                            <Plus className="mr-2 h-4 w-4" /> Add to Prescription
                                         </Button>
                                     </div>
 
                                     {/* List */}
-                                    <div className="space-y-2">
-                                        {currentPrescription.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center p-2 bg-neutral-50 rounded border text-sm">
-                                                <div>
-                                                    <div className="font-semibold">{item.medicineName}</div>
-                                                    <div className="text-xs text-neutral-500">{item.dosage} • {item.frequency} • {item.duration}</div>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-bold">x{item.quantity}</span>
-                                                    <button onClick={() => handleRemoveMedicine(idx)} className="text-red-500 hover:text-red-700">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {currentPrescription.length === 0 && (
-                                            <div className="text-center text-xs text-neutral-400 py-4">No medicines added</div>
-                                        )}
+                                    <div className="border rounded-lg overflow-hidden">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-neutral-50 border-b">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500">Medicine</th>
+                                                    <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500">Regimen</th>
+                                                    <th className="px-3 py-2 text-center text-xs font-medium text-neutral-500">Qty</th>
+                                                    <th className="px-3 py-2 text-right text-xs font-medium text-neutral-500"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {currentPrescription.map((item, idx) => (
+                                                    <tr key={idx} className="hover:bg-neutral-50">
+                                                        <td className="px-3 py-2 font-medium">{item.medicineName}</td>
+                                                        <td className="px-3 py-2 text-neutral-600 text-xs">
+                                                            {item.dosage} • {item.frequency} • {item.duration}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-center font-mono font-bold text-neutral-700">{item.quantity}</td>
+                                                        <td className="px-3 py-2 text-right">
+                                                            <button onClick={() => handleRemoveMedicine(idx)} className="text-neutral-400 hover:text-red-500 p-1">
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {currentPrescription.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} className="px-3 py-8 text-center text-neutral-400 text-xs italic">
+                                                            No medicines added yet.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </CardContent>
                             </Card>
