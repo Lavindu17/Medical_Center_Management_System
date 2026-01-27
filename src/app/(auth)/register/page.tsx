@@ -65,7 +65,7 @@ export default function RegisterPage() {
         <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
             <Card className="w-full max-w-lg shadow-lg border-neutral-200 dark:border-neutral-800">
                 <CardHeader className="space-y-1 items-center text-center">
-                    <div className="h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-4">
+                    <div className="h-12 w-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white mb-4">
                         <HeartPulse className="h-7 w-7" />
                     </div>
                     <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
@@ -116,7 +116,7 @@ export default function RegisterPage() {
                             </div>
                         </div>
 
-                        <Button disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700">
+                        <Button disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
                             {isLoading ? 'Creating Account...' : 'Create Account'}
                         </Button>
                     </form>
@@ -124,7 +124,7 @@ export default function RegisterPage() {
                 <CardFooter className="flex flex-col gap-4 text-center">
                     <div className="text-sm text-neutral-500">
                         Already have an account?{' '}
-                        <Link href="/login" className="text-blue-600 hover:underline font-medium">
+                        <Link href="/login" className="text-emerald-600 hover:underline font-medium">
                             Sign In
                         </Link>
                     </div>
