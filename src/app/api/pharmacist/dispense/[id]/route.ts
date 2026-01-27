@@ -16,8 +16,9 @@ async function getPharmacist() {
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const user = await getPharmacist();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,8 +76,9 @@ export async function GET(
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    props: { params: Promise<{ id: string }> }
 ) {
+    const params = await props.params;
     try {
         const user = await getPharmacist();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

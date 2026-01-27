@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
 import { Link, ArrowLeft, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { formatLKR } from '@/lib/utils';
 
-export default function DispensePage({ params }: { params: { id: string } }) {
+export default function DispensePage(props: { params: Promise<{ id: string }> }) {
+    const params = use(props.params);
     const router = useRouter();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
