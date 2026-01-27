@@ -65,26 +65,61 @@ export default function PatientDashboard() {
     );
 
     return (
-        <div className="p-8 space-y-8 max-w-5xl mx-auto">
-            <div className="flex items-center justify-between">
+        <div className="p-4 md:p-6 lg:p-8 space-y-4 md:space-y-6 max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                         Hi {user?.name ? user.name : 'Patient'}, <span className="text-neutral-500 font-normal">Welcome back.</span>
                     </h1>
                     <p className="text-neutral-500 mt-1">Manage your appointments and view history.</p>
                 </div>
-                <Button asChild className="bg-blue-600 hover:bg-blue-700">
+                <Button asChild className="bg-blue-600 hover:bg-blue-700 w-full md:w-auto h-11 md:h-10 transition-colors duration-200">
                     <Link href="/patient/book">
                         <Plus className="mr-2 h-4 w-4" /> Book New Appointment
                     </Link>
                 </Button>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                {/* Quick Stats / Profile Card - First on mobile, last on desktop */}
+                <div className="space-y-6 order-first lg:order-last">
+                    <Card className="bg-gradient-to-br from-blue-600 to-blue-800 text-white border-none">
+                        <CardHeader>
+                            <CardTitle className="text-white">Patient Profile</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="h-14 w-14 md:h-12 md:w-12 rounded-full bg-white/20 flex items-center justify-center">
+                                    <UserIcon className="h-7 w-7 md:h-6 md:w-6 text-white" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-lg">{user?.name || 'Loading...'}</div>
+                                    <div className="text-blue-100 text-sm">Patient ID: #{user?.id || '...'}</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 md:gap-2 text-center text-sm mt-4 pt-4 border-t border-white/20">
+                                <div>
+                                    <div className="font-bold text-2xl">{upcoming.length}</div>
+                                    <div className="text-blue-100 text-xs">Upcoming</div>
+                                </div>
+                                <div>
+                                    <div className="font-bold text-2xl">{past.length}</div>
+                                    <div className="text-blue-100 text-xs">Completed</div>
+                                </div>
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-white/20">
+                                <Button asChild variant="secondary" className="w-full h-10 md:h-9 text-blue-700 hover:text-blue-900 bg-white hover:bg-neutral-100 transition-colors duration-200">
+                                    <Link href="/patient/profile">Edit My Profile</Link>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 {/* Upcoming Appointments */}
-                <div className="md:col-span-2 space-y-4">
-                    <h2 className="text-xl font-semibold flex items-center">
-                        <Calendar className="mr-2 h-5 w-5 text-blue-600" /> Upcoming Visits
+                <div className="lg:col-span-2 space-y-4">
+                    <h2 className="text-lg md:text-xl font-semibold flex items-center">
+                        <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-600" /> Upcoming Visits
                     </h2>
 
                     {isLoading ? (
@@ -98,12 +133,12 @@ export default function PatientDashboard() {
                         </Card>
                     ) : (
                         upcoming.map(apt => (
-                            <Card key={apt.id} className="border-l-4 border-l-blue-600">
-                                <CardContent className="pt-6 flex justify-between items-start">
-                                    <div>
-                                        <h3 className="font-bold text-lg">{apt.doctorName}</h3>
+                            <Card key={apt.id} className="border-l-4 border-l-blue-600 cursor-pointer hover:shadow-md transition-shadow duration-200">
+                                <CardContent className="p-4 md:pt-6 flex flex-col sm:flex-row justify-between items-start gap-4">
+                                    <div className="flex-1 w-full sm:w-auto">
+                                        <h3 className="font-bold text-base md:text-lg">{apt.doctorName}</h3>
                                         <p className="text-sm text-neutral-500 mb-2">{apt.specialization}</p>
-                                        <div className="flex items-center gap-4 text-sm font-medium">
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 text-sm font-medium">
                                             <span className="flex items-center text-neutral-700">
                                                 <Calendar className="mr-1 h-3 w-3" /> {new Date(apt.date).toLocaleDateString()}
                                             </span>
@@ -112,20 +147,22 @@ export default function PatientDashboard() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="text-center bg-blue-50 p-3 rounded-lg min-w-[80px] flex flex-col gap-2">
-                                        <div className="text-xs text-blue-600 uppercase font-bold mb-1">Queue</div>
-                                        <div className="text-2xl font-bold text-blue-700">{apt.queueNumber}</div>
+                                    <div className="w-full sm:w-auto flex sm:flex-col items-center gap-3 sm:gap-2 text-center bg-blue-50 p-3 rounded-lg sm:min-w-[80px]">
+                                        <div className="flex-1 sm:flex-none">
+                                            <div className="text-xs text-blue-600 uppercase font-bold mb-1">Queue</div>
+                                            <div className="text-2xl font-bold text-blue-700">{apt.queueNumber}</div>
+                                        </div>
                                         <Button
                                             variant="destructive"
                                             size="sm"
-                                            className="h-6 text-[10px] w-full"
+                                            className="h-8 text-xs sm:h-6 sm:text-[10px] px-3 sm:w-full transition-colors duration-200"
                                             onClick={async () => {
                                                 if (!confirm('Cancel this appointment?')) return;
                                                 await fetch('/api/appointments/cancel', {
                                                     method: 'PUT',
                                                     body: JSON.stringify({ appointmentId: apt.id })
                                                 });
-                                                if (user?.id) fetchAppointments(user.id); // Fixed: Use correct User ID
+                                                if (user?.id) fetchAppointments(user.id);
                                             }}
                                         >
                                             Cancel
@@ -137,15 +174,15 @@ export default function PatientDashboard() {
                     )}
 
                     {/* Past History */}
-                    <div className="pt-8">
-                        <h2 className="text-xl font-semibold mb-4 text-neutral-400">Appointment History</h2>
+                    <div className="pt-6 md:pt-8">
+                        <h2 className="text-lg md:text-xl font-semibold mb-4 text-neutral-400">Appointment History</h2>
                         {past.length === 0 ? (
                             <p className="text-neutral-400 text-sm">No past history found.</p>
                         ) : (
-                            <div className="space-y-4 opacity-75">
+                            <div className="space-y-3 md:space-y-4 opacity-60 md:opacity-75">
                                 {past.map(apt => (
                                     <Card key={apt.id}>
-                                        <CardContent className="py-4 flex justify-between items-center text-sm">
+                                        <CardContent className="py-3 px-4 md:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-sm">
                                             <div>
                                                 <span className="font-semibold block">{apt.doctorName}</span>
                                                 <span className="text-neutral-500">{new Date(apt.date).toLocaleDateString()}</span>
@@ -157,41 +194,6 @@ export default function PatientDashboard() {
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* Quick Stats / Profile Card */}
-                <div className="space-y-6">
-                    <Card className="bg-gradient-to-br from-blue-600 to-blue-800 text-white border-none">
-                        <CardHeader>
-                            <CardTitle className="text-white">Patient Profile</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center">
-                                    <UserIcon className="h-6 w-6 text-white" />
-                                </div>
-                                <div>
-                                    <div className="font-bold text-lg">{user?.name || 'Loading...'}</div>
-                                    <div className="text-blue-100 text-sm">Patient ID: #{user?.id || '...'}</div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 text-center text-sm mt-4 pt-4 border-t border-white/20">
-                                <div>
-                                    <div className="font-bold text-2xl">{upcoming.length}</div>
-                                    <div className="text-blue-100 text-xs">Upcoming</div>
-                                </div>
-                                <div>
-                                    <div className="font-bold text-2xl">{past.length}</div>
-                                    <div className="text-blue-100 text-xs">Completed</div>
-                                </div>
-                            </div>
-                            <div className="mt-4 pt-4 border-t border-white/20">
-                                <Button asChild variant="secondary" className="w-full text-blue-700 hover:text-blue-900 bg-white hover:bg-neutral-100">
-                                    <Link href="/patient/profile">Edit My Profile</Link>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </div>

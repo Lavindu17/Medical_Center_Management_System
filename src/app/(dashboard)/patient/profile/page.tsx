@@ -163,50 +163,56 @@ export default function PatientProfilePage() {
     return (
         <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-                <p className="text-neutral-500">Manage your personal and medical information.</p>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Profile</h1>
+                <p className="text-sm md:text-base text-neutral-500">Manage your personal and medical information.</p>
             </div>
 
             <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="mb-4 w-full md:w-auto grid grid-cols-3 md:grid-flow-col">
-                    <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                    <TabsTrigger value="medical">Medical Details</TabsTrigger>
-                    <TabsTrigger value="emergency">Emergency Contact</TabsTrigger>
+                <TabsList className="mb-6 w-full h-auto grid grid-cols-1 sm:grid-cols-3 gap-2 bg-transparent sm:bg-muted p-0 sm:p-1">
+                    <TabsTrigger value="personal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                        <User className="h-4 w-4 mr-2" /> Personal Info
+                    </TabsTrigger>
+                    <TabsTrigger value="medical" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                        <HeartPulse className="h-4 w-4 mr-2" /> Medical Details
+                    </TabsTrigger>
+                    <TabsTrigger value="emergency" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                        <Phone className="h-4 w-4 mr-2" /> Emergency Contact
+                    </TabsTrigger>
                 </TabsList>
 
                 {/* PERSONAL INFO */}
                 <TabsContent value="personal">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" /> Personal Information</CardTitle>
+                            <CardTitle className="flex items-center gap-2 text-lg md:text-xl"><User className="h-5 w-5" /> Personal Information</CardTitle>
                             <CardDescription>Your basic contact details.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Full Name</Label>
-                                    <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+                                    <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Phone Number</Label>
-                                    <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+                                    <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Email</Label>
-                                    <Input value={form.email} disabled className="bg-neutral-50" />
+                                    <Input value={form.email} disabled className="bg-neutral-50 h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Date of Birth</Label>
-                                    <Input type="date" value={form.date_of_birth} disabled className="bg-neutral-50" />
+                                    <Input type="date" value={form.date_of_birth} disabled className="bg-neutral-50 h-11 md:h-10" />
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
                                     <Label>Address</Label>
-                                    <Textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} />
+                                    <Textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="min-h-[80px]" />
                                 </div>
                             </div>
                         </CardContent>
                         <CardFooter className="flex justify-end border-t pt-4">
-                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>
@@ -215,7 +221,7 @@ export default function PatientProfilePage() {
                 <TabsContent value="medical">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><HeartPulse className="h-5 w-5" /> Medical Information</CardTitle>
+                            <CardTitle className="flex items-center gap-2 text-lg md:text-xl"><HeartPulse className="h-5 w-5" /> Medical Information</CardTitle>
                             <CardDescription>Important health details for your doctors.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
@@ -223,7 +229,7 @@ export default function PatientProfilePage() {
                                 <div className="space-y-2">
                                     <Label>Blood Group</Label>
                                     <Select value={form.blood_group} onValueChange={(val) => setForm({ ...form, blood_group: val })}>
-                                        <SelectTrigger>
+                                        <SelectTrigger className="h-11 md:h-10">
                                             <SelectValue placeholder="Select Blood Group" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -237,18 +243,19 @@ export default function PatientProfilePage() {
 
                             <div className="space-y-3">
                                 <Label className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-amber-500" /> Allergies</Label>
-                                <div className="flex gap-2 items-end">
+                                <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
                                     <div className="flex-1 space-y-1">
                                         <Input
+                                            className="h-11 md:h-10"
                                             placeholder="Allergy Name (e.g., Peanuts)"
                                             value={newAllergyName}
                                             onChange={e => setNewAllergyName(e.target.value)}
                                             onKeyDown={e => e.key === 'Enter' && addAllergy()}
                                         />
                                     </div>
-                                    <div className="w-[140px] space-y-1">
+                                    <div className="w-full sm:w-[140px] space-y-1">
                                         <Select value={newAllergySeverity} onValueChange={(val: any) => setNewAllergySeverity(val)}>
-                                            <SelectTrigger>
+                                            <SelectTrigger className="h-11 md:h-10">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -258,16 +265,16 @@ export default function PatientProfilePage() {
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <Button type="button" onClick={addAllergy} variant="secondary"><Plus className="h-4 w-4" /></Button>
+                                    <Button type="button" onClick={addAllergy} variant="secondary" className="w-full sm:w-auto h-11 md:h-10"><Plus className="h-4 w-4 mr-2 sm:mr-0" /> <span className="sm:hidden">Add Allergy</span></Button>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 min-h-[40px] p-3 border rounded-md bg-neutral-50">
                                     {allergyList.length === 0 && <span className="text-sm text-neutral-400 italic">No allergies listed.</span>}
                                     {allergyList.map((allergy, idx) => (
-                                        <Badge key={idx} variant="outline" className={`flex items-center gap-2 pl-3 pr-1 py-1 ${getSeverityColor(allergy.severity)}`}>
+                                        <Badge key={idx} variant="outline" className={`flex items-center gap-2 pl-3 pr-1 py-1 h-8 ${getSeverityColor(allergy.severity)}`}>
                                             <span className="font-semibold">{allergy.name}</span>
                                             <span className="text-[10px] opacity-75 uppercase tracking-wider">{allergy.severity}</span>
-                                            <button onClick={() => removeAllergy(idx)} className="hover:bg-black/10 rounded-full p-1 ml-1"><X className="h-3 w-3" /></button>
+                                            <button onClick={() => removeAllergy(idx)} className="hover:bg-black/10 rounded-full p-1 ml-1 min-h-[24px] min-w-[24px] flex items-center justify-center"><X className="h-3 w-3" /></button>
                                         </Badge>
                                     ))}
                                 </div>
@@ -275,7 +282,7 @@ export default function PatientProfilePage() {
 
                         </CardContent>
                         <CardFooter className="flex justify-end border-t pt-4">
-                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>
@@ -284,23 +291,23 @@ export default function PatientProfilePage() {
                 <TabsContent value="emergency">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Phone className="h-5 w-5" /> Emergency Contact</CardTitle>
+                            <CardTitle className="flex items-center gap-2 text-lg md:text-xl"><Phone className="h-5 w-5" /> Emergency Contact</CardTitle>
                             <CardDescription>Who should we call in an emergency?</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label>Contact Name</Label>
-                                    <Input value={form.emergency_contact_name} onChange={e => setForm({ ...form, emergency_contact_name: e.target.value })} placeholder="e.g. Spouse, Parent" />
+                                    <Input value={form.emergency_contact_name} onChange={e => setForm({ ...form, emergency_contact_name: e.target.value })} placeholder="e.g. Spouse, Parent" className="h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Contact Phone</Label>
-                                    <Input value={form.emergency_contact_phone} onChange={e => setForm({ ...form, emergency_contact_phone: e.target.value })} placeholder="+94..." />
+                                    <Input value={form.emergency_contact_phone} onChange={e => setForm({ ...form, emergency_contact_phone: e.target.value })} placeholder="+94..." className="h-11 md:h-10" />
                                 </div>
                             </div>
                         </CardContent>
                         <CardFooter className="flex justify-end border-t pt-4">
-                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                            <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-blue-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
                 </TabsContent>

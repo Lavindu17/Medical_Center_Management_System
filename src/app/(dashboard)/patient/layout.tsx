@@ -11,7 +11,8 @@ import {
     CreditCard,
     LogOut,
     Menu,
-    CalendarCheck
+    CalendarCheck,
+    User
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 // import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,6 +31,7 @@ export default function PatientLayout({
         { icon: Pill, label: 'Prescriptions', href: '/patient/prescriptions' },
         { icon: FileText, label: 'Lab Reports', href: '/patient/labs' },
         { icon: CreditCard, label: 'Billing', href: '/patient/billing' },
+        { icon: User, label: 'Edit Profile', href: '/patient/profile' },
     ];
 
     return (
