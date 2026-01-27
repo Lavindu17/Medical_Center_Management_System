@@ -13,7 +13,11 @@ import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
 export default function ReceptionistAppointments() {
     const [appointments, setAppointments] = useState<any[]>([]);
     const [doctors, setDoctors] = useState<any[]>([]);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(() => {
+        const d = new Date();
+        d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+        return d.toISOString().split('T')[0];
+    });
     const [selectedDoctor, setSelectedDoctor] = useState('all');
     const [loading, setLoading] = useState(true);
 
@@ -114,7 +118,7 @@ export default function ReceptionistAppointments() {
                             <div className="col-span-2">
                                 <Badge className={`
                                     ${appt.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : ''}
-                                    ${appt.status === 'ARRIVED' || appt.status === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''}
+                                    ${appt.status === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''}
                                     ${appt.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100' : ''}
                                     ${appt.status === 'CANCELLED' ? 'bg-red-100 text-red-800 hover:bg-red-100' : ''}
                                 `}>
@@ -124,17 +128,17 @@ export default function ReceptionistAppointments() {
                             <div className="col-span-2 flex justify-end gap-2">
                                 {appt.status === 'PENDING' && (
                                     <>
-                                        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateStatus(appt.id, 'ARRIVED')} title="Check In">
-                                            <CheckCircle className="h-4 w-4 mr-1" /> Arrived
+                                        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateStatus(appt.id, 'CHECKED_IN')} title="Check In">
+                                            <CheckCircle className="h-4 w-4 mr-1" /> Check In
                                         </Button>
                                         <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => updateStatus(appt.id, 'CANCELLED')} title="Cancel">
                                             <XCircle className="h-4 w-4" />
                                         </Button>
                                     </>
                                 )}
-                                {appt.status === 'ARRIVED' && (
+                                {appt.status === 'CHECKED_IN' && (
                                     <span className="text-xs text-emerald-600 font-medium flex items-center">
-                                        <Clock className="h-3 w-3 mr-1" /> Waiting
+                                        <Clock className="h-3 w-3 mr-1" /> Checked In
                                     </span>
                                 )}
                             </div>

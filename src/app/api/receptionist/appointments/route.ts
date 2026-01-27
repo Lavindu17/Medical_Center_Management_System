@@ -32,9 +32,9 @@ export async function GET(req: Request) {
                 d.name as doctor_name,
                 doc.specialization
             FROM appointments a
-            JOIN users p ON a.patient_id = p.id
-            JOIN users d ON a.doctor_id = d.id
-            JOIN doctors doc ON a.doctor_id = doc.user_id
+            LEFT JOIN users p ON a.patient_id = p.id
+            LEFT JOIN users d ON a.doctor_id = d.id
+            LEFT JOIN doctors doc ON a.doctor_id = doc.user_id
             WHERE 1=1
         `;
 
@@ -58,7 +58,11 @@ export async function GET(req: Request) {
 
         sql += ` ORDER BY a.time_slot ASC, a.queue_number ASC`;
 
+        console.log('[ReceptionistAPI] Fetching appointments with params:', { date, doctorId, sqlParams: params });
+
         const appointments = await query(sql, params);
+        console.log(`[ReceptionistAPI] Found ${Array.isArray(appointments) ? appointments.length : 0} appointments`);
+
         return NextResponse.json(appointments);
     } catch (error) {
         console.error('Fetch Appointments Error:', error);
