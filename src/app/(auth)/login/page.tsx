@@ -40,7 +40,8 @@ export default function LoginPage() {
                 case 'DOCTOR': router.push('/doctor'); break;
                 case 'PATIENT': router.push('/patient'); break;
                 case 'PHARMACIST': router.push('/pharmacist'); break;
-                case 'LAB_ASSISTANT': router.push('/lab'); break;
+                case 'LAB_ASSISTANT': router.push('/lab-assistant'); break;
+                case 'RECEPTIONIST': router.push('/receptionist'); break;
                 default: router.push('/');
             }
 

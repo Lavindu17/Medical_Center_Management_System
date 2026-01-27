@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
         if (path.startsWith('/pharmacist') && role !== 'PHARMACIST') {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
         }
-        if (path.startsWith('/lab') && role !== 'LAB_ASSISTANT') {
+        if (path.startsWith('/lab-assistant') && role !== 'LAB_ASSISTANT') {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
         }
         if (path.startsWith('/receptionist') && role !== 'RECEPTIONIST') {
@@ -62,7 +62,8 @@ export const config = {
         '/doctor/:path*',
         '/patient/:path*',
         '/pharmacist/:path*',
-        '/lab/:path*',
+        '/lab-assistant/:path*',
+        '/receptionist/:path*',
         '/admin/:path*',
     ],
 }

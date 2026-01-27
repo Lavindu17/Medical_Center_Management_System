@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 router.push('/pharmacist');
                 break;
             case 'LAB_ASSISTANT':
-                router.push('/lab');
+                router.push('/lab-assistant');
                 break;
             case 'RECEPTIONIST':
                 router.push('/receptionist');
