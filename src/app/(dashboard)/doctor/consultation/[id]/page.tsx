@@ -386,6 +386,7 @@ export default function ConsultationPage() {
                                                                     <CommandItem
                                                                         key={med.id}
                                                                         value={med.name}
+                                                                        keywords={[med.name, med.id.toString()]}
                                                                         onSelect={() => {
                                                                             setSelectedMed(med.id.toString());
                                                                             setOpenCombobox(false);
