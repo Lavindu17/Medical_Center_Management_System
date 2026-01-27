@@ -62,32 +62,24 @@ export default function PatientBookAppointment() {
     const fetchAvailability = async () => {
         setLoadingSlots(true);
         try {
-            const res = await fetch(`/api/appointments?doctorId=${selectedDoctor.id}`);
+            // Updated to use the smart availability API that respects Doctor's custom schedule & leaves
+            const res = await fetch(`/api/appointments/availability?doctorId=${selectedDoctor.id}&date=${date}`);
+
             if (res.ok) {
-                const appointments = await res.json();
-                const takenSlots = appointments
-                    .filter((a: any) => a.date === date && a.status !== 'CANCELLED')
-                    .map((a: any) => a.timeSlot);
-
-                const allSlots = [];
-                let start = 9 * 60;
-                const end = 17 * 60;
-                while (start < end) {
-                    const h = Math.floor(start / 60);
-                    const m = start % 60;
-                    const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-
-                    allSlots.push({
-                        time: timeStr,
-                        status: takenSlots.includes(timeStr) ? 'booked' : 'available'
-                    });
-
-                    start += 15;
+                const data = await res.json();
+                // data.slots is { time: string, status: 'available'|'booked' }[]
+                if (data.slots) {
+                    setSlots(data.slots);
+                } else {
+                    setSlots([]);
                 }
-                setSlots(allSlots as any);
+            } else {
+                console.error("Failed to fetch slots");
+                setSlots([]);
             }
         } catch (error) {
             console.error(error);
+            setSlots([]);
         } finally {
             setLoadingSlots(false);
         }
