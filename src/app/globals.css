@@ -62,10 +62,10 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.182 0.013 256);
 
-  /* Primary - Emerald 600 for healthcare green */
-  --primary: oklch(0.548 0.149 166);
-  /* emerald-600 #059669 */
-  --primary-foreground: oklch(1 0 0);
+  /* Primary - Mint Green #73E6CA */
+  --primary: #73E6CA;
+  --primary-foreground: #0f172a;
+  /* Dark text on light green for contrast */
 
   --secondary: oklch(0.969 0.004 256);
   /* slate-100 */
@@ -86,8 +86,8 @@
   --border: oklch(0.893 0.009 256);
   /* slate-200 #e2e8f0 */
   --input: oklch(0.893 0.009 256);
-  --ring: oklch(0.548 0.149 166);
-  /* emerald-600 for focus */
+  --ring: #10B981;
+  /* emerald-500 for focus */
 
   /* Charts - Healthcare appropriate colors */
   --chart-1: oklch(0.594 0.188 145);

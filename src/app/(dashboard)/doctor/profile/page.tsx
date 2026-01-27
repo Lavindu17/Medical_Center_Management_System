@@ -119,7 +119,14 @@ export default function DoctorProfilePage() {
         if (isBlocked) {
             // Unblock Logic
             const dateStr = format(date, 'yyyy-MM-dd');
-            const leave = blockedDates.find(b => b.date && b.date.slice(0, 10) === dateStr);
+            const leave = blockedDates.find(b => {
+                if (!b.date) return false;
+                // Normalize date string to handle both DATE and DATETIME formats
+                const blockedDateStr = typeof b.date === 'string'
+                    ? b.date.split('T')[0].split(' ')[0]
+                    : format(new Date(b.date), 'yyyy-MM-dd');
+                return blockedDateStr === dateStr;
+            });
             if (leave && confirm(`Unblock ${dateStr}?`)) {
                 try {
                     const res = await fetch(`/api/doctor/profile/leaves?id=${leave.id}`, { method: 'DELETE' });
