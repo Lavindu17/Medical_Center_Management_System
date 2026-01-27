@@ -178,6 +178,11 @@ export default function PatientDashboard() {
                                     <div className="text-blue-100 text-xs">Completed</div>
                                 </div>
                             </div>
+                            <div className="mt-4 pt-4 border-t border-white/20">
+                                <Button asChild variant="secondary" className="w-full text-blue-700 hover:text-blue-900 bg-white hover:bg-neutral-100">
+                                    <Link href="/patient/profile">Edit My Profile</Link>
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
