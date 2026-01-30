@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { CalendarGrid } from '@/components/doctor/CalendarGrid';
+import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
 import {
     Dialog,
     DialogContent,
@@ -227,8 +228,16 @@ export default function DoctorProfilePage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Specialization</Label>
-                                    <Input value={profile.specialization} disabled className="bg-neutral-50" />
-                                    <p className="text-xs text-neutral-500">Contact admin to change specialization.</p>
+                                    <select
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        value={profile.specialization}
+                                        onChange={e => setProfile({ ...profile, specialization: e.target.value })}
+                                    >
+                                        <option value="">Select Specialization...</option>
+                                        {DOCTOR_SPECIALIZATIONS.map(spec => (
+                                            <option key={spec} value={spec}>{spec}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Consultation Fee (LKR)</Label>

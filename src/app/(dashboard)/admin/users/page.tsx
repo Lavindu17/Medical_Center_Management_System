@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Trash2, Edit } from 'lucide-react';
 import { User } from '@/types';
+import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
 
 export default function UserManagementPage() {
     const [users, setUsers] = useState<User[]>([]);
@@ -173,7 +174,19 @@ export default function UserManagementPage() {
                                 <div className="grid grid-cols-2 gap-4 bg-neutral-50 p-2 rounded-md">
                                     <div className="space-y-2">
                                         <Label>Specialization</Label>
-                                        <Input name="specialization" value={formData.specialization} onChange={handleInputChange} required />
+                                        <Select
+                                            value={formData.specialization}
+                                            onValueChange={(val) => setFormData({ ...formData, specialization: val })}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Specialization" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {DOCTOR_SPECIALIZATIONS.map((spec) => (
+                                                    <SelectItem key={spec} value={spec}>{spec}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>License #</Label>
