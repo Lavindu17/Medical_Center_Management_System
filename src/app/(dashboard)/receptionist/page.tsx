@@ -1,8 +1,18 @@
 
 import { pool } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Calendar, Banknote, Clock } from 'lucide-react';
+import { Users, Calendar, Banknote, Clock, Check, X } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 
 async function getStats() {
     const today = new Date().toISOString().split('T')[0];
@@ -84,12 +94,86 @@ export default async function ReceptionistDashboard() {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* We can add lists here later */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Queues Status */}
                 <div className="p-6 bg-white rounded-xl border shadow-sm">
                     <h3 className="font-semibold mb-4">Queues Status</h3>
                     <p className="text-neutral-500 text-sm">Doctor queues will appear here.</p>
                 </div>
+
+                {/* Family Link Requests - HARDCODED */}
+                <Card className="border shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                            <Users className="h-5 w-5 text-purple-600" />
+                            Pending Family Link Requests
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Requester</TableHead>
+                                    <TableHead>Target Member</TableHead>
+                                    <TableHead>Relationship</TableHead>
+                                    <TableHead className="text-right">Action</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                <TableRow>
+                                    <TableCell>
+                                        <div>
+                                            <p className="font-medium">John Smith</p>
+                                            <p className="text-xs text-neutral-500">ID: PT-2024-056</p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div>
+                                            <p className="font-medium">Example Wife</p>
+                                            <p className="text-xs text-neutral-500">ID: PT-2024-001</p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell><Badge variant="secondary">Spouse</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                                                <Check className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                                <TableRow>
+                                    <TableCell>
+                                        <div>
+                                            <p className="font-medium">Sarah Connor</p>
+                                            <p className="text-xs text-neutral-500">ID: PT-2024-089</p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div>
+                                            <p className="font-medium">Example Child</p>
+                                            <p className="text-xs text-neutral-500">ID: PT-2024-002</p>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell><Badge variant="secondary">Child</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50">
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                                                <Check className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

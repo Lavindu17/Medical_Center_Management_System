@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from '@/components/ui/badge';
-import { Save, Plus, X, User, Phone, HeartPulse, ShieldAlert } from 'lucide-react';
+import { Save, Plus, X, User, Phone, HeartPulse, ShieldAlert, Users } from 'lucide-react';
+
 import { useRouter } from 'next/navigation';
 
 interface Allergy {
@@ -178,6 +179,9 @@ export default function PatientProfilePage() {
                     <TabsTrigger value="emergency" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
                         <Phone className="h-4 w-4 mr-2" /> Emergency Contact
                     </TabsTrigger>
+                    <TabsTrigger value="family" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                        <Users className="h-4 w-4 mr-2" /> Family Accounts
+                    </TabsTrigger>
                 </TabsList>
 
                 {/* PERSONAL INFO */}
@@ -311,7 +315,85 @@ export default function PatientProfilePage() {
                         </CardFooter>
                     </Card>
                 </TabsContent>
+
+                {/* FAMILY ACCOUNTS */}
+                <TabsContent value="family">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-lg md:text-xl"><Users className="h-5 w-5" /> Family Account Linking</CardTitle>
+                            <CardDescription>Manage and link your family members' accounts.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* Hardcoded Current Linked Members */}
+                            <div className="space-y-3">
+                                <Label>Linked Family Members</Label>
+                                <div className="border rounded-md divide-y">
+                                    <div className="p-4 flex items-center justify-between bg-neutral-50/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold">
+                                                EW
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">Example Wife</p>
+                                                <p className="text-xs text-neutral-500">Rel: Spouse • ID: #PT-2024-001</p>
+                                            </div>
+                                        </div>
+                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Linked</Badge>
+                                    </div>
+                                    <div className="p-4 flex items-center justify-between bg-neutral-50/50">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-semibold">
+                                                EC
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">Example Child</p>
+                                                <p className="text-xs text-neutral-500">Rel: Child • ID: #PT-2024-002</p>
+                                            </div>
+                                        </div>
+                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Linked</Badge>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-6 space-y-4">
+                                <Label>Link New Family Member</Label>
+                                <div className="grid gap-4 p-4 bg-neutral-50 rounded-lg border border-dashed">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">Member ID or Email</Label>
+                                            <Input placeholder="e.g. PT-2024-XXX or email@example.com" className="bg-white" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs">Relationship</Label>
+                                            <Select>
+                                                <SelectTrigger className="bg-white">
+                                                    <SelectValue placeholder="Select Relationship" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="spouse">Spouse</SelectItem>
+                                                    <SelectItem value="child">Child</SelectItem>
+                                                    <SelectItem value="parent">Parent</SelectItem>
+                                                    <SelectItem value="sibling">Sibling</SelectItem>
+                                                    <SelectItem value="other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <Button variant="outline" className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> Send Link Request</Button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-neutral-500">
+                                    * Linking an account allows you to manage appointments and view basic medical history for dependents.
+                                    Visit the medical center to approve the linking.
+                                </p>
+                            </div>
+
+                        </CardContent>
+                    </Card>
+                </TabsContent>
             </Tabs>
+
         </div>
     );
 }
