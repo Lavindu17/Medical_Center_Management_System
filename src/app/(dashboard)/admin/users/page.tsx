@@ -15,6 +15,8 @@ import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
 export default function UserManagementPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('ALL');
 
     // Create Dialog
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -116,6 +118,16 @@ export default function UserManagementPage() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const filteredUsers = users.filter(user => {
+        const matchesSearch =
+            user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (user.phone && user.phone.includes(searchTerm));
+        const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+
+        return matchesSearch && matchesRole;
+    });
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
@@ -209,8 +221,28 @@ export default function UserManagementPage() {
                     <div className="flex items-center gap-2">
                         <div className="relative flex-1 max-w-sm">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
-                            <Input type="search" placeholder="Search by name or email..." className="pl-8" />
+                            <Input
+                                type="search"
+                                placeholder="Search name, email, phone..."
+                                className="pl-8"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
+                        <Select value={roleFilter} onValueChange={setRoleFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Filter by Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ALL">All Roles</SelectItem>
+                                <SelectItem value="DOCTOR">Doctor</SelectItem>
+                                <SelectItem value="PHARMACIST">Pharmacist</SelectItem>
+                                <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
+                                <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
+                                <SelectItem value="ADMIN">Admin</SelectItem>
+                                <SelectItem value="PATIENT">Patient</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -230,7 +262,7 @@ export default function UserManagementPage() {
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
-                            ) : users.map((user) => (
+                            ) : filteredUsers.map((user) => (
                                 <TableRow key={user.id}>
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>
