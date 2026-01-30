@@ -89,7 +89,7 @@ export default function LabAssistantDashboard() {
                             <TableRow key={req.request_id} className="hover:bg-gray-50/50 transition-colors">
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 text-xs font-bold">
+                                        <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
                                             {req.patient_name.charAt(0)}
                                         </div>
                                         <div>
@@ -99,7 +99,7 @@ export default function LabAssistantDashboard() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
+                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
                                         {req.test_name}
                                     </Badge>
                                 </TableCell>
@@ -117,8 +117,8 @@ export default function LabAssistantDashboard() {
                                 </TableCell>
                                 <TableCell>
                                     <Badge className={`${req.status === 'PENDING'
-                                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                                            : 'bg-green-100 text-green-800 border-green-200'
+                                        ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                        : 'bg-green-100 text-green-800 border-green-200'
                                         } shadow-none hover:bg-opacity-80`}>
                                         {req.status}
                                     </Badge>
@@ -177,7 +177,7 @@ export default function LabAssistantDashboard() {
                     <Card className="border-none shadow-md bg-white/50 backdrop-blur-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <FlaskConical className="h-5 w-5 text-indigo-600" />
+                                <FlaskConical className="h-5 w-5 text-emerald-600" />
                                 Pending Tests
                             </CardTitle>
                             <CardDescription>
