@@ -26,15 +26,18 @@ export async function GET(
         const { id } = params;
 
         // 1. Fetch Prescription Details (Patient, Doctor, Date)
-        const [presRows]: any = await query(
+        const presRows: any = await query(
             `SELECT 
-                p.id, p.status, p.created_at, p.appointment_id,
-                pat.name as patient_name, pat.id as patient_id, pat.gender, pat.date_of_birth,
-                u.name as doctor_name
+                p.id, p.status, p.issued_at as created_at, p.appointment_id,
+                pat_user.name as patient_name, pat_user.id as patient_id, 
+                pat_details.gender, pat_details.date_of_birth,
+                (SELECT GROUP_CONCAT(CONCAT(allergy_name, ' (', severity, ')') SEPARATOR ', ') FROM patient_allergies WHERE patient_id = pat_user.id) as allergies,
+                doc_user.name as doctor_name
              FROM prescriptions p
              JOIN appointments a ON p.appointment_id = a.id
-             JOIN patients pat ON a.patient_id = pat.id
-             JOIN users u ON p.doctor_id = u.id
+             JOIN users pat_user ON a.patient_id = pat_user.id
+             LEFT JOIN patients pat_details ON a.patient_id = pat_details.user_id
+             JOIN users doc_user ON p.doctor_id = doc_user.id
              WHERE p.id = ?`,
             [id]
         );
@@ -54,9 +57,14 @@ export async function GET(
                 pi.quantity as prescribed_quantity, 
                 pi.dosage, pi.frequency, pi.duration,
                 m.name as medicine_name, 
+                m.generic_name,
+                m.manufacturer,
+                m.location,
+                m.category,
                 m.stock as current_stock, 
-                m.selling_price, 
-                m.unit
+                m.price_per_unit as selling_price, 
+                m.unit,
+                pi.status
              FROM prescription_items pi
              LEFT JOIN medicines m ON pi.medicine_id = m.id
              WHERE pi.prescription_id = ?`,
@@ -85,101 +93,123 @@ export async function POST(
 
         const { id } = params;
         const body = await request.json();
-        const { items } = body; // Array of { medicine_id, quantity_to_dispense, price }
+
+        // Supports both single item and bulk (though UI will use single)
+        // Expected body: { medicine_id, quantity_to_dispense, item_id }
+        const { medicine_id, quantity_to_dispense, item_id } = body;
+
+        if (!medicine_id || !quantity_to_dispense || !item_id) {
+            return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+        }
 
         const connection = await pool.getConnection();
         await connection.beginTransaction();
 
         try {
-            let pharmacyTotal = 0;
+            let pharmacyCost = 0;
+            let quantityNeeded = parseInt(quantity_to_dispense);
 
-            // 1. Process Updates with FEFO Logic
-            for (const item of items) {
-                let quantityNeeded = parseInt(item.quantity_to_dispense);
-                const medicineId = item.medicine_id;
-
-                // Fetch batches sorted by expiry (FEFO)
-                // Lock rows for update? For now, we assume simple concurrency. 
-                // In prod, use FOR UPDATE or optimistic locking.
-                const [batches]: any = await connection.execute(
-                    `SELECT id, quantity_current, selling_price 
-                     FROM inventory_batches 
-                     WHERE medicine_id = ? AND quantity_current > 0 AND status = 'ACTIVE'
-                     ORDER BY expiry_date ASC`,
-                    [medicineId]
-                );
-
-                for (const batch of batches) {
-                    if (quantityNeeded <= 0) break;
-
-                    const take = Math.min(quantityNeeded, batch.quantity_current);
-
-                    // Deduct from batch
-                    await connection.execute(
-                        `UPDATE inventory_batches 
-                         SET quantity_current = quantity_current - ?, 
-                             status = CASE WHEN quantity_current - ? = 0 THEN 'DEPLETED' ELSE status END
-                         WHERE id = ?`,
-                        [take, take, batch.id]
-                    );
-
-                    // Update Master Stock (Aggregate) - Optional but good for consistency if we keep master stock column
-                    await connection.execute(
-                        'UPDATE medicines SET stock = stock - ? WHERE id = ?',
-                        [take, medicineId]
-                    );
-
-                    // Calculate Cost (Batch specific price)
-                    const cost = Number(batch.selling_price) * take;
-                    pharmacyTotal += cost;
-
-                    quantityNeeded -= take;
-                }
-
-                if (quantityNeeded > 0) {
-                    throw new Error(`Insufficient stock for medicine ID ${medicineId}. Need ${quantityNeeded} more.`);
-                }
-            }
-
-            // 2. Update Prescription Status
-            await connection.execute(
-                'UPDATE prescriptions SET status = "DISPENSED" WHERE id = ?',
-                [id]
+            // 1. Check if item is already dispensed
+            const [itemRows]: any = await connection.execute(
+                'SELECT status FROM prescription_items WHERE id = ?',
+                [item_id]
             );
 
-            // 3. Update Bill
+            if (itemRows.length === 0) throw new Error('Item not found');
+            if (itemRows[0].status === 'DISPENSED') throw new Error('Item already dispensed');
+
+            // 2. FEFO Stock Deduction
+            const [batches]: any = await connection.execute(
+                `SELECT id, quantity_current, selling_price 
+                 FROM inventory_batches 
+                 WHERE medicine_id = ? AND quantity_current > 0 AND status = 'ACTIVE'
+                 ORDER BY expiry_date ASC`,
+                [medicine_id]
+            );
+
+            for (const batch of batches) {
+                if (quantityNeeded <= 0) break;
+
+                const take = Math.min(quantityNeeded, batch.quantity_current);
+
+                await connection.execute(
+                    `UPDATE inventory_batches 
+                     SET quantity_current = quantity_current - ?, 
+                         status = CASE WHEN quantity_current - ? = 0 THEN 'DEPLETED' ELSE status END
+                     WHERE id = ?`,
+                    [take, take, batch.id]
+                );
+
+                await connection.execute(
+                    'UPDATE medicines SET stock = stock - ? WHERE id = ?',
+                    [take, medicine_id]
+                );
+
+                const cost = Number(batch.selling_price) * take;
+                pharmacyCost += cost;
+                quantityNeeded -= take;
+            }
+
+            if (quantityNeeded > 0) {
+                throw new Error(`Insufficient stock. Need ${quantityNeeded} more.`);
+            }
+
+            // 3. Mark Item as Dispensed
+            await connection.execute(
+                'UPDATE prescription_items SET status = "DISPENSED" WHERE id = ?',
+                [item_id]
+            );
+
+            // 4. Update Bill
             const [rows]: any = await connection.execute('SELECT appointment_id FROM prescriptions WHERE id = ?', [id]);
             const appointmentId = rows[0]?.appointment_id;
 
             if (appointmentId) {
-                const [bills]: any = await connection.execute('SELECT id, total_amount, pharmacy_total FROM bills WHERE appointment_id = ?', [appointmentId]);
-
+                const [bills]: any = await connection.execute('SELECT id, pharmacy_total FROM bills WHERE appointment_id = ?', [appointmentId]);
                 if (bills.length > 0) {
                     const billId = bills[0].id;
-                    const newPharmacyTotal = Number(bills[0].pharmacy_total) + pharmacyTotal;
+                    const newTotal = Number(bills[0].pharmacy_total) + pharmacyCost;
 
                     await connection.execute(
                         `UPDATE bills 
                          SET pharmacy_total = ?, total_amount = total_amount + ? 
                          WHERE id = ?`,
-                        [newPharmacyTotal, pharmacyTotal, billId]
+                        [newTotal, pharmacyCost, billId]
                     );
                 }
             }
 
+            // 5. Check if Prescription is Fully Dispensed
+            const [pendingItems]: any = await connection.execute(
+                'SELECT COUNT(*) as count FROM prescription_items WHERE prescription_id = ? AND status = "PENDING"',
+                [id]
+            );
+
+            let isFullyDispensed = false;
+            if (pendingItems[0].count === 0) {
+                await connection.execute(
+                    'UPDATE prescriptions SET status = "DISPENSED" WHERE id = ?',
+                    [id]
+                );
+                isFullyDispensed = true;
+            }
+
             await connection.commit();
-            return NextResponse.json({ message: 'Dispensed successfully' });
+            return NextResponse.json({
+                message: 'Item dispensed successfully',
+                fully_dispensed: isFullyDispensed
+            });
 
         } catch (err: any) {
             await connection.rollback();
             console.error(err);
-            return NextResponse.json({ error: err.message || 'Dispense execution failed' }, { status: 500 });
+            return NextResponse.json({ error: err.message }, { status: 500 });
         } finally {
             connection.release();
         }
 
     } catch (error) {
         console.error('Dispense Error:', error);
-        return NextResponse.json({ error: 'Failed to process dispensing' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
     }
 }

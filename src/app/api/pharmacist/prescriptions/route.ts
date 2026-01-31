@@ -25,17 +25,17 @@ export async function GET() {
             `SELECT 
                 p.id, 
                 p.status, 
-                p.created_at,
-                pat.name as patient_name, 
-                pat.id as patient_id,
-                u.name as doctor_name,
+                p.issued_at as created_at,
+                pat_user.name as patient_name, 
+                pat_user.id as patient_id,
+                doc_user.name as doctor_name,
                 (SELECT COUNT(*) FROM prescription_items pi WHERE pi.prescription_id = p.id) as item_count
             FROM prescriptions p
             JOIN appointments a ON p.appointment_id = a.id
-            JOIN patients pat ON a.patient_id = pat.id
-            JOIN users u ON p.doctor_id = u.id
+            JOIN users pat_user ON a.patient_id = pat_user.id
+            JOIN users doc_user ON p.doctor_id = doc_user.id
             WHERE p.status = 'PENDING'
-            ORDER BY p.created_at ASC`
+            ORDER BY p.issued_at ASC`
         );
 
         return NextResponse.json(rows);
