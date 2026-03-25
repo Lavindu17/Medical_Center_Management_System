@@ -1,316 +1,336 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { formatLKR } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { useRouter } from 'next/navigation';
-import { Calendar, Clock, User, CheckCircle2, Search, ArrowRight, ArrowLeft, ChevronLeft } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea'; // Assuming Textarea exists or use standard
+import { CheckCircle2, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 
-export default function PatientBookAppointment() {
+interface Doctor {
+    id: number;
+    name: string;
+    specialization: string;
+    consultationFee: number;
+}
+
+interface Slot {
+    time: string;
+    available: boolean;
+}
+
+export default function BookAppointmentPage() {
     const router = useRouter();
-    const [user, setUser] = useState<any>(null);
     const [step, setStep] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState<any>(null);
 
-    // Data State
-    const [doctors, setDoctors] = useState<any[]>([]);
+    // Data
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
+    const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
+    const [slots, setSlots] = useState<Slot[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Selection State
-    const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
-    const [date, setDate] = useState('');
-    const [slots, setSlots] = useState<{ time: string, status: 'available' | 'booked' }[]>([]);
-    const [selectedSlot, setSelectedSlot] = useState('');
-    const [reason, setReason] = useState('');
+    // Selection
+    const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+    const [selectedDate, setSelectedDate] = useState<string>('');
+    const [selectedSlot, setSelectedSlot] = useState<string>('');
+    const [reason, setReason] = useState<string>('');
 
-    // Loading States
-    const [isLoading, setIsLoading] = useState(false);
-    const [loadingSlots, setLoadingSlots] = useState(false);
-
-    // 1. Fetch User Session
+    // Fetch User Session & Doctors on Mount
     useEffect(() => {
+        // 1. Fetch Session
         fetch('/api/auth/session')
             .then(res => {
                 if (res.ok) return res.json();
-                throw new Error('Unauthorized');
+                // If not logged in, maybe redirect? For now, let fail gracefully or showing loading
             })
-            .then(data => setUser(data.user))
-            .catch(() => router.push('/login'));
-    }, [router]);
-
-    // 2. Fetch Doctors
-    useEffect(() => {
-        fetch('/api/doctors')
-            .then(r => r.json())
             .then(data => {
-                if (Array.isArray(data)) setDoctors(data);
+                if (data?.user) setUser(data.user);
             })
-            .catch(err => console.error(err));
-    }, []);
+            .catch(console.error);
 
-    // 3. Fetch Slots
-    useEffect(() => {
-        if (selectedDoctor && date) {
-            fetchAvailability();
-        } else {
-            setSlots([]);
-        }
-    }, [selectedDoctor, date]);
-
-    const fetchAvailability = async () => {
-        setLoadingSlots(true);
-        try {
-            // Updated to use the smart availability API that respects Doctor's custom schedule & leaves
-            const res = await fetch(`/api/appointments/availability?doctorId=${selectedDoctor.id}&date=${date}`);
-
+        // 2. Fetch Doctors
+        async function fetchDoctors() {
+            const res = await fetch('/api/admin/doctors');
             if (res.ok) {
                 const data = await res.json();
-                // data.slots is { time: string, status: 'available'|'booked' }[]
-                if (data.slots) {
-                    setSlots(data.slots);
-                } else {
-                    setSlots([]);
-                }
-            } else {
-                console.error("Failed to fetch slots");
-                setSlots([]);
+                setDoctors(data);
+                setFilteredDoctors(data);
             }
-        } catch (error) {
-            console.error(error);
-            setSlots([]);
-        } finally {
-            setLoadingSlots(false);
         }
-    };
+        fetchDoctors();
+    }, []);
 
-    const handleBook = async () => {
-        if (!user || !selectedDoctor || !date || !selectedSlot) return;
-        setIsLoading(true);
+    // Filter Doctors
+    useEffect(() => {
+        if (!searchQuery) {
+            setFilteredDoctors(doctors);
+        } else {
+            const lower = searchQuery.toLowerCase();
+            setFilteredDoctors(doctors.filter(d =>
+                d.name.toLowerCase().includes(lower) ||
+                d.specialization.toLowerCase().includes(lower)
+            ));
+        }
+    }, [searchQuery, doctors]);
+
+
+    // Fetch Slots when Date/Doctor changes
+    useEffect(() => {
+        if (selectedDoctor && selectedDate) {
+            fetchSlots();
+        }
+    }, [selectedDoctor, selectedDate]);
+
+    async function fetchSlots() {
+        setLoading(true);
+        setSlots([]);
+        setSelectedSlot(''); // Reset selection
+        try {
+            const res = await fetch(`/api/doctors/availability?doctorId=${selectedDoctor?.id}&date=${selectedDate}`);
+            if (res.ok) {
+                const data = await res.json();
+                // API now returns { time, available } objects
+                setSlots(data.slots);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function submitBooking() {
+        if (!user) {
+            alert("You must be logged in to book.");
+            return;
+        }
 
         try {
             const res = await fetch('/api/appointments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    patientId: user.id,
-                    doctorId: Number(selectedDoctor.id),
-                    date,
+                    patientId: user.id, // Use dynamic ID
+                    doctorId: selectedDoctor?.id,
+                    date: selectedDate,
                     timeSlot: selectedSlot,
-                    reason
+                    reason: reason // Send reason
                 })
             });
 
-            const data = await res.json();
-
-            if (res.ok) {
-                router.push('/patient?booking=success');
-            } else {
-                alert(data.message || 'Booking failed');
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.message);
             }
-        } catch (error) {
-            console.error(error);
-            alert('Something went wrong');
-        } finally {
-            setIsLoading(false);
+
+            const data = await res.json();
+            router.push(`/patient?success=true&queue=${data.appointment.queueNumber}`);
+        } catch (err: any) {
+            alert(err.message);
         }
-    };
-
-    const nextStep = () => setStep(s => s + 1);
-    const prevStep = () => setStep(s => s - 1);
-
-    const filteredDoctors = doctors.filter(d =>
-        d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.specialization.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    }
 
     return (
-        <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6">
-
-            {/* Header / Progress */}
-            <div className="flex items-center gap-4">
-                {step > 1 && (
-                    <Button variant="ghost" size="icon" onClick={prevStep}>
-                        <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                )}
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">
-                        {step === 1 ? 'Choose a Doctor' : step === 2 ? 'Select Schedule' : 'Confirm Booking'}
-                    </h1>
-                    <div className="flex gap-2 mt-1">
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1.5 w-8 rounded-full ${step >= i ? 'bg-emerald-600' : 'bg-neutral-200'}`} />
-                        ))}
-                    </div>
-                </div>
+        <div className="max-w-4xl mx-auto py-8 px-4">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold">Book Appointment</h1>
+                <p className="text-neutral-500">Scheduled for: <span className="font-semibold text-blue-600">{user?.name || 'Guest'}</span></p>
             </div>
 
-            {/* Step 1: Doctor Selection */}
-            {step === 1 && (
-                <div className="space-y-4 animate-in slide-in-from-right-4 fade-in">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
-                        <Input
-                            placeholder="Search by name or specialization..."
-                            className="pl-9 h-11"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                        />
-                    </div>
+            {/* Progress Steps */}
+            <div className="flex items-center gap-2 mb-8 text-sm">
+                <span className={`px-3 py-1 rounded-full ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>1. Doctor</span>
+                <div className="h-0.5 w-8 bg-neutral-200" />
+                <span className={`px-3 py-1 rounded-full ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>2. Date & Time</span>
+                <div className="h-0.5 w-8 bg-neutral-200" />
+                <span className={`px-3 py-1 rounded-full ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>3. Reason & Confirm</span>
+            </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {filteredDoctors.map(doctor => (
-                            <div
-                                key={doctor.id}
-                                onClick={() => { setSelectedDoctor(doctor); nextStep(); }}
-                                className="border rounded-lg p-4 cursor-pointer hover:border-emerald-500 hover:shadow-md transition-all bg-white group"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold">
-                                            {doctor.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-neutral-900 group-hover:text-emerald-700">{doctor.name}</h3>
-                                            <p className="text-sm text-neutral-500">{doctor.specialization}</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-neutral-300 group-hover:text-emerald-500">
-                                        <ArrowRight className="h-5 w-5" />
-                                    </div>
-                                </div>
-                                <div className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
-                                    <Badge variant="secondary" className="font-normal text-neutral-500 bg-neutral-100">
-                                        Fee: LKR {doctor.consultation_fee}
-                                    </Badge>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Step 2: Date & Time */}
-            {step === 2 && (
-                <div className="space-y-6 animate-in slide-in-from-right-4 fade-in">
-
-                    <Card>
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-base">Selected Doctor</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold">
-                                    {selectedDoctor?.name.charAt(0)}
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-neutral-900">{selectedDoctor?.name}</h3>
-                                    <p className="text-sm text-neutral-500">{selectedDoctor?.specialization}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <div className="space-y-2">
-                        <Label>Select Date</Label>
-                        <Input
-                            type="date"
-                            className="h-12 text-lg"
-                            min={new Date().toISOString().split('T')[0]}
-                            value={date}
-                            onChange={e => { setDate(e.target.value); setSelectedSlot(''); }}
-                        />
-                    </div>
-
-                    {date && (
-                        <div className="space-y-2">
-                            <Label>Select Time Slot</Label>
-                            {loadingSlots ? (
-                                <div className="p-8 text-center text-neutral-500">Checking availability...</div>
-                            ) : (
-                                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
-                                    {slots.map(slot => (
-                                        <Button
-                                            key={slot.time}
-                                            variant={selectedSlot === slot.time ? 'default' : 'outline'}
-                                            disabled={slot.status === 'booked'}
-                                            onClick={() => setSelectedSlot(slot.time)}
-                                            className={`
-                                                ${slot.status === 'booked'
-                                                    ? 'bg-red-50 text-red-300 border-red-100 hover:bg-red-50 hover:text-red-300'
-                                                    : selectedSlot === slot.time
-                                                        ? 'bg-emerald-600 hover:bg-emerald-700'
-                                                        : ''}
-                                            `}
-                                        >
-                                            {slot.time}
-                                        </Button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="pt-4 flex justify-end">
-                        <Button onClick={nextStep} disabled={!selectedSlot} className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700">
-                            Continue <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* Step 3: Confirmation */}
-            {step === 3 && (
-                <div className="space-y-6 animate-in slide-in-from-right-4 fade-in">
+            <div className="grid gap-6">
+                {step === 1 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Review Details</CardTitle>
-                            <CardDescription>Double check your appointment information.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <span className="text-neutral-500">Doctor</span>
-                                    <div className="font-medium text-lg">{selectedDoctor?.name}</div>
-                                </div>
-                                <div>
-                                    <span className="text-neutral-500">Date</span>
-                                    <div className="font-medium text-lg">{new Date(date).toLocaleDateString()}</div>
-                                </div>
-                                <div>
-                                    <span className="text-neutral-500">Time</span>
-                                    <div className="font-medium text-lg">{selectedSlot}</div>
-                                </div>
-                                <div>
-                                    <span className="text-neutral-500">Fee</span>
-                                    <div className="font-medium text-lg">LKR {selectedDoctor?.consultation_fee}</div>
-                                </div>
-                            </div>
+                            <CardTitle>Select a Doctor</CardTitle>
+                            <CardDescription>Choose a specialist for your consultation.</CardDescription>
 
-                            <div className="pt-4 border-t">
-                                <Label className="mb-2 block">Reason for Visit (Optional)</Label>
+                            {/* Search Bar */}
+                            <div className="relative mt-2">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
                                 <Input
-                                    placeholder="Briefly describe your symptoms..."
-                                    value={reason}
-                                    onChange={e => setReason(e.target.value)}
+                                    type="search"
+                                    placeholder="Search by name or specialization..."
+                                    className="pl-9"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
+                        </CardHeader>
+                        <CardContent className="grid md:grid-cols-2 gap-4 h-[400px] overflow-y-auto pr-2">
+                            {filteredDoctors.length === 0 ? (
+                                <div className="col-span-2 text-center py-8 text-neutral-500">
+                                    No doctors found matching "{searchQuery}"
+                                </div>
+                            ) : (
+                                filteredDoctors.map(doc => (
+                                    <div
+                                        key={doc.id}
+                                        onClick={() => setSelectedDoctor(doc)}
+                                        className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50
+                        ${selectedDoctor?.id === doc.id ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-neutral-200'}
+                      `}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                                DR
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold">{doc.name}</h3>
+                                                <p className="text-sm text-neutral-500">{doc.specialization}</p>
+                                                <div className="mt-2 text-xs font-mono bg-white inline-block px-1 rounded border">
+                                                    Fee: {formatLKR(doc.consultationFee)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </CardContent>
-                        <CardFooter>
-                            <Button
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-lg"
-                                onClick={handleBook}
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Confirming...' : 'Confirm Appointment'}
+                        <div className="p-6 border-t flex justify-end">
+                            <Button disabled={!selectedDoctor} onClick={() => setStep(2)}>
+                                Next Step <ChevronRight className="ml-2 h-4 w-4" />
                             </Button>
-                        </CardFooter>
+                        </div>
                     </Card>
-                </div>
-            )}
+                )}
 
+                {step === 2 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Select Date & Time</CardTitle>
+                            <CardDescription>
+                                Availability for Dr. {selectedDoctor?.name}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-2">
+                                <Label>Date</Label>
+                                <Input
+                                    type="date"
+                                    min={new Date().toISOString().split('T')[0]}
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className="max-w-[200px]"
+                                />
+                            </div>
+
+                            {selectedDate && (
+                                <div className="space-y-2">
+                                    <Label>Select Time Slot (10 min)</Label>
+                                    {loading ? (
+                                        <div className="py-8 text-neutral-500">Loading slots...</div>
+                                    ) : slots.length === 0 ? (
+                                        <div className="py-8 text-neutral-500">No slots available (or closed).</div>
+                                    ) : (
+                                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                                            {slots.map((slotObj, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    disabled={!slotObj.available}
+                                                    onClick={() => slotObj.available && setSelectedSlot(slotObj.time)}
+                                                    className={`py-2 px-1 text-sm rounded border text-center transition-colors
+                                                      ${!slotObj.available
+                                                            ? 'bg-red-50 text-red-500 border-red-200 cursor-not-allowed opacity-60'
+                                                            : selectedSlot === slotObj.time
+                                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                                : 'hover:border-blue-400 hover:bg-blue-50 bg-white'
+                                                        }
+                                                    `}
+                                                    title={!slotObj.available ? 'Already Booked' : 'Available'}
+                                                >
+                                                    {slotObj.time}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="flex gap-4 text-xs mt-2">
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-white"></div> Available</div>
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-blue-600"></div> Selected</div>
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-red-50"></div> Booked</div>
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                        <div className="p-6 border-t flex justify-between">
+                            <Button variant="outline" onClick={() => setStep(1)}>
+                                <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                            </Button>
+                            <Button disabled={!selectedDate || !selectedSlot} onClick={() => setStep(3)}>
+                                Next: Details <ChevronRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+
+                {step === 3 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reason & Confirm</CardTitle>
+                            <CardDescription>Please explain your visit regarding and review details.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* Reason Input */}
+                            <div className="space-y-2">
+                                <Label htmlFor="reason">Reason for Visit (Symptoms, etc.)</Label>
+                                <div className="relative">
+                                    <textarea
+                                        id="reason"
+                                        className="flex min-h-[80px] w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-offset-neutral-950 dark:placeholder:text-neutral-400 dark:focus-visible:ring-neutral-300"
+                                        placeholder="e.g. Severe headache, Fever since yesterday..."
+                                        value={reason}
+                                        onChange={(e) => setReason(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="bg-neutral-50 p-6 rounded-lg space-y-4 max-w-lg mx-auto border">
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-neutral-500">Doctor</span>
+                                    <span className="font-semibold">{selectedDoctor?.name}</span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-neutral-500">Specialization</span>
+                                    <span>{selectedDoctor?.specialization}</span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-neutral-500">Date</span>
+                                    <span>{selectedDate}</span>
+                                </div>
+                                <div className="flex justify-between border-b pb-2">
+                                    <span className="text-neutral-500">Time Slot</span>
+                                    <span className="text-blue-600 font-bold">{selectedSlot}</span>
+                                </div>
+                                <div className="flex justify-between pt-2">
+                                    <span className="text-neutral-500">Consultation Fee</span>
+                                    <span className="font-mono text-lg">{formatLKR(selectedDoctor?.consultationFee)}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <div className="p-6 border-t flex justify-between">
+                            <Button variant="outline" onClick={() => setStep(2)}>
+                                <ChevronLeft className="mr-2 h-4 w-4" /> Back
+                            </Button>
+                            <Button className="bg-green-600 hover:bg-green-700" onClick={submitBooking}>
+                                <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Booking
+                            </Button>
+                        </div>
+                    </Card>
+                )}
+            </div>
         </div>
     );
 }
