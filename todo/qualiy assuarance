@@ -1,0 +1,58 @@
+4.5 Quality Assurance Methods Used 
+ 
+To ensure the Sethro Medical Center management system is reliable, secure, and user-friendly, the 
+following quality assurance (QA) techniques were implemented during the development process. 
+ 
+1. Frontend Validation 
+ 
+• Comprehensive input validation was implemented across all user registration and data entry forms 
+  using React Hook Form and Zod. 
+• Critical fields such as patient email addresses, secure passwords, phone numbers, and appointment 
+  dates are validated on the client-side before submission. 
+• The system prevents common errors such as blank required inputs, invalid email formats, and 
+  incorrect data types, providing immediate feedback to the user. 
+ 
+2. Backend and API Validation 
+ 
+• Secure backend validation is performed within Next.js Server Actions and API routes using Zod 
+  schemas to ensure that incoming data meets strict criteria. 
+• Data integrity is maintained by checking: 
+  - Data types and formats (e.g., ensuring numeric price fields and valid string structures). 
+  - Required fields for clinical records, such as prescription items and patient IDs. 
+  - Business rules, such as ensuring appointment slots are within valid timeframes and pharmacy 
+    stock levels are non-negative. 
+ 
+3. Role-Based Access Control (RBAC) & Security 
+ 
+• A robust middleware layer was implemented to verify user identity and roles (Admin, Doctor, 
+  Pharmacist, etc.) for every protected request using JSON Web Tokens (JWT). 
+• Access control ensures that sensitive medical data and administrative settings are only accessible 
+  by authorized personnel. 
+• Unauthorized access attempts are automatically detected and redirected to a secure login or 
+  unauthorized access page. 
+ 
+4. Error Handling and Logging 
+ 
+• The system implements structured error handling to catch and manage database failures or 
+  invalid user requests gracefully. 
+• Meaningful error messages are presented to users, while detailed technical logs are recorded 
+  using Winston for developer-side monitoring and debugging. 
+• This dual approach ensures a smooth user experience while providing necessary information for 
+  maintaining system stability. 
+ 
+5. Manual Testing and User Flow Verification 
+ 
+• The system underwent extensive manual testing to verify business logic and user journeys for 
+  every hospital persona: 
+  - Patient registration and appointment booking flows. 
+  - Medical history updates and prescription generation by doctors. 
+  - Pharmacy inventory management and bill settlement processes. 
+• Edge cases, such as expired session tokens and conflicting appointment slots, were tested 
+  to ensure correct system behavior under unexpected conditions. 
+ 
+6. Browser and Device Compatibility 
+ 
+• The interface was tested on modern web browsers including Google Chrome, Mozilla Firefox, 
+  and Microsoft Edge. 
+• Responsive design testing was conducted to ensure the application remains fully functional 
+  and visually consistent on desktops, tablets, and smartphones.

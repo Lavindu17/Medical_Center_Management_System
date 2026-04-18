@@ -1,0 +1,81 @@
+4.2 Programming Languages and Development Tools 
+ 
+To build the web-based system successfully, a set of modern development tools and 
+programming technologies were used. These tools helped us manage different parts of the 
+system, from designing the interface to handling business logic and storing data securely. 
+ 
+4.2.1 Next.js 
+ 
+Next.js is a powerful React-based framework used to build the entire full-stack application. It simplifies 
+the development process by providing built-in routing, server-side rendering, and API routes. In this 
+project, Next.js was used to develop the core pages for patient registration, appointment scheduling, 
+pharmacy management, and comprehensive dashboards for doctors and administrators. 
+The component-based structure of Next.js, combined with its server-first approach, allowed us to create 
+reusable UI elements like navigation bars and forms while ensuring fast load times and optimized 
+performance across the Sethro Medical Center platform.
+ 
+4.2.2 TypeScript 
+ 
+TypeScript is a strongly typed superset of JavaScript that was used as the primary programming language. 
+It adds static type definitions to the code, which helped us catch errors early during development and 
+ensured that data structures (like patient records and medical prescriptions) remained consistent 
+throughout the application. 
+By using TypeScript, we improved the reliability of the system and made the codebase easier to 
+maintain and refactor as the project expanded.
+ 
+4.2.3 Node.js 
+ 
+Node.js is the server-side runtime environment that executes JavaScript on the backend within the 
+Next.js framework. It was used to handle critical backend logic, including user authentication with 
+secure hashing, processing medical test results, managing complex doctor schedules, and generating 
+automated email notifications. 
+Its event-driven architecture makes it highly efficient for handling the concurrent actions of multiple 
+users, such as simultaneous appointment bookings or pharmacy inventory updates. 
+ 
+4.2.4 Tailwind CSS 
+ 
+Tailwind CSS is a utility-first CSS framework used to design the modern and professional user interface 
+of the Sethro Medical Center. Instead of writing custom CSS from scratch, Tailwind allowed us to 
+apply consistent designs directly through predefined classes in our components. 
+It ensured that the system is fully responsive, providing a seamless experience across desktop computers, 
+tablets, and mobile devices, which is essential for medical staff and patients on the go.
+ 
+4.2.5 MySQL 
+ 
+MySQL is the relational database management system used to store and manage all patient and clinical 
+data securely. It maintains structured records for user accounts, medical histories, appointment queues, 
+prescription items, and billing transactions. 
+Using MySQL ensured data integrity and allowed for complex querying to generate important medical 
+summaries and administrative reports, supporting accurate diagnosis and efficient hospital management. 
+ 
+4.2.6 Figma 
+ 
+Figma is a collaborative design tool used to create the initial wireframes and visual prototypes of the 
+system. It allowed us to plan the user journey for various roles (Admin, Doctor, Pharmacist, etc.) and 
+perfect the layout before any code was written. 
+This preparation phase helped in refining the user experience and ensuring that the interface met the 
+practical needs of medical professionals and administrative staff. 
+ 
+4.2.7 Visual Studio Code 
+ 
+Visual Studio Code (VS Code) served as the primary Integrated Development Environment (IDE). Its 
+extensive support for TypeScript, Next.js, and SQL, along with features like real-time syntax 
+highlighting and an integrated terminal, enabled us to write clean and organized code. 
+VS Code's efficient debugging tools helped in identifying and fixing issues promptly during the 
+development of the medical center system. 
+ 
+4.2.8 GitHub 
+ 
+GitHub was used for version control, allowing us to track every change made to the source code and 
+manage development phases effectively. It provided a secure cloud backup for the project and 
+facilitated collaboration by maintaining a clear history of updates. 
+Using GitHub ensured that the project remained organized and allowed us to revert to previous stable 
+versions if any technical challenges arose during implementation. 
+ 
+4.2.9 Postman  
+ 
+Postman was used extensively for testing the application's API endpoints. It helped verify that the 
+Server Actions and backend logic correctly handled data requests from the frontend forms. 
+We used Postman to validate crucial workflows such as user login authentication, prescription data 
+processing, and medical report uploads, ensuring that the backend processed and stored information 
+accurately.

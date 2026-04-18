@@ -1,0 +1,52 @@
+5.1 Introduction 
+ 
+This chapter gives a final summary of the Sethro Medical Center Management System project. It reviews how well the system met the original objectives, discusses the quality of the system in terms of usability and reliability, and identifies current limitations. Finally, it suggests possible future improvements to make the system more effective and useful for the medical center's daily operations. 
+ 
+5.2 Degree of Objectives Met 
+ 
+The main goal of this project was to help Sethro Medical Center move from a manual paper-based record system to a centralized digital platform. The system was designed to handle the end-to-end medical flow involving Patients, Doctors, Pharmacists, Lab Assistants, and Receptionists. 
+ 
+All major objectives were successfully met: 
+• Patients can book appointments, view their medical history, and access prescriptions and bills online. 
+• Doctors can manage patient queues, search medical histories, issue prescriptions with automated dosage calculations, and recommend lab tests. 
+• Pharmacists can manage medicine inventory and dispense prescriptions, with changes automatically updating the billing module. 
+• Lab Assistants can manage test requests and upload results directly to the patient's digital record. 
+• Receptionists can manage the appointment lifecycle and process master billing that aggregates clinical fees, pharmacy costs, and lab charges. 
+• Admins can manage staff accounts, monitor revenue analytics, and oversee system security logs. 
+ 
+The system is fully functional and meets the core clinical and administrative needs of a modern medical facility. 
+ 
+5.3 Usability, Accessibility, Reliability, and Friendliness 
+ 
+The system was developed with medical professionals and patients in mind, ensuring that critical tasks can be performed quickly and accurately. 
+ 
+Usability: The interface is clean and intuitive, built using Next.js and Shadcn UI components. Clear navigation tabs and role-specific dashboards ensure that users do not need advanced technical knowledge to operate the system. 
+ 
+Accessibility: Being a web-based platform, it is accessible from any device with a modern browser. The patient portal is mobile-responsive, allowing patients to book appointments on the go, while the staff modules are optimized for desktop and tablet usage for intensive data entry. 
+ 
+Reliability: The system performs reliably in handling concurrent user actions. Data integrity is maintained through a structured MySQL database, and secure authentication is enforced using JWT and Bcrypt hashing, ensuring patient data remains protected. 
+ 
+Friendliness: The design follows modern UI/UX principles with a professional color palette. Feedback mechanisms like toast notifications and informative error messages guide users through workflows such as prescription dispensing and billing. 
+ 
+5.4 Limitations and Drawbacks 
+ 
+While the system is robust, there are some limitations to consider: 
+ 
+• No Native Mobile App: Currently, the system is web-based. While responsive, a native app could provide better push notifications. 
+• Real-time SMS Integration: Automated SMS alerts for appointment reminders are not yet fully integrated, relying primarily on email notifications. 
+• Advanced Diagnostic Analytics: The system lacks advanced data visualization for disease trends or predictive stock reordering logic. 
+• Manual Family Verification: The process of linking family accounts still requires manual verification by a receptionist to ensure data privacy. 
+ 
+5.5 Future Modifications, Improvements, and Extensions Possible 
+ 
+To improve the system and adapt it to future growth, the following enhancements can be considered: 
+ 
+• Mobile Application: Develop dedicated iOS and Android apps for patients and staff to provide offline access and instant push notifications. 
+• Integrated SMS Gateway: Add local SMS gateway integration for instant appointment confirmations and low-stock alerts. 
+• Advanced Analytics Dashboard: Implement comprehensive charts and graphs for the Admin to track revenue trends and clinic performance indicators. 
+• Machine Learning: Integrate predictive models to forecast patient queues and optimize doctor scheduling based on historical visit patterns. 
+• Telemedicine Module: Add video consultation features to allow doctors to see patients remotely, fully integrated with the existing prescription system. 
+ 
+5.6 Summary 
+ 
+The evaluation shows that the Sethro Medical Center Management System has achieved its primary goals and is ready for real-world deployment. It provides a strong digital foundation that improves coordination between different hospital departments and enhances the patient experience. The system is user-friendly, reliable, and represents a significant step forward in the digital transformation of the medical center.

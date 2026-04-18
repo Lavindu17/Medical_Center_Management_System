@@ -1,0 +1,215 @@
+# Medical Center Management System - API Documentation
+
+This document outlines the RESTful API endpoints for the system, mapped directly to the implemented user stories.
+
+---
+
+## 1. Authentication & Users (`/api/users`)
+
+### `POST /api/auth/login`
+Authenticates a user and returns a token.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| email | string | body | Yes | User email |
+| password | string | body | Yes | User password |
+
+**Response:**
+- `200 OK`: `{ "token": "jwt...", "user": { "id": 1, "role": "Doctor" } }`
+- `401 Unauthorized`: Invalid credentials
+
+### `GET /api/users`
+*(US-ADM 01)* Get all users in the system (Admin only).
+**Response:**
+- `200 OK`: Array of user objects
+
+### `POST /api/users`
+*(US-ADM 02)* Add a new staff member (Admin only).
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| name, email, contact, role, password | string | body | Yes | User details |
+
+**Response:**
+- `201 Created`: User created successfully
+
+---
+
+## 2. Patients (`/api/patients`)
+
+### `POST /api/patients`
+*(US-REC 02)* Register a new patient.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| name, email, contactNo, address, dob | string | body | Yes | Patient details |
+
+**Response:** `201 Created`: `{ "patientId": 123 }`
+
+### `GET /api/patients/:id/family`
+*(US-PAT 06, US-DOC 04)* Access family members' accounts/profiles.
+**Response:** `200 OK`: Array of related patient objects
+
+### `GET /api/patients/:id/medical-data`
+*(US-DOC 03)* Access a patient's complete medical data (prescriptions, tests, notes).
+**Response:** `200 OK`: Complete patient history payload
+
+---
+
+## 3. Appointments (`/api/appointments`)
+
+### `POST /api/appointments`
+*(US-PAT 01, US-REC 03)* Book an appointment.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| patientId | int | body | Yes | ID of patient |
+| doctorId | int | body | Yes | ID of selected doctor |
+| date | string | body | Yes | Appointment date (YYYY-MM-DD) |
+| time | string | body | Yes | Appointment time (HH:MM) |
+
+**Response:** `201 Created`: Appointment object
+
+### `GET /api/appointments`
+*(US-PAT 02, US-REC 01)* View appointments (filters vary by role: date, week, month).
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| filter | string | query | No | 'today', 'week', 'month' |
+
+**Response:** `200 OK`: Array of appointment objects
+
+### `PUT /api/appointments/:id/status`
+*(US-REC 04, US-REC 05)* Update appointment status (Cancel, Checked-in).
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| status | string | body | Yes | 'Cancelled' or 'Arrived' |
+
+**Response:** `200 OK`: Updated appointment
+
+### `GET /api/appointments/stats/count`
+*(US-DOC 02)* Check average number of appointments (daily, monthly, annual).
+**Response:** `200 OK`: `{ "daily": 15, "monthly": 420, "annual": 5100 }`
+
+---
+
+## 4. Clinical Care (`/api/clinical`)
+
+### `POST /api/clinical/notes`
+*(US-DOC 05)* Add clinical notes about a patient.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| patientId | int | body | Yes | Patient ID |
+| notesText | string | body | Yes | The clinical observations |
+
+**Response:** `201 Created`: Note object
+
+---
+
+## 5. Lab Tests & Reports (`/api/labs`)
+
+### `POST /api/labs/tests`
+*(US-DOC 06)* Recommend lab tests for a patient.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| patientId | int | body | Yes | Patient ID |
+| testName | string | body | Yes | Name of requested test |
+
+**Response:** `201 Created`: Lab test request
+
+### `GET /api/labs/tests/pending`
+*(US-LAB 01)* View all pending lab test requests.
+**Response:** `200 OK`: Array of pending test requests
+
+### `POST /api/labs/reports`
+*(US-LAB 02)* Upload lab report to a request.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| testId | int | form | Yes | ID of the lab test |
+| reportFile | file | form | Yes | Physical PDF file |
+| resultText | string | form | No | Textual result |
+
+**Response:** `201 Created`: Report uploaded
+
+### `GET /api/labs/reports/patient/:patientId`
+*(US-PAT 03)* Check patient lab reports.
+**Response:** `200 OK`: Array of lab reports with download URLs
+
+---
+
+## 6. Prescriptions & Pharmacy (`/api/pharmacy`)
+
+### `GET /api/pharmacy/inventory`
+*(US-PHR 01, US-PHR 08)* See current inventory of all medicines (highlights out-of-stock).
+**Response:** `200 OK`: Array of medicine objects
+
+### `POST /api/pharmacy/inventory`
+*(US-PHR 03)* Add new medicines to the system.
+**Response:** `201 Created`: Added medicine object
+
+### `PUT /api/pharmacy/inventory/:medicineId/stock`
+*(US-PHR 04, US-PHR 02)* Update inventory count when restocking / reordering.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| stockCount | int | body | Yes | New stock volume |
+
+**Response:** `200 OK`: Updated inventory object
+
+### `POST /api/pharmacy/prescriptions`
+*(US-DOC 07)* Issue new prescriptions.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| patientId | int | body | Yes | Patient ID |
+| items | array | body | Yes | Array of {medicineId, dosage, quantity} |
+
+**Response:** `201 Created`: Prescription ID
+
+### `GET /api/pharmacy/prescriptions`
+*(US-PAT 05, US-PHR 05)* Patient sees their prescriptions, Pharmacist sees pending.
+**Response:** `200 OK`: Array of prescriptions
+
+### `DELETE /api/pharmacy/prescriptions/:prescriptionId/items/:itemId`
+*(US-PHR 07)* Remove a medicine from a prescription.
+**Response:** `204 No Content`
+
+### `PUT /api/pharmacy/prescriptions/:prescriptionId/dispense`
+*(US-PHR 06)* Mark prescription as 'dispensed' & trigger inventory reduction.
+**Response:** `200 OK`: Status updated
+
+### `GET /api/pharmacy/cost/:prescriptionId`
+*(US-PHR 09)* See full price of dispensed medicine.
+**Response:** `200 OK`: `{ "totalMedicineCost": 150.00 }`
+
+---
+
+## 7. Invoices & Revenue (`/api/finance`)
+
+### `GET /api/finance/invoices/:patientId`
+*(US-PAT 04)* Patient checks invoices and tracks payments.
+**Response:** `200 OK`: Array of invoice history
+
+### `GET /api/finance/visit-cost/:appointmentId`
+*(US-PHR 10)* See total cost for a patient's visit (lab, appt, medicine).
+**Response:** `200 OK`: `{ "totalCost": 450.00, "breakdown": {...} }`
+
+### `GET /api/finance/revenue/stats`
+*(US-DOC 01)* Check doctor revenue.
+**Parameters:**
+| Name | Type | In | Required | Description |
+|------|------|----|----------|-------------|
+| period | string | query | Yes | 'daily', 'monthly', 'annual' |
+
+**Response:** `200 OK`: `{ "revenue": 1450.50 }`
+
+---
+
+## 8. Logs (`/api/logs`)
+### `GET /api/logs`
+*(US-ADM 03)* View system log sheet.
+**Response:** `200 OK`: Array of systemic activity events

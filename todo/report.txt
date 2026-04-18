@@ -1,0 +1,252 @@
+# Medical Center Management System - User Stories Diagrams
+
+This report contains the sequence and activity diagrams for the implemented user stories, generated using Mermaid.js. You can view these directly in a Markdown viewer that supports Mermaid (like VS Code or GitHub) or copy-paste them into [Mermaid Live](https://mermaid.live).
+
+The user stories have been logically grouped into key system modules:
+
+1. **Appointment Scheduling & Visit Flow**
+2. **Clinical Care & Lab Tests Flow**
+3. **Prescription & Dispensing Flow**
+4. **Pharmacy Inventory Management**
+5. **System Administration**
+
+---
+
+## 1. Appointment Scheduling & Visit Flow
+**Included User Stories:** 
+* Patient: US-PAT 01, US-PAT 02
+* Receptionist: US-REC 01, US-REC 02, US-REC 03, US-REC 04, US-REC 05
+* Doctor: US-DOC 01, US-DOC 02
+
+### Activity Diagram
+```mermaid
+flowchart TD
+    Start([Start]) --> IsNew{Is New Patient?}
+    IsNew -->|Yes| Register[Receptionist Registers Patient: US-REC 02]
+    Register --> Booking
+    IsNew -->|No| Booking[Patient or Receptionist Books Appointment: US-PAT 01 / US-REC 03]
+    
+    Booking --> ViewAppts[View Appointments: US-PAT 02 / US-REC 01]
+    
+    ViewAppts --> Manage{Manage Schedule}
+    Manage --> |Cancel| Cancel[Cancel Appointment: US-REC 04]
+    Manage --> |Patient Arrives| CheckIn[Mark Arrived / Checked-in: US-REC 05]
+    
+    CheckIn --> DoctorQueue[Doctor Checks Workload/Stats: US-DOC 02]
+    DoctorQueue --> Revenue[Doctor Checks Revenue: US-DOC 01]
+    Revenue --> End([End Booking/Visit cycle])
+    Cancel --> End
+```
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    actor Patient
+    actor Receptionist
+    actor System
+    actor Doctor
+
+    alt New Patient
+        Receptionist->>System: Register Patient (US-REC 02)
+    end
+    Patient->>System: Select Doctor, Date, Time (US-PAT 01)
+    System-->>Patient: Confirm Booking
+    Receptionist->>System: Book Appointment on behalf (US-REC 03)
+    
+    Patient->>System: View Appointments (US-PAT 02)
+    Receptionist->>System: View All Appointments (US-REC 01)
+    
+    alt Cancellation
+        Receptionist->>System: Cancel Appointment (US-REC 04)
+    end
+    
+    Patient->>Receptionist: Arrives at Clinic
+    Receptionist->>System: Mark 'arrived/checked-in' (US-REC 05)
+    
+    Doctor->>System: Check average appointments (US-DOC 02)
+    Doctor->>System: Check revenue (US-DOC 01)
+```
+
+---
+
+## 2. Clinical Care & Lab Tests Flow
+**Included User Stories:**
+* Patient: US-PAT 03, US-PAT 06
+* Doctor: US-DOC 03, US-DOC 04, US-DOC 05, US-DOC 06
+* Lab Assistant: US-LAB 01, US-LAB 02
+
+### Activity Diagram
+```mermaid
+flowchart TD
+    Start([Patient Checked In]) --> PatAccess[Patient accesses family accounts : US-PAT 06]
+    PatAccess --> DocAccess[Doctor accesses patient data : US-DOC 03]
+    DocAccess --> DocFamAcc[Doctor checks family profiles : US-DOC 04]
+    
+    DocFamAcc --> DocConsult[Consultation & Add Clinical Notes : US-DOC 05]
+    
+    DocConsult --> NeedsLab{Needs Lab Test?}
+    NeedsLab -->|Yes| Recommend[Recommend Lab Test : US-DOC 06]
+    Recommend --> LabQueue[Lab Asst sees pending requests : US-LAB 01]
+    LabQueue --> LabUpload[Lab Asst Uploads Reports : US-LAB 02]
+    LabUpload --> PatientReview[Patient checks lab reports : US-PAT 03]
+    PatientReview --> DocReview[Doctor reviews reports]
+    
+    NeedsLab -->|No| CheckPresc{Consultation Over}
+    DocReview --> CheckPresc
+    CheckPresc --> End([End])
+```
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    actor Patient
+    actor Doctor
+    actor LabAssistant
+    actor System
+
+    Patient->>System: Access family members' accounts (US-PAT 06)
+    Doctor->>System: Access complete patient medical data (US-DOC 03)
+    Doctor->>System: Check patient family profiles (US-DOC 04)
+    Doctor->>System: Add clinical notes (US-DOC 05)
+    
+    opt Needs Lab Test
+        Doctor->>System: Recommend lab tests (US-DOC 06)
+        System->>LabAssistant: Display pending tests (US-LAB 01)
+        LabAssistant->>System: Upload lab reports (US-LAB 02)
+        System-->>Patient: Notification of results
+        Patient->>System: Check lab reports (US-PAT 03)
+    end
+```
+
+---
+
+## 3. Prescription & Dispensing Flow
+**Included User Stories:**
+* Patient: US-PAT 04, US-PAT 05
+* Doctor: US-DOC 07
+* Pharmacist: US-PHR 05, US-PHR 06, US-PHR 07, US-PHR 08, US-PHR 09, US-PHR 10
+
+### Activity Diagram
+```mermaid
+flowchart TD
+    Start([Start Prescription]) --> Prescribe[Doctor issues prescription : US-DOC 07]
+    Prescribe --> PatView[Patient views prescription : US-PAT 05]
+    PatView --> PharmView[Pharmacist sees pending prescriptions : US-PHR 05]
+    
+    PharmView --> CheckStock{Medicines In Stock?}
+    CheckStock -->|No| OutOfStock[Identify out of stock : US-PHR 08]
+    CheckStock -->|Yes| Prepare[Prepare dispensing]
+    
+    Prepare --> Edit{Patient Req. Change?}
+    Edit -->|Yes| Remove[Remove medicine from prescription : US-PHR 07]
+    Edit -->|No| Price[Calculate full price : US-PHR 09]
+    Remove --> Price
+    
+    Price --> Checkout[See total cost of visit : US-PHR 10]
+    Checkout --> Dispense[Mark as dispensed & reduce inventory : US-PHR 06]
+    Dispense --> PatInvoice[Patient checks invoices : US-PAT 04]
+    
+    PatInvoice --> End([End Flow])
+    OutOfStock --> End
+```
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    actor Doctor
+    actor Patient
+    actor Pharmacist
+    actor System
+
+    Doctor->>System: Issue new prescriptions (US-DOC 07)
+    Patient->>System: See all prescriptions (US-PAT 05)
+    
+    Pharmacist->>System: View pending prescription requests (US-PHR 05)
+    
+    alt Out of Stock
+        Pharmacist->>System: Identify medications out of stock (US-PHR 08)
+    else Medicines Available
+        opt Patient modifies order
+            Pharmacist->>System: Remove medicine from prescription (US-PHR 07)
+        end
+        Pharmacist->>System: View full price of dispensed medicine (US-PHR 09)
+        Pharmacist->>System: View total cost for patient visit (US-PHR 10)
+        Pharmacist->>System: Mark prescription as 'dispensed' (US-PHR 06)
+        System-->>System: Inventory reduced
+    end
+    
+    Patient->>System: Check invoices & billing history (US-PAT 04)
+```
+
+---
+
+## 4. Pharmacy Inventory Management
+**Included User Stories:**
+* Pharmacist: US-PHR 01, US-PHR 02, US-PHR 03, US-PHR 04
+
+### Activity Diagram
+```mermaid
+flowchart TD
+    Start([Start]) --> ViewStock[See current inventory : US-PHR 01]
+    ViewStock --> Action{Action Needed}
+    
+    Action -->|Low Stock| Reorder[Reorder medicines : US-PHR 02]
+    Action -->|Restock Delivery| UpdateCount[Update inventory count : US-PHR 04]
+    Action -->|New Drug| AddNew[Add new medicine to system : US-PHR 03]
+    
+    Reorder --> End([End])
+    UpdateCount --> End
+    AddNew --> End
+```
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    actor Pharmacist
+    actor System
+
+    Pharmacist->>System: See current inventory of all medicines (US-PHR 01)
+    
+    opt Restocking Required
+        Pharmacist->>System: Reorder medicines (US-PHR 02)
+    end
+    
+    opt Delivery Arrives
+        Pharmacist->>System: Update inventory count (US-PHR 04)
+    end
+    
+    opt New Inventory Item
+        Pharmacist->>System: Add new medicines to system (US-PHR 03)
+    end
+```
+
+---
+
+## 5. System Administration
+**Included User Stories:**
+* Admin: US-ADM 01, US-ADM 02, US-ADM 03
+
+### Activity Diagram
+```mermaid
+flowchart TD
+    Start([Admin Dashboard]) --> Action{Admin Task}
+    
+    Action -->|User Mgt| ViewUsers[View all users in system : US-ADM 01]
+    Action -->|Staff Mgt| AddStaff[Add new staff members : US-ADM 02]
+    Action -->|System Monitor| ViewLogs[View system log sheet : US-ADM 03]
+    
+    ViewUsers --> End([End])
+    AddStaff --> End
+    ViewLogs --> End
+```
+
+### Sequence Diagram
+```mermaid
+sequenceDiagram
+    actor Admin
+    actor System
+
+    Admin->>System: View all users (US-ADM 01)
+    Admin->>System: Add new staff members with roles (US-ADM 02)
+    Admin->>System: View system log sheet for activity (US-ADM 03)
+```
