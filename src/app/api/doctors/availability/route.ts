@@ -56,11 +56,30 @@ export async function GET(req: Request) {
         );
         const bookedSlots = new Set(existing.map((a: any) => a.time_slot.slice(0, 5)));
 
+        // Time Validation Logic for Same-Day Bookings
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA'); // 'YYYY-MM-DD' in local timezone
+        const isToday = date === todayStr;
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+
         // Return all slots with availability status
-        const slotsWithStatus = allSlots.map(time => ({
-            time,
-            available: !bookedSlots.has(time)
-        }));
+        const slotsWithStatus = allSlots.map(time => {
+            let available = !bookedSlots.has(time);
+
+            // If it's today, check if the time has already passed
+            if (isToday && available) {
+                const [slotH, slotM] = time.split(':').map(Number);
+                if (slotH < currentHours || (slotH === currentHours && slotM <= currentMinutes)) {
+                    available = false;
+                }
+            }
+
+            return {
+                time,
+                available
+            };
+        });
 
         return NextResponse.json({
             date,
