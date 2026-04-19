@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Save, CheckCircle, Plus, Trash2, History, Activity, Pill, FlaskConical } from 'lucide-react';
+import { Save, CheckCircle, Plus, Trash2, History, Activity, Pill, FlaskConical, FileText } from 'lucide-react';
 import { formatLKR } from '@/lib/utils';
 
 // Interfaces
@@ -47,7 +47,11 @@ export default function ConsultationPage() {
     // Data State
     const [appointment, setAppointment] = useState<any>(null);
     const [patient, setPatient] = useState<any>(null);
-    const [history, setHistory] = useState<any[]>([]);
+    const [history, setHistory] = useState<{ appointments: any[], labs: any[], prescriptions: any[] }>({
+        appointments: [],
+        labs: [],
+        prescriptions: []
+    });
 
     // Catalogs
     const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -273,10 +277,10 @@ export default function ConsultationPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        {history.length === 0 ? (
+                        {history.appointments.length === 0 ? (
                             <div className="text-sm text-neutral-500 italic">No previous visits.</div>
                         ) : (
-                            history.map((h, i) => (
+                            history.appointments.slice(0, 5).map((h, i) => (
                                 <div key={i} className="text-sm border-l-2 border-neutral-300 pl-3 py-1">
                                     <div className="font-semibold">{new Date(h.date).toLocaleDateString()}</div>
                                     <div className="text-neutral-600 truncate">{h.diagnosis || "No notes"}</div>
@@ -432,10 +436,144 @@ export default function ConsultationPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="history">
-                        <div className="p-8 text-center text-neutral-500">
-                            Full Patient History View (Coming Soon: Detailed list of all past prescriptions/labs)
-                        </div>
+                    <TabsContent value="history" className="flex-1 overflow-y-auto space-y-4">
+                        <Tabs defaultValue="appointments" className="w-full">
+                            <TabsList className="grid w-full grid-cols-3 mb-4">
+                                <TabsTrigger value="appointments">Appointments</TabsTrigger>
+                                <TabsTrigger value="labs">Lab Tests</TabsTrigger>
+                                <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="appointments" className="space-y-4">
+                                {history.appointments.length === 0 ? (
+                                    <div className="p-8 text-center text-neutral-500 bg-white border rounded">No past appointments found.</div>
+                                ) : (
+                                    history.appointments.map((appt: any) => {
+                                        // Find labs/prescriptions specifically for this appointment
+                                        const apptLabs = history.labs.filter((l: any) => l.appointment_id === appt.id);
+                                        const apptPrescriptions = history.prescriptions.filter((p: any) => p.appointment_id === appt.id);
+
+                                        return (
+                                            <Card key={appt.id} className="mb-4 shadow-sm border-l-4 border-l-blue-500">
+                                                <CardHeader className="py-3 bg-neutral-50">
+                                                    <div className="flex justify-between items-center">
+                                                        <CardTitle className="text-base flex items-center gap-2">
+                                                            <History className="h-4 w-4" /> {new Date(appt.date).toLocaleDateString()}
+                                                        </CardTitle>
+                                                        {appt.reason && <Badge variant="outline">{appt.reason}</Badge>}
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="pt-4 space-y-4">
+                                                    {/* Diagnosis / Notes */}
+                                                    <div>
+                                                        <Label className="text-xs text-neutral-500 uppercase font-semibold">Clinical Notes / Diagnosis</Label>
+                                                        <p className="text-sm mt-1 bg-white p-2 border rounded whitespace-pre-wrap">{appt.diagnosis || "No notes recorded."}</p>
+                                                    </div>
+
+                                                    {/* Nested Labs */}
+                                                    {apptLabs.length > 0 && (
+                                                        <div>
+                                                            <Label className="text-xs text-neutral-500 uppercase font-semibold flex items-center gap-1">
+                                                                <FlaskConical className="h-3 w-3" /> Requested Labs
+                                                            </Label>
+                                                            <div className="mt-1 flex flex-wrap gap-2">
+                                                                {apptLabs.map((lab: any) => (
+                                                                    <div key={lab.id} className="inline-flex items-center gap-1">
+                                                                        <Badge variant="secondary" className="flex items-center gap-1">
+                                                                            {lab.testName} <span className="opacity-50 text-[10px]">({lab.status})</span>
+                                                                        </Badge>
+                                                                        {lab.result_url && (
+                                                                            <a href={lab.result_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="View Result">
+                                                                                <FileText className="h-4 w-4" />
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Nested Prescriptions */}
+                                                    {apptPrescriptions.length > 0 && (
+                                                        <div>
+                                                            <Label className="text-xs text-neutral-500 uppercase font-semibold flex items-center gap-1">
+                                                                <Pill className="h-3 w-3" /> Prescriptions
+                                                            </Label>
+                                                            <div className="mt-1 space-y-1">
+                                                                {apptPrescriptions.map((med: any, idx: number) => (
+                                                                    <div key={idx} className="text-sm border rounded px-3 py-1 bg-white flex justify-between">
+                                                                        <span><span className="font-medium">{med.medicineName}</span> <span className="text-neutral-500">({med.dosage})</span></span>
+                                                                        <span className="text-neutral-500 text-xs">{med.frequency} • {med.duration} • x{med.quantity}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="labs" className="space-y-4">
+                                {history.labs.length === 0 ? (
+                                    <div className="p-8 text-center text-neutral-500 bg-white border rounded">No past lab tests found.</div>
+                                ) : (
+                                    <Card>
+                                        <div className="divide-y">
+                                            {history.labs.map((lab: any) => (
+                                                <div key={lab.id} className="p-4 flex justify-between items-center hover:bg-neutral-50 transition-colors">
+                                                    <div>
+                                                        <div className="font-semibold text-purple-900">{lab.testName}</div>
+                                                        <div className="text-xs text-neutral-500">Requested: {new Date(lab.requested_at).toLocaleDateString()}</div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <Badge variant={lab.status === 'COMPLETED' ? 'default' : 'secondary'}>
+                                                            {lab.status}
+                                                        </Badge>
+                                                        {lab.result_url && (
+                                                            <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+                                                                <a href={lab.result_url} target="_blank" rel="noopener noreferrer">
+                                                                    <FileText className="h-3 w-3 mr-1" /> View File
+                                                                </a>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </Card>
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="prescriptions" className="space-y-4">
+                                {history.prescriptions.length === 0 ? (
+                                    <div className="p-8 text-center text-neutral-500 bg-white border rounded">No past prescriptions found.</div>
+                                ) : (
+                                    <Card>
+                                        <div className="divide-y border-t mt-2">
+                                            {history.prescriptions.map((med: any, i: number) => (
+                                                <div key={i} className="p-4 flex justify-between items-center hover:bg-neutral-50 transition-colors">
+                                                    <div>
+                                                        <div className="font-semibold text-blue-900 flex items-center gap-2">
+                                                            <Pill className="h-4 w-4" /> {med.medicineName}
+                                                        </div>
+                                                        <div className="text-xs text-neutral-500 mt-1">
+                                                            Issued: {new Date(med.issued_at).toLocaleDateString()}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-sm font-medium">{med.dosage} • {med.frequency}</div>
+                                                        <div className="text-xs text-neutral-500">{med.duration} • x{med.quantity}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </Card>
+                                )}
+                            </TabsContent>
+                        </Tabs>
                     </TabsContent>
                 </Tabs>
             </div>
