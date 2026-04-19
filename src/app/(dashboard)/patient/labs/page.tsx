@@ -10,10 +10,21 @@ export default function LabReportsPage() {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [user, setUser] = useState<any>(null);
+
     useEffect(() => {
-        fetch('/api/patient/records?patientId=3&type=labs')
+        fetch('/api/auth/session')
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error('Unauthorized');
+            })
+            .then(data => {
+                setUser(data.user);
+                return fetch(`/api/patient/records?patientId=${data.user.id}&type=labs`);
+            })
             .then(res => res.json())
             .then(setData)
+            .catch(console.error)
             .finally(() => setLoading(false));
     }, []);
 

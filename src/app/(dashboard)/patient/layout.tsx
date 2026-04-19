@@ -12,6 +12,7 @@ import {
     LogOut,
     Menu,
     CalendarCheck,
+    CalendarClock,
     User
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
@@ -27,6 +28,7 @@ export default function PatientLayout({
 
     const sidebarItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/patient' },
+        { icon: CalendarClock, label: 'My Appointments', href: '/patient/appointments' },
         { icon: CalendarCheck, label: 'Book Appointment', href: '/patient/book' },
         { icon: Pill, label: 'Prescriptions', href: '/patient/prescriptions' },
         { icon: FileText, label: 'Lab Reports', href: '/patient/labs' },
