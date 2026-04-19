@@ -30,11 +30,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
     const router = useRouter();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-    const handleLogout = async () => {
-        // Clear cookie
-        document.cookie = 'token=; Max-Age=0; path=/;';
-        router.push('/login');
-    };
+    // Sign out is handled via /api/auth/logout anchor link
 
     const SidebarContent = () => (
         <div className="flex flex-col h-full bg-neutral-900 text-white">
@@ -69,10 +65,12 @@ export default function ReceptionistLayout({ children }: { children: React.React
                 <Button
                     variant="ghost"
                     className="w-full justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-900/20"
-                    onClick={handleLogout}
+                    asChild
                 >
-                    <LogOut className="h-5 w-5" />
-                    <span>Logout</span>
+                    <a href="/api/auth/logout">
+                        <LogOut className="h-5 w-5" />
+                        <span>Logout</span>
+                    </a>
                 </Button>
             </div>
         </div>
