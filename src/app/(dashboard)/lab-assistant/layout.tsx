@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, TestTube, LogOut, FileText } from 'lucide-react';
+import { LayoutDashboard, TestTube, LogOut, Settings, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
@@ -31,6 +31,7 @@ export default function LabAssistantLayout({
             href: '/lab-assistant/tests',
             icon: TestTube,
         },
+        { title: 'Settings', href: '/lab-assistant/settings', icon: Settings },
     ];
 
     return (

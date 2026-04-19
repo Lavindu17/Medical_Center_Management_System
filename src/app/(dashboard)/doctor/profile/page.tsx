@@ -20,6 +20,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
+import { ShieldCheck } from 'lucide-react';
+import { ChangePasswordCard } from '@/components/auth/ChangePasswordCard';
 
 export default function DoctorProfilePage() {
     const [loading, setLoading] = useState(true);
@@ -204,10 +206,11 @@ export default function DoctorProfilePage() {
             </div>
 
             <Tabs defaultValue="general" className="w-full">
-                <TabsList className="mb-4">
+                <TabsList className="mb-4 flex flex-wrap h-auto">
                     <TabsTrigger value="general">General Info</TabsTrigger>
                     <TabsTrigger value="schedule">Schedule & Availability</TabsTrigger>
                     <TabsTrigger value="leaves">Blocked Dates (Calendar)</TabsTrigger>
+                    <TabsTrigger value="security">Security Settings</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general">
@@ -362,6 +365,10 @@ export default function DoctorProfilePage() {
                             />
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="security">
+                    <ChangePasswordCard />
                 </TabsContent>
             </Tabs>
 

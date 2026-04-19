@@ -8,7 +8,7 @@ import {
     Users,
     Calendar,
     Banknote,
-    LogOut,
+    LogOut, Settings,
     Menu,
     HeartPulse,
     UserPlus
@@ -23,7 +23,8 @@ const sidebarItems = [
     { icon: UserPlus, label: 'Register Patient', href: '/receptionist/register' },
     { icon: Users, label: 'Patient Directory', href: '/receptionist/patients' },
     { icon: Banknote, label: 'Billing', href: '/receptionist/billing' },
-];
+    { title: 'Settings', href: '/receptionist/settings', icon: Settings },
+    ];
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
