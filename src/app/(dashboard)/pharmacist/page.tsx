@@ -35,10 +35,10 @@ export default function PharmacistDashboard() {
             href: '/pharmacist/prescriptions'
         },
         {
-            title: 'Expiry Alerts',
-            value: stats.expiredBatchesCount + stats.expiringSoonCount,
+            title: 'Alerts',
+            value: stats.expiredBatchesCount + stats.expiringSoonCount + stats.lowStockCount + stats.outOfStockCount,
             icon: AlertTriangle,
-            description: 'Expired or expiring soon',
+            description: 'Inventory & Expiry warnings',
             color: 'text-red-600',
             bg: 'bg-red-50',
             href: '/pharmacist/alerts'
@@ -65,7 +65,7 @@ export default function PharmacistDashboard() {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                 {cards.map((card, i) => {
-                    const isUrgent = (card.title === 'Expired Batches' && card.value > 0);
+                    const isUrgent = (card.title === 'Alerts' && card.value > 0);
                     return (
                         <Link key={i} href={card.href} className="block group">
                             <Card className={`transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 ${card.bg} border-none ${isUrgent ? 'animate-pulse' : ''}`}>
@@ -87,23 +87,6 @@ export default function PharmacistDashboard() {
                         </Link>
                     );
                 })}
-            </div>
-
-            {/* Actions / Recent */}
-            <div className="grid md:grid-cols-2 gap-6">
-                <Card className="border-emerald-100 bg-emerald-50/30">
-                    <CardHeader>
-                        <CardTitle className="text-emerald-900">Quick Actions</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex gap-4">
-                        <Link href="/pharmacist/prescriptions" className="text-sm font-semibold text-emerald-700 hover:underline">
-                            → Dispense Medicine
-                        </Link>
-                        <Link href="/pharmacist/inventory" className="text-sm font-semibold text-emerald-700 hover:underline">
-                            → Manage Inventory
-                        </Link>
-                    </CardContent>
-                </Card>
             </div>
         </div>
     );
