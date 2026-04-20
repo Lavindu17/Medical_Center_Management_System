@@ -5,6 +5,7 @@ import { useState, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -36,6 +37,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState<number | null>(null);
+    const [dispenseValues, setDispenseValues] = useState<Record<number, string>>({});
 
     const fetchData = () => {
         setLoading(true);
@@ -57,8 +59,16 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
         fetchData();
     }, [params.id, router]);
 
-    const handleDispenseItem = async (item: any) => {
-        if (!confirm(`Confirm dispensing ${item.prescribed_quantity} ${item.unit} of ${item.medicine_name}?`)) return;
+    const handleDispenseItem = async (item: any, remainingToDispense: number) => {
+        const inputVal = dispenseValues[item.item_id] !== undefined ? dispenseValues[item.item_id] : String(remainingToDispense);
+        const qtyToDispense = parseInt(inputVal) || 0;
+
+        if (qtyToDispense <= 0 || qtyToDispense > remainingToDispense) {
+            alert('Invalid dispense quantity.');
+            return;
+        }
+
+        if (!confirm(`Confirm dispensing ${qtyToDispense} ${item.unit} of ${item.medicine_name}?`)) return;
 
         setProcessingId(item.item_id);
         try {
@@ -68,7 +78,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                 body: JSON.stringify({
                     item_id: item.item_id,
                     medicine_id: item.medicine_id,
-                    quantity_to_dispense: item.prescribed_quantity
+                    quantity_to_dispense: qtyToDispense
                 })
             });
 
@@ -269,7 +279,9 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
 
                     {items.map((item: any) => {
                         const isDispensed = item.status === 'DISPENSED';
-                        const stockAvailable = item.current_stock >= item.prescribed_quantity;
+                        const remainingToDispense = item.prescribed_quantity - (item.dispensed_quantity || 0);
+                        const inputVal = dispenseValues[item.item_id] !== undefined ? dispenseValues[item.item_id] : String(remainingToDispense);
+                        const stockAvailable = item.current_stock >= (parseInt(inputVal) || 0);
                         const isProcessing = processingId === item.item_id;
 
                         return (
@@ -345,48 +357,64 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                                         {/* Right Side: Action & Stock */}
                                         <div className="flex items-center gap-4 w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0 pl-0 md:pl-4 md:border-l border-neutral-100">
 
-                                            {/* Stock Counter */}
-                                            <div className="flex flex-row md:flex-col justify-between items-center gap-x-6 gap-y-0.5 w-full md:w-auto min-w-[100px]">
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <span className="text-neutral-500 text-xs uppercase font-semibold w-10 text-right">Need</span>
-                                                    <span className="font-bold text-neutral-900">{item.prescribed_quantity} <span className="text-xs font-normal text-neutral-400">{item.unit}</span></span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <span className="text-neutral-400 text-xs uppercase font-semibold w-10 text-right">Have</span>
-                                                    <span className={`font-medium ${stockAvailable ? 'text-emerald-600' : 'text-red-500'}`}>
-                                                        {item.current_stock}
-                                                    </span>
+                                            {/* Stock & Need Counter */}
+                                            <div className="flex flex-row md:flex-col justify-between items-center gap-x-6 gap-y-0.5 w-full md:w-auto min-w-[100px] text-sm">
+                                                <div className="flex flex-col gap-1 items-end w-full">
+                                                    <div className="flex justify-between w-full">
+                                                        <span className="text-neutral-500 text-[10px] uppercase font-semibold mr-2">PRESCRIBED:</span>
+                                                        <span className="font-bold text-neutral-900">{item.prescribed_quantity}</span>
+                                                    </div>
+                                                    <div className="flex justify-between w-full">
+                                                        <span className="text-neutral-500 text-[10px] uppercase font-semibold mr-2">DISPENSED:</span>
+                                                        <span className="font-bold text-emerald-600">{item.dispensed_quantity || 0}</span>
+                                                    </div>
+                                                    <div className="flex justify-between w-full mt-1 border-t pt-1">
+                                                        <span className="text-neutral-400 text-[10px] uppercase font-semibold mr-2">IN STOCK:</span>
+                                                        <span className={`font-medium ${stockAvailable ? 'text-neutral-600' : 'text-red-500'}`}>{item.current_stock}</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* Action Button */}
-                                            <div className="w-full md:w-auto">
+                                            {/* Action Button & Input */}
+                                            <div className="w-full md:w-auto flex items-center gap-2">
                                                 {isDispensed ? (
-                                                    <div className="hidden md:flex h-9 w-9 bg-emerald-100 rounded-full items-center justify-center text-emerald-600">
+                                                    <div className="hidden md:flex h-9 w-9 bg-emerald-100 rounded-full items-center justify-center text-emerald-600 shadow-sm">
                                                         <CheckCircle className="h-5 w-5" />
                                                     </div>
                                                 ) : (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button
-                                                                    onClick={() => handleDispenseItem(item)}
-                                                                    disabled={!stockAvailable || isProcessing || loading}
-                                                                    size="sm"
-                                                                    className={`w-full md:w-auto h-10 px-4 font-medium shadow-sm transition-all ${stockAvailable
-                                                                        ? 'bg-emerald-600 hover:bg-emerald-700'
-                                                                        : 'bg-red-500 hover:bg-red-600'
-                                                                        }`}
-                                                                >
-                                                                    {isProcessing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4 mr-1.5" />}
-                                                                    {stockAvailable ? 'Dispense' : 'Restock'}
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent>
-                                                                {!stockAvailable ? 'Insufficient inventory to dispense' : 'Click to dispense and update stock'}
-                                                            </TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
+                                                    <>
+                                                        <Input 
+                                                            type="number"
+                                                            min="1"
+                                                            max={item.prescribed_quantity - (item.dispensed_quantity || 0)}
+                                                            value={dispenseValues[item.item_id] !== undefined ? dispenseValues[item.item_id] : (item.prescribed_quantity - (item.dispensed_quantity || 0))}
+                                                            onChange={(e) => setDispenseValues({...dispenseValues, [item.item_id]: e.target.value})}
+                                                            className="w-16 h-10 text-center font-bold"
+                                                            disabled={!stockAvailable || isProcessing || loading}
+                                                            title="Quantity to dispense now"
+                                                        />
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button
+                                                                        onClick={() => handleDispenseItem(item, item.prescribed_quantity - (item.dispensed_quantity || 0))}
+                                                                        disabled={!stockAvailable || isProcessing || loading}
+                                                                        size="sm"
+                                                                        className={`w-full md:w-auto h-10 px-4 font-medium shadow-sm transition-all ${stockAvailable
+                                                                            ? 'bg-emerald-600 hover:bg-emerald-700'
+                                                                            : 'bg-red-500 hover:bg-red-600'
+                                                                            }`}
+                                                                    >
+                                                                        {isProcessing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4 mr-1.5" />}
+                                                                        {stockAvailable ? 'Dispense' : 'Restock'}
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    {!stockAvailable ? 'Insufficient inventory to dispense' : 'Click to dispense and update stock'}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>

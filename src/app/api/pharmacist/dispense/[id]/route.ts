@@ -55,6 +55,7 @@ export async function GET(
                 pi.id as item_id, 
                 pi.medicine_id, 
                 pi.quantity as prescribed_quantity, 
+                pi.dispensed_quantity,
                 pi.dosage, pi.frequency, pi.duration,
                 m.name as medicine_name, 
                 m.generic_name,
@@ -111,12 +112,18 @@ export async function POST(
 
             // 1. Check if item is already dispensed
             const [itemRows]: any = await connection.execute(
-                'SELECT status FROM prescription_items WHERE id = ?',
+                'SELECT status, quantity, dispensed_quantity FROM prescription_items WHERE id = ?',
                 [item_id]
             );
 
             if (itemRows.length === 0) throw new Error('Item not found');
-            if (itemRows[0].status === 'DISPENSED') throw new Error('Item already dispensed');
+            const itemDb = itemRows[0];
+            if (itemDb.status === 'DISPENSED') throw new Error('Item already fully dispensed');
+
+            const remainder = itemDb.quantity - itemDb.dispensed_quantity;
+            if (quantityNeeded > remainder) {
+                throw new Error(`Cannot dispense more than prescribed. Remainder is ${remainder}.`);
+            }
 
             // 2. FEFO Stock Deduction
             const [batches]: any = await connection.execute(
@@ -154,10 +161,13 @@ export async function POST(
                 throw new Error(`Insufficient stock. Need ${quantityNeeded} more.`);
             }
 
-            // 3. Mark Item as Dispensed
+            // 3. Mark Item
+            const newDispensedTotal = itemDb.dispensed_quantity + parseInt(quantity_to_dispense);
+            const newItemStatus = newDispensedTotal >= itemDb.quantity ? 'DISPENSED' : 'PARTIALLY_COMPLETED';
+
             await connection.execute(
-                'UPDATE prescription_items SET status = "DISPENSED" WHERE id = ?',
-                [item_id]
+                'UPDATE prescription_items SET status = ?, dispensed_quantity = ? WHERE id = ?',
+                [newItemStatus, newDispensedTotal, item_id]
             );
 
             // 4. Update Bill
@@ -181,18 +191,21 @@ export async function POST(
 
             // 5. Check if Prescription is Fully Dispensed
             const [pendingItems]: any = await connection.execute(
-                'SELECT COUNT(*) as count FROM prescription_items WHERE prescription_id = ? AND status = "PENDING"',
+                'SELECT COUNT(*) as count FROM prescription_items WHERE prescription_id = ? AND status != "DISPENSED"',
                 [id]
             );
 
             let isFullyDispensed = false;
+            let presStatus = 'PARTIALLY_COMPLETED';
             if (pendingItems[0].count === 0) {
-                await connection.execute(
-                    'UPDATE prescriptions SET status = "DISPENSED" WHERE id = ?',
-                    [id]
-                );
+                presStatus = 'DISPENSED';
                 isFullyDispensed = true;
             }
+            
+            await connection.execute(
+                'UPDATE prescriptions SET status = ? WHERE id = ?',
+                [presStatus, id]
+            );
 
             await connection.commit();
             return NextResponse.json({
