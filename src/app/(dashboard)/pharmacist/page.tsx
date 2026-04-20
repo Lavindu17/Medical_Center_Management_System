@@ -9,6 +9,7 @@ export default function PharmacistDashboard() {
     const [stats, setStats] = useState({
         pendingPrescriptions: 0,
         lowStockCount: 0,
+        outOfStockCount: 0,
         totalMedicines: 0,
         expiredBatchesCount: 0,
         expiringSoonCount: 0
@@ -34,31 +35,13 @@ export default function PharmacistDashboard() {
             href: '/pharmacist/prescriptions'
         },
         {
-            title: 'Expired Batches',
-            value: stats.expiredBatchesCount,
+            title: 'Expiry Alerts',
+            value: stats.expiredBatchesCount + stats.expiringSoonCount,
             icon: AlertTriangle,
-            description: 'Need immediate removal',
+            description: 'Expired or expiring soon',
             color: 'text-red-600',
             bg: 'bg-red-50',
             href: '/pharmacist/alerts'
-        },
-        {
-            title: 'Expiring Soon',
-            value: stats.expiringSoonCount,
-            icon: AlertTriangle,
-            description: 'Within 30 days',
-            color: 'text-amber-600',
-            bg: 'bg-amber-50',
-            href: '/pharmacist/alerts'
-        },
-        {
-            title: 'Low Stock Alerts',
-            value: stats.lowStockCount,
-            icon: AlertTriangle,
-            description: 'Items below threshold',
-            color: 'text-orange-600',
-            bg: 'bg-orange-50',
-            href: '/pharmacist/inventory'
         },
         {
             title: 'Total Inventory',

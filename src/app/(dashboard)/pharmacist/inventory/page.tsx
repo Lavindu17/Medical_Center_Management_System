@@ -9,6 +9,16 @@ import { Label } from '@/components/ui/label';
 import { formatLKR } from '@/lib/utils';
 import { MEDICINE_CATEGORIES } from '@/lib/constants';
 
+const SHELF_OPTIONS = [
+    "Shelf(A1),Level(L1),Spot(S1)",
+    "Shelf(A1),Level(L2),Spot(S2)",
+    "Shelf(A2),Level(L1),Spot(S1)",
+    "Shelf(B1),Level(L3),Spot(S2)",
+    "Shelf(C1),Level(L1),Spot(S4)",
+    "Shelf(C2),Level(L2),Spot(S5)",
+    "Fridge(F1),Level(L1),Spot(S1)"
+];
+
 export default function InventoryPage() {
     const [medicines, setMedicines] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -231,7 +241,19 @@ export default function InventoryPage() {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="space-y-2"><Label>Location</Label><Input value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Shelf A1" /></div>
+                                <div className="space-y-2">
+                                    <Label>Location</Label>
+                                    <select
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        value={formData.location}
+                                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                    >
+                                        <option value="">Select Shelf Location...</option>
+                                        {SHELF_OPTIONS.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2"><Label>Unit</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. tablets" /></div>
@@ -511,7 +533,19 @@ export default function InventoryPage() {
                                     ))}
                                 </select>
                             </div>
-                            <div className="space-y-2"><Label>Location</Label><Input value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="Shelf A1" /></div>
+                            <div className="space-y-2">
+                                <Label>Location</Label>
+                                <select
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                    value={formData.location}
+                                    onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                >
+                                    <option value="">Select Shelf Location...</option>
+                                    {SHELF_OPTIONS.map(opt => (
+                                        <option key={opt} value={opt}>{opt}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                         <div className="grid grid-cols-3 gap-4">
                             <div className="space-y-2"><Label>Unit *</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="tablets" /></div>
@@ -560,11 +594,6 @@ export default function InventoryPage() {
                         </div>
                     )}
                     <form onSubmit={handleRestockSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Batch Number</Label>
-                            <Input placeholder="Auto-generated if empty" value={restockForm.batch_number} onChange={e => setRestockForm({ ...restockForm, batch_number: e.target.value })} />
-                            <p className="text-xs text-neutral-500">Leave empty to auto-generate</p>
-                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Quantity *</Label>
