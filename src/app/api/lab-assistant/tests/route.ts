@@ -27,15 +27,15 @@ export async function POST(req: Request) {
         const user = await AuthService.verifyToken(token || '');
         if (!user || (user.role !== 'LAB_ASSISTANT' && user.role !== 'DOCTOR' && user.role !== 'ADMIN')) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        const { name, description, price } = await req.json();
+        const { name, description, price, cost_price } = await req.json();
 
-        if (!name || !price) {
-            return NextResponse.json({ message: 'Name and Price are required' }, { status: 400 });
+        if (!name || !price || !cost_price) {
+            return NextResponse.json({ message: 'Name, Price and Cost Price are required' }, { status: 400 });
         }
 
         await query(
-            'INSERT INTO lab_tests (name, description, price) VALUES (?, ?, ?)',
-            [name, description, price]
+            'INSERT INTO lab_tests (name, description, price, cost_price) VALUES (?, ?, ?, ?)',
+            [name, description || '', price, cost_price]
         );
 
         return NextResponse.json({ message: 'Lab Test Added Successfully' });

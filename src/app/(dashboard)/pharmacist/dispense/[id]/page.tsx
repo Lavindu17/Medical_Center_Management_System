@@ -96,10 +96,18 @@ function BatchModal({ item, onClose, onConfirm, prescriptionId, isProcessing }: 
         <Dialog open onOpenChange={onClose}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-emerald-600" />
-                        FEFO Batch Selection — {item.medicine_name}
-                    </DialogTitle>
+                    <div className="flex items-center justify-between pr-6">
+                        <DialogTitle className="flex items-center gap-2">
+                            <Layers className="h-5 w-5 text-emerald-600" />
+                            FEFO Batch Selection — {item.medicine_name}
+                        </DialogTitle>
+                        {item.location && (
+                            <Badge variant="outline" className="flex items-center gap-1.5 px-2 py-1 h-7 border-amber-200 bg-amber-50 text-amber-700 font-bold">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {item.location}
+                            </Badge>
+                        )}
+                    </div>
                 </DialogHeader>
 
                 <div className="text-sm text-neutral-500 mb-2">

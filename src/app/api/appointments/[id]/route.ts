@@ -31,14 +31,45 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         
         const appointment = appointments[0];
 
-        // 2. Billing Info
+        // 2. Billing Info — enriched with itemized line items
         const bills = await query<any[]>(`
             SELECT *
             FROM bills
             WHERE appointment_id = ?
         `, [appointmentId]);
         
-        const bill = bills.length > 0 ? bills[0] : null;
+        let bill = bills.length > 0 ? bills[0] : null;
+
+        if (bill) {
+            // Itemized lab tests (price patient is charged)
+            const labItems = await query<any[]>(`
+                SELECT lt.name, lt.price, lr.status as lab_status
+                FROM lab_requests lr
+                JOIN lab_tests lt ON lt.id = lr.test_id
+                WHERE lr.appointment_id = ?
+            `, [appointmentId]);
+            bill.lab_items = labItems;
+
+            // Itemized medicines (dispensed only, selling price)
+            const medItems = await query<any[]>(`
+                SELECT m.name as medicine_name, m.unit,
+                       pi.dispensed_quantity as qty,
+                       ib.selling_price as unit_price,
+                       (pi.dispensed_quantity * ib.selling_price) as line_total
+                FROM prescription_items pi
+                JOIN prescriptions pr ON pr.id = pi.prescription_id
+                JOIN medicines m ON m.id = pi.medicine_id
+                LEFT JOIN (
+                    SELECT medicine_id, MAX(selling_price) as selling_price
+                    FROM inventory_batches
+                    WHERE expiry_date >= CURDATE()
+                    GROUP BY medicine_id
+                ) ib ON ib.medicine_id = pi.medicine_id
+                WHERE pr.appointment_id = ?
+                  AND pi.dispensed_quantity > 0
+            `, [appointmentId]);
+            bill.medicine_items = medItems;
+        }
 
         // 3. Prescription Info
         const prescriptions = await query<any[]>(`
@@ -51,7 +82,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         if (prescriptions.length > 0) {
             const prescriptionId = prescriptions[0].prescriptionId;
             const items = await query<any[]>(`
-                SELECT pi.id, pi.status, pi.dosage, pi.frequency, pi.duration, pi.quantity, m.name as medicineName
+                SELECT pi.id, pi.status, pi.dosage, pi.frequency, pi.duration, pi.quantity, pi.dispensed_quantity, m.name as medicineName
                 FROM prescription_items pi
                 JOIN medicines m ON pi.medicine_id = m.id
                 WHERE pi.prescription_id = ?
@@ -65,7 +96,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         // 4. Lab Results Info
         const labRequests = await query<any[]>(`
-            SELECT lr.id, lr.status, lr.result_url, lr.requested_at, lr.completed_at, lt.name as testName, lt.description
+            SELECT lr.id, lr.status, lr.result_url, lr.requested_at, lr.completed_at,
+                   lt.name as testName, lt.description, lt.price
             FROM lab_requests lr
             JOIN lab_tests lt ON lr.test_id = lt.id
             WHERE lr.appointment_id = ?

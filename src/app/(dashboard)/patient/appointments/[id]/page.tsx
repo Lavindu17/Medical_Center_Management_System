@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, User, Calendar, Clock, CreditCard, Pill, TestTube2, FileText } from 'lucide-react';
-import Link from 'next/link';
 
 export default function AppointmentDetailPage() {
     const params = useParams();
@@ -246,30 +245,82 @@ export default function AppointmentDetailPage() {
                         </CardHeader>
                         <CardContent className="pt-6">
                             {!bill ? (
-                                <p className="text-sm text-neutral-500 italic text-center py-4 border border-dashed rounded-lg bg-neutral-50">Invoice not yet generated.</p>
+                                <p className="text-sm text-neutral-500 italic text-center py-4 border border-dashed rounded-lg bg-neutral-50">Invoice not yet generated. Your bill will appear once the doctor finalizes your consultation.</p>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-neutral-500">Doctor's Fee</span>
-                                        <span className="font-medium">${Number(bill.doctor_fee).toFixed(2)}</span>
+                                <div className="space-y-1">
+                                    {/* Doctor Consultation */}
+                                    <div className="flex justify-between items-center py-2 text-sm">
+                                        <span className="text-neutral-600 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>
+                                            Doctor Consultation
+                                        </span>
+                                        <span className="font-medium">LKR {Number(bill.doctor_fee).toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-neutral-500">Medications</span>
-                                        <span className="font-medium">${Number(bill.pharmacy_total || 0).toFixed(2)}</span>
+
+                                    {/* Service Charge */}
+                                    <div className="flex justify-between items-center py-2 text-sm">
+                                        <span className="text-neutral-600 flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-neutral-400 inline-block"></span>
+                                            Service Charge
+                                        </span>
+                                        <span className="font-medium">LKR {Number(bill.service_charge).toFixed(2)}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-neutral-500">Lab Tests</span>
-                                        <span className="font-medium">${Number(bill.lab_total || 0).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-neutral-500">Service Charge</span>
-                                        <span className="font-medium">${Number(bill.service_charge).toFixed(2)}</span>
-                                    </div>
-                                    
-                                    <div className="border-t pt-4 mt-2">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <span className="font-bold">Total Amount</span>
-                                            <span className="text-lg font-bold text-amber-700">${Number(bill.total_amount).toFixed(2)}</span>
+
+                                    {/* Lab Tests — itemized */}
+                                    {bill.lab_items && bill.lab_items.length > 0 && (
+                                        <div className="py-2">
+                                            <div className="flex justify-between items-center text-sm mb-1">
+                                                <span className="text-neutral-600 flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-purple-400 inline-block"></span>
+                                                    Lab Tests
+                                                </span>
+                                                <span className="font-medium">LKR {Number(bill.lab_total || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="ml-4 space-y-0.5 border-l-2 border-purple-100 pl-3">
+                                                {bill.lab_items.map((lt: any, i: number) => (
+                                                    <div key={i} className="flex justify-between text-xs text-neutral-400">
+                                                        <span>{lt.name}</span>
+                                                        <span>LKR {Number(lt.price).toFixed(2)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Medicines — itemized */}
+                                    {bill.medicine_items && bill.medicine_items.length > 0 && (
+                                        <div className="py-2">
+                                            <div className="flex justify-between items-center text-sm mb-1">
+                                                <span className="text-neutral-600 flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+                                                    Medicines Dispensed
+                                                </span>
+                                                <span className="font-medium">LKR {Number(bill.pharmacy_total || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="ml-4 space-y-0.5 border-l-2 border-emerald-100 pl-3">
+                                                {bill.medicine_items.map((m: any, i: number) => (
+                                                    <div key={i} className="flex justify-between text-xs text-neutral-400">
+                                                        <span>{m.medicine_name} <span className="text-neutral-300">× {m.qty}</span></span>
+                                                        <span>LKR {Number(m.line_total || 0).toFixed(2)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Note: pending pharmacy */}
+                                    {(!bill.medicine_items || bill.medicine_items.length === 0) && Number(bill.pharmacy_total) === 0 && (
+                                        <div className="py-1 text-xs text-neutral-400 italic flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-200 inline-block"></span>
+                                            Medicines — pending dispensing
+                                        </div>
+                                    )}
+
+                                    {/* Total */}
+                                    <div className="border-t mt-3 pt-4 space-y-3">
+                                        <div className="flex justify-between items-center">
+                                            <span className="font-bold text-neutral-900">Total Amount</span>
+                                            <span className="text-xl font-bold text-amber-700">LKR {Number(bill.total_amount).toFixed(2)}</span>
                                         </div>
                                         
                                         <div className="flex justify-between items-center bg-neutral-50 p-3 rounded border">
@@ -278,11 +329,16 @@ export default function AppointmentDetailPage() {
                                                 {bill.status}
                                             </Badge>
                                         </div>
-
+                                        {bill.status === 'PAID' && bill.paid_at && (
+                                            <p className="text-xs text-neutral-400 text-center">
+                                                Paid on {new Date(bill.paid_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                {bill.payment_method && ` via ${bill.payment_method}`}
+                                            </p>
+                                        )}
                                         {bill.status !== 'PAID' && (
-                                            <Button className="w-full mt-4 bg-amber-600 hover:bg-amber-700 text-white" asChild>
-                                                <Link href="/patient/billing">Pay Now</Link>
-                                            </Button>
+                                            <p className="text-xs text-neutral-400 text-center italic">
+                                                Please visit the reception counter to complete payment.
+                                            </p>
                                         )}
                                     </div>
                                 </div>
