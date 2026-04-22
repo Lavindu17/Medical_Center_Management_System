@@ -21,6 +21,19 @@ export async function POST(req: Request) {
 
         const { patientId, doctorId, date, timeSlot, reason } = validation.data;
 
+        // Same-Day Time Validation
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA');
+        if (date === todayStr) {
+            const currentHours = now.getHours();
+            const currentMinutes = now.getMinutes();
+            const [slotH, slotM] = timeSlot.split(':').map(Number);
+            
+            if (slotH < currentHours || (slotH === currentHours && slotM <= currentMinutes)) {
+                return NextResponse.json({ message: 'This time slot has already passed.' }, { status: 400 });
+            }
+        }
+
         const connection = await pool.getConnection();
         await connection.beginTransaction();
 

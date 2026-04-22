@@ -8,7 +8,7 @@ import {
     LayoutDashboard,
     Package,
     FileText,
-    LogOut,
+    LogOut, Settings,
     Menu,
     Pill
 } from 'lucide-react';
@@ -26,6 +26,7 @@ export default function PharmacistLayout({
         { icon: LayoutDashboard, label: 'Dashboard', href: '/pharmacist' },
         { icon: Package, label: 'Inventory', href: '/pharmacist/inventory' },
         { icon: FileText, label: 'Prescriptions', href: '/pharmacist/prescriptions' },
+        { title: 'Settings', href: '/pharmacist/settings', icon: Settings },
     ];
 
     return (

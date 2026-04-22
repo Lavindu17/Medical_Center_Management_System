@@ -1,44 +1,134 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { cookies } from 'next/headers';
+import { AuthService } from '@/services/auth.service';
 
 export async function GET(req: Request) {
     try {
-        // 1. Revenue Breakdown (Lifetime)
-        const [breakdown] = await query<any[]>(`
-      SELECT 
-        SUM(doctor_fee) as consultation, 
-        SUM(pharmacy_total) as pharmacy, 
-        SUM(lab_total) as lab,
-        SUM(total_amount) as total
-      FROM bills 
-      WHERE status = 'PAID'
-    `);
+        const cookieStore = await cookies();
+        const token = cookieStore.get('token')?.value;
+        const user = await AuthService.verifyToken(token || '');
+        if (!user || user.role !== 'ADMIN') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        // 2. Daily Revenue & Profit (Last 30 Days)
-        const dailyStats = await query<any[]>(`
-      SELECT 
-        DATE(b.paid_at) as date,
-        SUM(b.total_amount) as revenue,
-        -- Calculate Profit
-        (
-          SUM(b.doctor_fee * (IFNULL(d.commission_rate, 100) / 100)) + -- Doctor Commission Profit (Actually usually commission is what admin TAKES, but assuming rate is what Doctor KEEPS, profit = 100-rate. Let's assume rate is what Hospital KEEPS for simplicity based on user prompt 'commission from doctor fees')
-          SUM(b.service_charge) + 
-          SUM(b.lab_total * 0.4) -- Assumed 40% margin on lab for now as we lack cost price in lab_tests
-        ) as estimated_profit
-      FROM bills b
-      JOIN appointments a ON b.appointment_id = a.id
-      JOIN doctors d ON a.doctor_id = d.user_id
-      WHERE b.status = 'PAID' AND b.paid_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-      GROUP BY DATE(b.paid_at)
-      ORDER BY date ASC
-    `);
+        // ── 1. Gross Revenue (only the center's income) ─────────────────────────
+        const revenueRows: any = await query(`
+            SELECT
+                COALESCE(SUM(b.service_charge), 0) as service_charges,
+                COALESCE(SUM(b.doctor_fee * d.commission_rate / 100), 0) as doctor_commissions,
+                COALESCE(SUM(b.lab_total), 0) as lab_revenue,
+                COALESCE(SUM(b.pharmacy_total), 0) as pharmacy_revenue,
+                COALESCE(SUM(
+                    b.service_charge +
+                    b.doctor_fee * d.commission_rate / 100 +
+                    b.lab_total +
+                    b.pharmacy_total
+                ), 0) as gross_revenue
+            FROM bills b
+            JOIN appointments a ON a.id = b.appointment_id
+            JOIN doctors d ON d.user_id = a.doctor_id
+            WHERE b.status = 'PAID'
+        `);
 
-        // Note: Pharmacy profit calculation requires deeper join, implementing simplified version for performance first
-        // In production, we'd run a separate precise query for pharmacy profit
+        // ── 2. Medicine COGS (buying price × dispensed qty) ──────────────────────
+        const cogsRows: any = await query(`
+            SELECT COALESCE(SUM(pi.dispensed_quantity * COALESCE(m.buying_price, 0)), 0) as medicine_cogs
+            FROM prescription_items pi
+            JOIN medicines m ON m.id = pi.medicine_id
+            WHERE pi.status IN ('DISPENSED', 'PARTIALLY_COMPLETED')
+              AND pi.dispensed_quantity > 0
+        `);
+
+        // ── 3. Lab COGS (cost_price × completed tests) ───────────────────────────
+        const labCogsRows: any = await query(`
+            SELECT COALESCE(SUM(lt.cost_price), 0) as lab_cogs
+            FROM lab_requests lr
+            JOIN lab_tests lt ON lt.id = lr.test_id
+            WHERE lr.status = 'COMPLETED'
+        `);
+
+        // ── 4. Inventory Valuation ───────────────────────────────────────────────
+        const inventoryRows: any = await query(`
+            SELECT
+                COALESCE(SUM(CASE WHEN expiry_date >= CURDATE() THEN quantity_current * buying_price ELSE 0 END), 0) as asset_value,
+                COALESCE(SUM(CASE WHEN expiry_date < CURDATE() AND quantity_current > 0 THEN quantity_current * buying_price ELSE 0 END), 0) as write_off_value
+            FROM inventory_batches
+        `);
+
+        // ── 5. Total Doctor Net Earnings (payout obligations) ────────────────────
+        const doctorNetRows: any = await query(`
+            SELECT COALESCE(SUM(b.doctor_fee * (1 - d.commission_rate / 100)), 0) as total_doctor_payouts
+            FROM bills b
+            JOIN appointments a ON a.id = b.appointment_id
+            JOIN doctors d ON d.user_id = a.doctor_id
+            WHERE b.status = 'PAID' AND a.status = 'COMPLETED'
+        `);
+
+        // ── 6. Per-Doctor Payouts Table ──────────────────────────────────────────
+        const doctorPayouts: any = await query(`
+            SELECT
+                u.name as doctor_name,
+                d.specialization,
+                d.commission_rate,
+                COUNT(a.id) as completed_appointments,
+                COALESCE(SUM(b.doctor_fee), 0) as gross_charged,
+                COALESCE(SUM(b.doctor_fee * d.commission_rate / 100), 0) as center_commission,
+                COALESCE(SUM(b.doctor_fee * (1 - d.commission_rate / 100)), 0) as net_payout
+            FROM appointments a
+            JOIN bills b ON b.appointment_id = a.id
+            JOIN doctors d ON d.user_id = a.doctor_id
+            JOIN users u ON u.id = a.doctor_id
+            WHERE a.status = 'COMPLETED' AND b.status = 'PAID'
+            GROUP BY a.doctor_id, u.name, d.specialization, d.commission_rate
+            ORDER BY net_payout DESC
+        `);
+
+        // ── 7. Daily Revenue (Last 30 Days) ──────────────────────────────────────
+        const dailyRevenue: any = await query(`
+            SELECT
+                DATE(b.paid_at) as date,
+                COALESCE(SUM(b.service_charge + b.doctor_fee * d.commission_rate / 100 + b.lab_total + b.pharmacy_total), 0) as gross_revenue,
+                COALESCE(SUM(b.total_amount), 0) as patient_billed
+            FROM bills b
+            JOIN appointments a ON a.id = b.appointment_id
+            JOIN doctors d ON d.user_id = a.doctor_id
+            WHERE b.status = 'PAID' AND b.paid_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(b.paid_at)
+            ORDER BY date ASC
+        `);
+
+        // query() returns rows array directly — access [0] for single-row aggregate results
+        const r = revenueRows[0];
+        const grossRevenue = Number(r.gross_revenue);
+        const medicineCogs = Number(cogsRows[0].medicine_cogs);
+        const labCogs = Number(labCogsRows[0].lab_cogs);
+        const totalCogs = medicineCogs + labCogs;
+        const totalDoctorPayouts = Number(doctorNetRows[0].total_doctor_payouts);
+        const writeOff = Number(inventoryRows[0].write_off_value);
+        const trueGrossProfit = grossRevenue - totalCogs - totalDoctorPayouts - writeOff;
 
         return NextResponse.json({
-            breakdown: breakdown || { consultation: 0, pharmacy: 0, lab: 0, total: 0 },
-            daily: dailyStats
+            revenue: {
+                service_charges: Number(r.service_charges),
+                doctor_commissions: Number(r.doctor_commissions),
+                lab_revenue: Number(r.lab_revenue),
+                pharmacy_revenue: Number(r.pharmacy_revenue),
+                gross_revenue: grossRevenue,
+            },
+            cogs: {
+                medicine_cogs: medicineCogs,
+                lab_cogs: labCogs,
+                total_cogs: totalCogs,
+            },
+            inventory: {
+                asset_value: Number(inventoryRows[0].asset_value),
+                write_off_value: writeOff,
+            },
+            profit: {
+                total_doctor_payouts: totalDoctorPayouts,
+                true_gross_profit: trueGrossProfit,
+            },
+            doctor_payouts: doctorPayouts,
+            daily: dailyRevenue,
         });
 
     } catch (error) {

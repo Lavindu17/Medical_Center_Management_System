@@ -46,18 +46,45 @@ export async function GET(req: Request) {
       `, [patientId]);
 
         } else if (type === 'bills') {
-            data = await query(`
-        SELECT 
-          b.id, b.total_amount, b.status, b.generated_at,
-          b.doctor_fee, b.pharmacy_total, b.lab_total, b.service_charge,
-          a.date as appointmentDate,
-          d.name as doctorName
-        FROM bills b
-        JOIN appointments a ON b.appointment_id = a.id
-        JOIN users d ON a.doctor_id = d.id
-        WHERE a.patient_id = ?
-        ORDER BY b.generated_at DESC
-      `, [patientId]);
+            const bills: any = await query(`
+                SELECT 
+                  b.id, b.total_amount, b.status, b.generated_at, b.paid_at,
+                  b.doctor_fee, b.pharmacy_total, b.lab_total, b.service_charge,
+                  a.id as appointment_id, a.date as appointmentDate,
+                  d.name as doctorName, doc.specialization
+                FROM bills b
+                JOIN appointments a ON b.appointment_id = a.id
+                JOIN users d ON a.doctor_id = d.id
+                JOIN doctors doc ON doc.user_id = d.id
+                WHERE a.patient_id = ?
+                ORDER BY b.generated_at DESC
+            `, [patientId]);
+
+            // Enrich each bill with line items
+            for (const bill of bills as any[]) {
+                // Lab line items
+                const labItems: any = await query(`
+                    SELECT lt.name, lt.price
+                    FROM lab_requests lr
+                    JOIN lab_tests lt ON lt.id = lr.test_id
+                    WHERE lr.appointment_id = ?
+                `, [bill.appointment_id]);
+                bill.lab_items = labItems;
+
+                // Medicine line items (dispensed only)
+                const medicineItems: any = await query(`
+                    SELECT m.name, m.unit, pi.dispensed_quantity as qty, m.price_per_unit as unit_price,
+                           (pi.dispensed_quantity * m.price_per_unit) as total
+                    FROM prescription_items pi
+                    JOIN prescriptions pr ON pr.id = pi.prescription_id
+                    JOIN medicines m ON m.id = pi.medicine_id
+                    WHERE pr.appointment_id = ?
+                      AND pi.dispensed_quantity > 0
+                `, [bill.appointment_id]);
+                bill.medicine_items = medicineItems;
+            }
+
+            data = bills;
 
         } else {
             return NextResponse.json({ message: 'Invalid type' }, { status: 400 });

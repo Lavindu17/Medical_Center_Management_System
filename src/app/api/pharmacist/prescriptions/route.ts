@@ -34,7 +34,7 @@ export async function GET() {
             JOIN appointments a ON p.appointment_id = a.id
             JOIN users pat_user ON a.patient_id = pat_user.id
             JOIN users doc_user ON p.doctor_id = doc_user.id
-            WHERE p.status = 'PENDING'
+            WHERE p.status IN ('PENDING', 'PARTIALLY_COMPLETED')
             ORDER BY p.issued_at ASC`
         );
 

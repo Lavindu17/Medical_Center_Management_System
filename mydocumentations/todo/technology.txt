@@ -20,7 +20,7 @@ TypeScript is a strongly typed superset of JavaScript that was used as the prima
 It adds static type definitions to the code, which helped us catch errors early during development and 
 ensured that data structures (like patient records and medical prescriptions) remained consistent 
 throughout the application. 
-By using TypeScript, we improved the reliability of the system and made the codebase easier to 
+By using TypeScript, I improved the reliability of the system and made the codebase easier to 
 maintain and refactor as the project expanded.
  
 4.2.3 Node.js 
@@ -76,6 +76,6 @@ versions if any technical challenges arose during implementation.
  
 Postman was used extensively for testing the application's API endpoints. It helped verify that the 
 Server Actions and backend logic correctly handled data requests from the frontend forms. 
-We used Postman to validate crucial workflows such as user login authentication, prescription data 
+I used Postman to validate crucial workflows such as user login authentication, prescription data 
 processing, and medical report uploads, ensuring that the backend processed and stored information 
 accurately.

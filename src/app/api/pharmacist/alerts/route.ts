@@ -31,14 +31,13 @@ export async function GET() {
                 m.id as medicine_id,
                 m.name as medicine_name,
                 m.unit,
-                DATEDIFF(?, b.expiry_date) as days_expired
+                DATEDIFF(CURDATE(), b.expiry_date) as days_expired
             FROM inventory_batches b
             JOIN medicines m ON b.medicine_id = m.id
-            WHERE b.expiry_date < ?
+            WHERE b.expiry_date < CURDATE()
               AND b.quantity_current > 0
-              AND b.status = 'ACTIVE'
             ORDER BY b.expiry_date ASC
-        `, [today, today]);
+        `);
 
         // 2. Batches Expiring Within 30 Days
         const expiringSoon: any = await query(`
@@ -51,15 +50,15 @@ export async function GET() {
                 m.id as medicine_id,
                 m.name as medicine_name,
                 m.unit,
-                DATEDIFF(b.expiry_date, ?) as days_until_expiry
+                DATEDIFF(b.expiry_date, CURDATE()) as days_until_expiry
             FROM inventory_batches b
             JOIN medicines m ON b.medicine_id = m.id
-            WHERE b.expiry_date >= ?
-              AND b.expiry_date <= ?
+            WHERE b.expiry_date >= CURDATE()
+              AND b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
               AND b.quantity_current > 0
               AND b.status = 'ACTIVE'
             ORDER BY b.expiry_date ASC
-        `, [today, today, thirtyDaysFromNow]);
+        `);
 
         // 3. Batches Expiring Within 31-90 Days
         const expiringLater: any = await query(`
@@ -72,15 +71,15 @@ export async function GET() {
                 m.id as medicine_id,
                 m.name as medicine_name,
                 m.unit,
-                DATEDIFF(b.expiry_date, ?) as days_until_expiry
+                DATEDIFF(b.expiry_date, CURDATE()) as days_until_expiry
             FROM inventory_batches b
             JOIN medicines m ON b.medicine_id = m.id
-            WHERE b.expiry_date > ?
-              AND b.expiry_date <= ?
+            WHERE b.expiry_date > DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+              AND b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 90 DAY)
               AND b.quantity_current > 0
               AND b.status = 'ACTIVE'
             ORDER BY b.expiry_date ASC
-        `, [today, thirtyDaysFromNow, ninetyDaysFromNow]);
+        `);
 
         // 4. Medicines with Multiple Batches with Different Expiry Dates
         // Find medicines where the difference between earliest and latest expiry is > 90 days

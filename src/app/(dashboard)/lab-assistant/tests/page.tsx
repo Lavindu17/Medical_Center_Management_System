@@ -23,6 +23,7 @@ interface LabTest {
     name: string;
     description: string;
     price: string;
+    cost_price: string;
 }
 
 export default function LabTestsPage() {
@@ -32,7 +33,7 @@ export default function LabTestsPage() {
 
     // Form State
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [newTest, setNewTest] = useState({ name: '', description: '', price: '' });
+    const [newTest, setNewTest] = useState({ name: '', description: '', price: '', cost_price: '' });
     const [submitting, setSubmitting] = useState(false);
 
     const fetchTests = async () => {
@@ -64,7 +65,7 @@ export default function LabTestsPage() {
 
             if (res.ok) {
                 setIsAddOpen(false);
-                setNewTest({ name: '', description: '', price: '' });
+                setNewTest({ name: '', description: '', price: '', cost_price: '' });
                 fetchTests();
             } else {
                 alert('Failed to add test');
@@ -109,13 +110,23 @@ export default function LabTestsPage() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="price">Price (LKR)</Label>
+                                <Label htmlFor="price">Selling Price (LKR)</Label>
                                 <Input
                                     id="price"
                                     type="number"
                                     value={newTest.price}
                                     onChange={(e) => setNewTest({ ...newTest, price: e.target.value })}
                                     placeholder="e.g. 1500"
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="cost_price">Cost Price (LKR)</Label>
+                                <Input
+                                    id="cost_price"
+                                    type="number"
+                                    value={newTest.cost_price}
+                                    onChange={(e) => setNewTest({ ...newTest, cost_price: e.target.value })}
+                                    placeholder="e.g. 800"
                                 />
                             </div>
                             <div className="grid gap-2">
@@ -130,7 +141,7 @@ export default function LabTestsPage() {
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-                            <Button onClick={handleAddTest} disabled={!newTest.name || !newTest.price || submitting}>
+                            <Button onClick={handleAddTest} disabled={!newTest.name || !newTest.price || !newTest.cost_price || submitting}>
                                 {submitting ? 'Saving...' : 'Save Test'}
                             </Button>
                         </DialogFooter>
@@ -163,17 +174,18 @@ export default function LabTestsPage() {
                                 <TableRow>
                                     <TableHead>Test Name</TableHead>
                                     <TableHead>Description</TableHead>
-                                    <TableHead className="text-right">Price</TableHead>
+                                    <TableHead className="text-right">Selling Price</TableHead>
+                                    <TableHead className="text-right">Cost Price</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8">Loading...</TableCell>
+                                        <TableCell colSpan={4} className="text-center py-8">Loading...</TableCell>
                                     </TableRow>
                                 ) : filteredTests.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                             No tests found. Add one to get started.
                                         </TableCell>
                                     </TableRow>
@@ -184,6 +196,9 @@ export default function LabTestsPage() {
                                             <TableCell className="text-muted-foreground">{test.description || '-'}</TableCell>
                                             <TableCell className="text-right font-mono">
                                                 LKR {parseFloat(test.price).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono text-orange-700">
+                                                LKR {parseFloat(test.cost_price || '0').toFixed(2)}
                                             </TableCell>
                                         </TableRow>
                                     ))

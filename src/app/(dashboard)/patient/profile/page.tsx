@@ -18,7 +18,10 @@ interface Allergy {
     severity: 'MILD' | 'MODERATE' | 'SEVERE';
 }
 
+import { ChangePasswordCard } from '@/components/auth/ChangePasswordCard';
+
 export default function PatientProfilePage() {
+// ... existing states
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -169,7 +172,7 @@ export default function PatientProfilePage() {
             </div>
 
             <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="mb-6 w-full h-auto grid grid-cols-1 sm:grid-cols-3 gap-2 bg-transparent sm:bg-muted p-0 sm:p-1">
+                <TabsList className="mb-6 w-full h-auto flex flex-wrap gap-2 bg-transparent sm:bg-muted p-0 sm:p-1 justify-start">
                     <TabsTrigger value="personal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
                         <User className="h-4 w-4 mr-2" /> Personal Info
                     </TabsTrigger>
@@ -181,6 +184,9 @@ export default function PatientProfilePage() {
                     </TabsTrigger>
                     <TabsTrigger value="family" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
                         <Users className="h-4 w-4 mr-2" /> Family Accounts
+                    </TabsTrigger>
+                    <TabsTrigger value="security" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                        <ShieldAlert className="h-4 w-4 mr-2" /> Security Settings
                     </TabsTrigger>
                 </TabsList>
 
@@ -391,6 +397,11 @@ export default function PatientProfilePage() {
 
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* SECURITY SETTINGS */}
+                <TabsContent value="security">
+                    <ChangePasswordCard />
                 </TabsContent>
             </Tabs>
 

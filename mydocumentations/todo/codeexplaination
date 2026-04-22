@@ -1,0 +1,102 @@
+# Sethro Medical Center - Code Functionality Breakdown
+
+This document provides a deep dive into **how the code actually works** for every major functionality in the system. For each feature, we trace the flow from the Database, to the Backend API, all the way to the Frontend UI.
+
+---
+
+## 1. Authentication & Security (Login Flow)
+
+**The Goal:** Securely log in users and give them access only to their specific dashboards (Role-Based Access Control).
+
+* **Database Level:**
+  * The `users` table stores the `email`, `role`, and `password_hash` (hashed using bcrypt so the raw password is never exposed).
+* **Backend Level (`src/app/api/auth/login/route.ts`):**
+  * When a user submits the login form, a POST request hits this API route.
+  * **Zod** validates that the email is a valid string and the password is provided.
+  * The `AuthService` queries the database by email.
+  * `bcrypt.compare()` checks if the provided password matches the hash.
+  * If successful, the server generates a **JWT (JSON Web Token)** containing the user's `id` and `role`. This token is placed inside an `httpOnly` cookie (which prevents malicious JavaScript from stealing it).
+* **Frontend & Middleware Level:**
+  * Next.js `src/middleware.ts` runs on *every* page request. It reads the JWT from the cookie. 
+  * If a user with the `PATIENT` role tries to navigate to `/pharmacist`, the middleware intercepts it and redirects them, ensuring absolute security.
+
+---
+
+## 2. Appointment Booking Workflow
+
+**The Goal:** Allow a patient or receptionist to schedule a time slot with a doctor.
+
+* **Database Level:**
+  * The `appointments` table acts as a junction. It stores `patient_id`, `doctor_id`, `date`, `time_slot`, and `status` (defaulting to `PENDING`).
+* **Backend Level (`src/app/api/appointments/...`):**
+  * To book, the API receives the requested doctor, date, and time.
+  * A service function checks the `doctor_schedules` table to ensure the doctor works on that day and time.
+  * It also checks existing `appointments` to ensure that specific time slot isn't already taken (preventing double-booking).
+  * A new row is inserted into `appointments`.
+* **Frontend Level (`src/app/(dashboard)/patient/appointments/page.tsx`):**
+  * **Server Component:** The page fetches the list of doctors on the server to render a dropdown.
+  * **Client Component (Form):** We use `react-hook-form` paired with a Zod schema to ensure the patient selects a valid date and doctor before the form can even be submitted.
+
+---
+
+## 3. The Medical Consultation (Doctor's Workflow)
+
+**The Goal:** A doctor examines a patient, records vitals, writes a prescription, and orders lab tests.
+
+* **Database Level:**
+  * Updates the `appointments` row with `blood_pressure`, `weight`, `temperature`, and changes status to `COMPLETED`.
+  * Creates a row in `prescriptions` linking to the appointment.
+  * Creates multiple rows in `prescription_items` linking to specific `medicines`.
+  * Creates rows in `lab_requests` if tests are needed.
+* **Backend Level (`src/app/api/doctor/consultation/save/route.ts`):**
+  * This is a massive API endpoint because it does many things at once.
+  * It uses a **Database Transaction**. A transaction ensures that if saving the prescription succeeds, but saving the lab request fails, the *entire* operation rolls back. We cannot have partial medical records.
+* **Frontend Level:**
+  * The doctor sees an interface with dynamic fields (e.g., a button to "Add another medicine"). 
+  * React state handles these dynamic arrays. When the doctor clicks "Save", all the vitals, medicines, and lab test IDs are bundled into one large JSON payload and POSTed to the API.
+
+---
+
+## 4. Pharmacy & Inventory Management
+
+**The Goal:** Track medicine stock, handle expiry dates, and dispense drugs to patients.
+
+* **Database Level:**
+  * `medicines` table holds the catalog (e.g., "Paracetamol", Category, Price).
+  * `inventory_batches` holds the actual physical boxes (e.g., Batch #123 expires in 2025, Batch #124 expires in 2026).
+* **Backend Level (Dispensing Logic):**
+  * When a pharmacist clicks "Dispense" for a prescription, the backend doesn't just subtract stock randomly.
+  * It uses **FEFO (First Expired, First Out)** logic. It queries `inventory_batches` sorted by `expiry_date` ascending.
+  * It deducts stock from the oldest batch first. If the oldest batch runs out, it moves to the next oldest batch until the prescription quantity is fulfilled.
+* **Frontend Level (`src/app/(dashboard)/pharmacist/...`):**
+  * The pharmacist dashboard heavily uses Shadcn UI Data Tables to display expiring batches in red, low-stock warnings in yellow, and healthy stock in green.
+
+---
+
+## 5. Laboratory Workflow
+
+**The Goal:** Process doctor-requested tests and make results available.
+
+* **Database Level:**
+  * The `lab_requests` table starts with a `PENDING` status. It links an `appointment_id` to a `test_id` (from the `lab_tests` catalog table).
+* **Backend Level:**
+  * The Lab Assistant clicks to upload a result. The API handles file upload (saving the PDF/Image URL) and updates the row in `lab_requests` with `result_url` and changes the status to `COMPLETED`.
+* **Frontend Level:**
+  * Patients and Doctors have a "View Results" button that becomes active only when `status === 'COMPLETED'`. Clicking it opens the URL stored in the database.
+
+---
+
+## 6. The Billing Engine
+
+**The Goal:** Calculate exactly what the patient owes based on all services rendered during an appointment.
+
+* **Database Level:**
+  * The `bills` table aggregates data. It has columns for `doctor_fee`, `service_charge`, `pharmacy_total`, `lab_total`, and `total_amount`.
+* **Backend Level (The Calculation Service):**
+  * When an appointment finishes, the billing service is triggered.
+  * It fetches the doctor's consultation fee from the `doctors` table.
+  * It calculates the `pharmacy_total` by summing the price of all dispensed `prescription_items`.
+  * It calculates the `lab_total` by summing the price of all associated `lab_requests`.
+  * It adds a hospital `service_charge` and saves the final `bills` row with a `PENDING` status.
+* **Frontend Level:**
+  * The Receptionist dashboard pulls up `PENDING` bills. When the patient pays with cash/card, the receptionist clicks "Settle Bill", triggering an API that changes the bill status to `PAID` and updates the center's Revenue reports.
