@@ -7,6 +7,7 @@ import {
     Banknote, TrendingUp, TrendingDown, Package, Pill,
     FlaskConical, Stethoscope, AlertTriangle, ChevronDown
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface FinancialData {
     revenue: { service_charges: number; doctor_commissions: number; lab_revenue: number; pharmacy_revenue: number; gross_revenue: number; };
@@ -36,14 +37,26 @@ export default function RevenuePage() {
     const [data, setData] = useState<FinancialData | null>(null);
     const [loading, setLoading] = useState(true);
     const [showDoctors, setShowDoctors] = useState(false);
+    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
+    const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
 
     useEffect(() => {
-        fetch('/api/admin/revenue')
+        setLoading(true);
+        const year = parseInt(selectedYear);
+        const month = parseInt(selectedMonth);
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const startDate = `${firstDay.getFullYear()}-${pad(firstDay.getMonth() + 1)}-${pad(firstDay.getDate())}`;
+        const endDate = `${lastDay.getFullYear()}-${pad(lastDay.getMonth() + 1)}-${pad(lastDay.getDate())}`;
+
+        fetch(`/api/admin/revenue?startDate=${startDate}&endDate=${endDate}`)
             .then(res => res.json())
             .then(setData)
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    }, [selectedMonth, selectedYear]);
 
     if (loading) return <div className="p-8 text-neutral-500">Loading analytics...</div>;
     if (!data || data.message || !data.revenue) return <div className="p-8 text-red-500">Failed to load financial data: {data?.message || 'Unknown error'}</div>;
@@ -55,9 +68,43 @@ export default function RevenuePage() {
 
     return (
         <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
-            <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Financial Dashboard</h1>
-                <p className="text-sm text-neutral-500 mt-1">Medical center revenue, costs, and profitability analysis.</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-neutral-900">Financial Dashboard</h1>
+                    <p className="text-sm text-neutral-500 mt-1">Medical center revenue, costs, and profitability analysis.</p>
+                </div>
+                <div className="flex gap-2">
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                        <SelectTrigger className="w-[140px] bg-white">
+                            <SelectValue placeholder="Month" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="0">January</SelectItem>
+                            <SelectItem value="1">February</SelectItem>
+                            <SelectItem value="2">March</SelectItem>
+                            <SelectItem value="3">April</SelectItem>
+                            <SelectItem value="4">May</SelectItem>
+                            <SelectItem value="5">June</SelectItem>
+                            <SelectItem value="6">July</SelectItem>
+                            <SelectItem value="7">August</SelectItem>
+                            <SelectItem value="8">September</SelectItem>
+                            <SelectItem value="9">October</SelectItem>
+                            <SelectItem value="10">November</SelectItem>
+                            <SelectItem value="11">December</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger className="w-[110px] bg-white">
+                            <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {[...Array(5)].map((_, i) => {
+                                const year = (new Date().getFullYear() - i).toString();
+                                return <SelectItem key={year} value={year}>{year}</SelectItem>;
+                            })}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             {/* ── A. Gross Revenue ─────────────────────────────────── */}
@@ -217,7 +264,7 @@ export default function RevenuePage() {
 
             {/* ── F. Daily Chart ───────────────────────────────────── */}
             <section className="space-y-3">
-                <h2 className="font-bold text-neutral-800">F — Daily Revenue (Last 30 Days)</h2>
+                <h2 className="font-bold text-neutral-800">F — Daily Revenue (Selected Month)</h2>
                 <Card>
                     <CardContent className="pt-4">
                         <div className="flex gap-4 mb-3">
@@ -226,7 +273,7 @@ export default function RevenuePage() {
                         </div>
                         <div className="h-[220px] flex items-end gap-1 border-b border-l border-neutral-200 pb-0 pl-0">
                             {daily.length === 0 ? (
-                                <div className="w-full flex items-center justify-center text-neutral-400 text-sm">No data in the last 30 days.</div>
+                                <div className="w-full flex items-center justify-center text-neutral-400 text-sm h-full">No data in the selected month.</div>
                             ) : daily.map((day, i) => {
                                 const hGross = (Number(day.gross_revenue) / maxDaily) * 100;
                                 const hBilled = (Number(day.patient_billed) / maxDaily) * 100;
@@ -244,7 +291,7 @@ export default function RevenuePage() {
                             })}
                         </div>
                         <div className="flex justify-between mt-1 text-xs text-neutral-400 px-1">
-                            <span>30 days ago</span><span>Today</span>
+                            <span>Start of month</span><span>End of month</span>
                         </div>
                     </CardContent>
                 </Card>
