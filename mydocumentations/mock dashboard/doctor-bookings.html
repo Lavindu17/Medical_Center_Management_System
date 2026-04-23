@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doctor Bookings — Sethro Medical Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f5f7fa;
+      color: #1a2332;
+      font-size: 14px;
+    }
+
+    .layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 210px;
+      background: #fff;
+      border-right: 1px solid #e8ecf0;
+      padding: 24px 0;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid #e8ecf0;
+      font-weight: 700;
+      font-size: 15px;
+      color: #1a2332;
+    }
+
+    .logo span { color: #0891b2; }
+
+    nav { padding: 16px 12px; }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #9aa3ae;
+      padding: 0 8px;
+      margin: 16px 0 6px;
+    }
+
+    .nav-label:first-child { margin-top: 0; }
+
+    a.nav-link {
+      display: block;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: #6b7280;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      margin-bottom: 2px;
+      transition: background 150ms, color 150ms;
+    }
+
+    a.nav-link:hover { background: #f0f9ff; color: #0891b2; }
+    a.nav-link.active { background: #e0f5fb; color: #0891b2; font-weight: 600; }
+
+    /* Main */
+    .main { flex: 1; display: flex; flex-direction: column; }
+
+    .topbar {
+      background: #fff;
+      border-bottom: 1px solid #e8ecf0;
+      padding: 18px 28px;
+    }
+
+    .page-title { font-size: 17px; font-weight: 700; }
+    .page-sub { font-size: 12.5px; color: #9aa3ae; margin-top: 2px; }
+
+    .content { padding: 28px; }
+
+    /* KPI */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .kpi {
+      background: #fff;
+      border: 1px solid #e8ecf0;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .kpi-label { font-size: 12px; color: #9aa3ae; font-weight: 500; margin-bottom: 8px; }
+    .kpi-value { font-size: 26px; font-weight: 700; color: #1a2332; line-height: 1; }
+    .kpi-sub { font-size: 12px; color: #9aa3ae; margin-top: 6px; }
+
+    .kpi.green .kpi-value { color: #059669; }
+    .kpi.red .kpi-value   { color: #dc2626; }
+    .kpi.amber .kpi-value { color: #d97706; }
+
+    /* Section row */
+    .section-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border: 1px solid #e8ecf0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid #e8ecf0;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .card-body { padding: 20px; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      font-size: 11.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #9aa3ae;
+      padding: 10px 16px;
+      border-bottom: 1px solid #e8ecf0;
+      background: #fafbfc;
+    }
+    td { padding: 11px 16px; border-bottom: 1px solid #e8ecf0; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-amber  { background: #fef3c7; color: #92400e; }
+    .badge-blue   { background: #dbeafe; color: #1e40af; }
+
+    /* Doctor summary rows */
+    .doc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #e8ecf0;
+      font-size: 13.5px;
+    }
+    .doc-row:last-child { border-bottom: none; }
+    .doc-name { font-weight: 600; }
+    .doc-spec { font-size: 12px; color: #9aa3ae; margin-top: 2px; }
+    .doc-stats { text-align: right; }
+    .doc-bookings { font-weight: 700; }
+    .doc-revenue { font-size: 12px; color: #059669; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">Sethro <span>Medical</span></div>
+    <nav>
+      <div class="nav-label">Overview</div>
+      <a class="nav-link" href="#">Dashboard</a>
+
+      <div class="nav-label">Reports</div>
+      <a class="nav-link" href="pharmacy-inventory.html">Pharmacy Inventory</a>
+      <a class="nav-link" href="revenue.html">Revenue</a>
+      <a class="nav-link active" href="doctor-bookings.html">Doctor Bookings</a>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title">Doctor Booking Report</div>
+      <div class="page-sub">Appointment summary — April 2026</div>
+    </div>
+
+    <div class="content">
+
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="kpi-label">Total Bookings</div>
+          <div class="kpi-value">157</div>
+          <div class="kpi-sub">This month</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-label">Completed</div>
+          <div class="kpi-value">128</div>
+          <div class="kpi-sub">81.5% completion rate</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-label">Cancelled</div>
+          <div class="kpi-value">18</div>
+          <div class="kpi-sub">11.5% cancellation rate</div>
+        </div>
+        <div class="kpi amber">
+          <div class="kpi-label">No-Shows</div>
+          <div class="kpi-value">11</div>
+          <div class="kpi-sub">7% of total bookings</div>
+        </div>
+      </div>
+
+      <!-- Doctor summary + cancellation reasons -->
+      <div class="section-row">
+
+        <!-- Doctor summary -->
+        <div class="card">
+          <div class="card-head">Bookings per Doctor</div>
+          <div class="card-body" style="padding:0 20px">
+            <div class="doc-row">
+              <div>
+                <div class="doc-name">Doctor 1</div>
+                <div class="doc-spec">General Medicine</div>
+              </div>
+              <div class="doc-stats">
+                <div class="doc-bookings">48 bookings</div>
+                <div class="doc-revenue">LKR 33,600</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div>
+                <div class="doc-name">Doctor 2</div>
+                <div class="doc-spec">Cardiology</div>
+              </div>
+              <div class="doc-stats">
+                <div class="doc-bookings">32 bookings</div>
+                <div class="doc-revenue">LKR 32,000</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div>
+                <div class="doc-name">Doctor 3</div>
+                <div class="doc-spec">Pediatrics</div>
+              </div>
+              <div class="doc-stats">
+                <div class="doc-bookings">40 bookings</div>
+                <div class="doc-revenue">LKR 24,000</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div>
+                <div class="doc-name">Doctor 4</div>
+                <div class="doc-spec">Dermatology</div>
+              </div>
+              <div class="doc-stats">
+                <div class="doc-bookings">22 bookings</div>
+                <div class="doc-revenue">LKR 22,400</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div>
+                <div class="doc-name">Doctor 5</div>
+                <div class="doc-spec">Orthopedics</div>
+              </div>
+              <div class="doc-stats">
+                <div class="doc-bookings">15 bookings</div>
+                <div class="doc-revenue">LKR 15,000</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancellation reasons -->
+        <div class="card">
+          <div class="card-head">Cancellation Reasons</div>
+          <div class="card-body" style="padding:0 20px">
+            <div class="doc-row">
+              <div class="doc-name">Patient personal reason</div>
+              <div class="doc-stats">
+                <div class="doc-bookings">7</div>
+                <div class="doc-revenue" style="color:#9aa3ae">39%</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-name">Doctor unavailable</div>
+              <div class="doc-stats">
+                <div class="doc-bookings">5</div>
+                <div class="doc-revenue" style="color:#9aa3ae">28%</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-name">Rescheduled</div>
+              <div class="doc-stats">
+                <div class="doc-bookings">4</div>
+                <div class="doc-revenue" style="color:#9aa3ae">22%</div>
+              </div>
+            </div>
+            <div class="doc-row">
+              <div class="doc-name">Other / Unknown</div>
+              <div class="doc-stats">
+                <div class="doc-bookings">2</div>
+                <div class="doc-revenue" style="color:#9aa3ae">11%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking detail table -->
+      <div class="card">
+        <div class="card-head">Booking Details</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Booking ID</th>
+              <th>Patient</th>
+              <th>Doctor</th>
+              <th>Date</th>
+              <th>Fee (LKR)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>#B-001</td>
+              <td>Patient 1</td>
+              <td>Doctor 1</td>
+              <td>01 Apr 2026</td>
+              <td>700</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+            <tr>
+              <td>#B-002</td>
+              <td>Patient 2</td>
+              <td>Doctor 2</td>
+              <td>02 Apr 2026</td>
+              <td>1,000</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+            <tr>
+              <td>#B-003</td>
+              <td>Patient 3</td>
+              <td>Doctor 1</td>
+              <td>03 Apr 2026</td>
+              <td>700</td>
+              <td><span class="badge badge-red">Cancelled</span></td>
+            </tr>
+            <tr>
+              <td>#B-004</td>
+              <td>Patient 4</td>
+              <td>Doctor 3</td>
+              <td>04 Apr 2026</td>
+              <td>600</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+            <tr>
+              <td>#B-005</td>
+              <td>Patient 5</td>
+              <td>Doctor 4</td>
+              <td>05 Apr 2026</td>
+              <td>1,200</td>
+              <td><span class="badge badge-amber">No-Show</span></td>
+            </tr>
+            <tr>
+              <td>#B-006</td>
+              <td>Patient 6</td>
+              <td>Doctor 2</td>
+              <td>06 Apr 2026</td>
+              <td>1,000</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+            <tr>
+              <td>#B-007</td>
+              <td>Patient 7</td>
+              <td>Doctor 5</td>
+              <td>07 Apr 2026</td>
+              <td>1,500</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+            <tr>
+              <td>#B-008</td>
+              <td>Patient 8</td>
+              <td>Doctor 3</td>
+              <td>08 Apr 2026</td>
+              <td>600</td>
+              <td><span class="badge badge-red">Cancelled</span></td>
+            </tr>
+            <tr>
+              <td>#B-009</td>
+              <td>Patient 9</td>
+              <td>Doctor 1</td>
+              <td>09 Apr 2026</td>
+              <td>700</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+            <tr>
+              <td>#B-010</td>
+              <td>Patient 10</td>
+              <td>Doctor 4</td>
+              <td>10 Apr 2026</td>
+              <td>1,200</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

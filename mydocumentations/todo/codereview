@@ -1,0 +1,147 @@
+# Sethro Medical Center - Complete Codebase Walkthrough
+
+Welcome to the complete technical breakdown of the Sethro Medical Center project. As a Senior Engineer, I have documented the entire system architecture, design patterns, and core workflows for you here. Read through this carefully—it is your textbook for mastering this Hospital Management System.
+
+---
+
+## Module 1: The High-Level Blueprint & Architecture
+
+### 1. The Vision and Actors
+This system is a multi-tenant Hospital Management System. It relies heavily on **Role-Based Access Control (RBAC)**. The actors are:
+* **Patients:** Book appointments, view medical history, see bills.
+* **Doctors:** Conduct consultations, view schedules, write prescriptions, order labs.
+* **Receptionists:** Manage the physical flow of patients, manual booking, check-ins.
+* **Pharmacists:** Manage inventory (batches, expiry dates), dispense medicines.
+* **Lab Assistants:** Fulfill lab requests and upload test results.
+* **Admins:** Oversee everything, manage users, view financial revenue.
+
+### 2. The Tech Stack
+* **Framework:** Next.js 14/15 (App Router). We use React Server Components for fast initial loads and Server Actions/API routes for secure data mutations.
+* **Language:** TypeScript. This is non-negotiable for a large codebase. It ensures our objects match our database expectations.
+* **Database:** MySQL. We use a relational database because medical data is highly relational (Patients -> Appointments -> Prescriptions -> Medicines).
+* **Styling:** Tailwind CSS + shadcn/ui. This gives us accessible, highly customizable, and premium-looking UI components.
+
+### 3. Project Structure
+The `src/` directory is organized by technical concern:
+* `src/app/`: The Next.js routing system. Folders in parentheses like `(dashboard)` or `(auth)` are **Route Groups**. They allow us to apply different visual layouts (like a specific sidebar) without changing the URL structure.
+* `src/components/`: Reusable UI pieces (Buttons, Forms, Tables).
+* `src/lib/`: Low-level utilities (e.g., `db.ts` for database connections, helper functions).
+* `src/services/`: The **Business Logic Layer**. Instead of writing SQL directly in our API routes, we write it in services. This keeps APIs clean.
+* `src/types/`: The TypeScript dictionaries defining our data shapes.
+
+---
+
+## Module 2: The Data Backbone (Database & Types)
+
+A great system starts with a great database schema. We use a powerful pattern here.
+
+### 1. The "User-Profile" Pattern (Inheritance in SQL)
+Look at `mydocumentations/databas_setup_querries/full_setup.sql`.
+We don't put all doctor or patient info into one giant table. Instead:
+1. The `users` table holds the common authentication info: `id`, `email`, `password_hash`, `role`.
+2. The `patients` table has a `user_id` column (which is both a Primary Key and a Foreign Key). It stores patient-specific things like `blood_group` and `medical_history`.
+3. The `doctors` table does the same, storing `specialization` and `license_number`.
+
+### 2. The TypeScript Mirror (`src/types/index.ts`)
+We use **Intersection Types** to mirror this SQL pattern perfectly in TypeScript:
+```typescript
+export type User = { id: string; name: string; email: string; role: Role; };
+export type Patient = User & { dateOfBirth: string; bloodGroup: string; };
+```
+When you use a `Patient` object in the frontend, TypeScript knows it automatically has an `email` AND a `bloodGroup`.
+
+### 3. The Core Junction: Appointments
+The `appointments` table is the beating heart of the system. It is a "Junction Table" that connects `patient_id` and `doctor_id`. Every major clinical event (Prescriptions, Lab Tests, Bills) references the `appointment_id`.
+
+---
+
+## Module 3: Security, Identity, & Authentication
+
+Medical data is highly sensitive. Security is paramount.
+
+### 1. Authentication Flow
+When a user logs in via `/api/auth/login`:
+1. We use **Zod** to validate the incoming email/password format.
+2. We fetch the user from the DB and compare the password using **Bcrypt**. (We *never* store plain-text passwords).
+3. We generate a **JWT (JSON Web Token)**. This token contains the user's `id` and `role`.
+4. We set this JWT as an `httpOnly` cookie. This means JavaScript in the browser cannot read it, protecting against XSS attacks.
+
+### 2. The Gatekeeper: `middleware.ts`
+Next.js Middleware runs *before* a request completes. 
+If a user tries to visit `/pharmacist/inventory`, the middleware:
+1. Reads the JWT cookie.
+2. Checks if the `role` is `PHARMACIST` or `ADMIN`.
+3. If it's a `PATIENT`, the middleware immediately intercepts the request and redirects them to the login or "unauthorized" page. This secures our routes globally.
+
+---
+
+## Module 4: Backend Services & API Design
+
+We don't write spaghetti code. We use a **three-tier architecture**.
+
+### 1. API Route Handlers
+In the App Router, API endpoints live in `src/app/api/.../route.ts`. 
+The API Route has ONE job: Extract the request body, validate it with Zod, pass it to a Service, and return a JSON response.
+
+### 2. The Service Layer
+All database queries live in `src/services/`. 
+For example, if you want to find an appointment, you don't write `SELECT * FROM...` in the API route. You call `AppointmentService.getAppointmentById(id)`. 
+*Why?* If we ever change our database (e.g., switch to PostgreSQL), we only have to change the code in `src/services/`. The API routes remain completely untouched.
+
+---
+
+## Module 5: Core Clinical Workflows
+
+How does a patient actually get treated in our code?
+
+### 1. The Appointment Lifecycle
+An appointment goes through strict statuses, defined by an ENUM in the database:
+`PENDING` -> (Receptionist confirms) -> `CONFIRMED` -> (Patient arrives) -> `CHECKED_IN` -> (Doctor calls) -> `ONGOING` -> `COMPLETED`.
+
+### 2. The Consultation
+When a doctor opens an `ONGOING` appointment:
+* They can add vital signs directly to the `appointments` row.
+* They can create a row in the `prescriptions` table.
+* They add multiple `prescription_items` (linking to specific `medicines`).
+
+### 3. The Lab Integration
+If tests are needed, a `lab_requests` row is created, linking the `appointment_id` and the specific `test_id`. The Lab Assistant sees this in their dashboard, conducts the test, and updates the row with a `result_url` (usually a PDF upload link).
+
+---
+
+## Module 6: Operational Engine (Pharmacy & Billing)
+
+The business side of the medical center.
+
+### 1. Pharmacy Inventory Management
+Medicines are complex because they expire. We use two tables:
+* `medicines`: The "catalog" (Name, Category, generic name).
+* `inventory_batches`: The physical stock. A single medicine might have 3 batches with 3 different expiry dates.
+When dispensing, the system uses **FEFO (First Expired, First Out)** logic. It automatically subtracts stock from the batch that expires soonest.
+
+### 2. The Billing Engine
+The `bills` table aggregates costs across the center. A single bill ties to an `appointment_id` and calculates:
+* `doctor_fee`: From the `doctors` table.
+* `service_charge`: The hospital's flat cut.
+* `pharmacy_total`: Summing up the cost of dispensed `prescription_items`.
+* `lab_total`: Summing up the cost of completed `lab_requests`.
+Until the patient pays this bill at the receptionist, the appointment is financially unsettled.
+
+---
+
+## Module 7: Frontend Architecture & UI/UX
+
+A powerful backend needs a beautiful frontend.
+
+### 1. Server vs. Client Components
+By default, Next.js components are **Server Components**. They run on the server and send HTML to the browser. We use these for dashboards to fetch data directly from the DB very quickly.
+When we need interactivity (button clicks, form typing, states), we put `'use client'` at the top of the file to make it a **Client Component**.
+
+### 2. Form Handling
+Building forms is notoriously hard. We use the golden trio:
+* **react-hook-form:** Manages the form state (typing, submitting) without re-rendering the whole page.
+* **Zod:** We use the exact same Zod schema from our backend to validate the form *before* it even sends a request.
+* **shadcn/ui:** Provides the accessible `<Form>`, `<Input>`, and `<Label>` components.
+
+### Summary
+You now understand the architecture of Sethro Medical Center! The data flows from the React Client Forms, through the Next.js API Routes (validated by Zod), into the Service Layer, and finally into the highly-relational MySQL database.

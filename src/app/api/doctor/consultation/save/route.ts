@@ -82,38 +82,50 @@ export async function POST(req: Request) {
                 }
             }
 
-            // 4. Generate Bill Stub (If Completed)
+            // 4. Generate / Update Bill (If Completed)
             if (status === 'COMPLETED') {
-                // Check if bill exists
-                const [billExists]: any = await connection.execute('SELECT id FROM bills WHERE appointment_id = ?', [appointmentId]);
+                // Get Doctor Fee
+                const [appt]: any = await connection.execute(
+                    'SELECT doctor_id FROM appointments WHERE id = ?', [appointmentId]
+                );
+                const [doc]: any = await connection.execute(
+                    'SELECT consultation_fee FROM doctors WHERE user_id = ?', [appt[0].doctor_id]
+                );
+                const fee = Number(doc[0]?.consultation_fee || 0);
+                const serviceCharge = 500.00;
+
+                // Calculate Lab Total from actual test prices (ALL tests on this appointment)
+                let labTotal = 0;
+                const [labRows]: any = await connection.execute(
+                    `SELECT COALESCE(SUM(lt.price), 0) as lab_total
+                     FROM lab_requests lr
+                     JOIN lab_tests lt ON lt.id = lr.test_id
+                     WHERE lr.appointment_id = ?`,
+                    [appointmentId]
+                );
+                labTotal = Number(labRows[0]?.lab_total || 0);
+
+                const [billExists]: any = await connection.execute(
+                    'SELECT id, pharmacy_total FROM bills WHERE appointment_id = ?', [appointmentId]
+                );
 
                 if (billExists.length === 0) {
-                    // Get Doctor Fee
-                    const [appt]: any = await connection.execute('SELECT doctor_id FROM appointments WHERE id = ?', [appointmentId]);
-                    const [doc]: any = await connection.execute('SELECT consultation_fee FROM doctors WHERE user_id = ?', [appt[0].doctor_id]);
-                    const fee = doc[0]?.consultation_fee || 0;
-
-                    // Service Charge (Standard 500?)
-                    const serviceCharge = 500.00;
-
-                    // Lab Total
-                    // Calculate from Lab Requests?
-                    // We need prices.
-                    let labTotal = 0;
-                    if (labRequestIds && labRequestIds.length > 0) {
-                        // This is tricky inside loop or need join. 
-                        // Let's do a quick sum query if possible or iterate.
-                        // optimize: next iteration.
-                    }
-
-                    // Pharmacy Total (Calculated by Pharmacist later? Or estimated now?)
-                    // "Billing Trigger: Any edit made by Pharmacist...". So Pharmacy Total is updated LATER.
-                    // For now, init bill with Doc Fee + Service Charge.
-
+                    // Create fresh bill — pharmacy_total starts at 0, filled in by pharmacist
+                    const total = fee + serviceCharge + labTotal;
                     await connection.execute(
                         `INSERT INTO bills (appointment_id, doctor_fee, service_charge, pharmacy_total, lab_total, total_amount, status)
-                         VALUES (?, ?, ?, 0, 0, ?, 'PENDING')`,
-                        [appointmentId, fee, serviceCharge, (Number(fee) + Number(serviceCharge))]
+                         VALUES (?, ?, ?, 0, ?, ?, 'PENDING')`,
+                        [appointmentId, fee, serviceCharge, labTotal, total]
+                    );
+                } else {
+                    // Bill exists (doctor finishing a draft) — recalculate lab_total and total_amount
+                    // Keep pharmacy_total as-is (already dispensed by pharmacist)
+                    const pharmacyTotal = Number(billExists[0].pharmacy_total || 0);
+                    const newTotal = fee + serviceCharge + labTotal + pharmacyTotal;
+                    await connection.execute(
+                        `UPDATE bills SET doctor_fee = ?, service_charge = ?, lab_total = ?, total_amount = ?
+                         WHERE id = ?`,
+                        [fee, serviceCharge, labTotal, newTotal, billExists[0].id]
                     );
                 }
             }

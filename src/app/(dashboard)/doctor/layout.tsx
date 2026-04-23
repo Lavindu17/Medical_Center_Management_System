@@ -12,7 +12,8 @@ import {
     LogOut,
     Menu,
     Stethoscope,
-    User
+    User,
+    Banknote
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -28,6 +29,7 @@ export default function DoctorLayout({
         { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor' },
         { icon: Calendar, label: 'Appointments', href: '/doctor/appointments' },
         { icon: Users, label: 'Patients', href: '/doctor/patients' },
+        { icon: Banknote, label: 'Earnings', href: '/doctor/earnings' },
         { icon: User, label: 'Profile & Schedule', href: '/doctor/profile' },
     ];
 

@@ -83,12 +83,21 @@ export const EmailService = {
 
     async sendPasswordResetEmail(to: string, code: string) {
         const subject = 'Reset your password - Sethro Medical Center';
+        const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?email=${encodeURIComponent(to)}&code=${code}`;
         const html = `
             <div style="font-family: sans-serif; padding: 20px;">
                 <h2>Password Reset Request</h2>
-                <p>You requested to reset your password. Use this code to proceed:</p>
-                <h1 style="color: #dc2626; letter-spacing: 5px;">${code}</h1>
-                <p>This code will expire in 15 minutes.</p>
+                <p>You requested to reset your password. Click the secure link below to proceed:</p>
+                <div style="margin: 30px 0;">
+                    <a href="${resetLink}" style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                        Reset Password
+                    </a>
+                </div>
+                <p style="font-size: 14px; color: #666; word-break: break-all;">
+                    Or copy and paste this link into your browser:<br>
+                    <a href="${resetLink}">${resetLink}</a>
+                </p>
+                <p>This secure link will expire in 15 minutes.</p>
                 <p>If you didn't request this, please ignore this email.</p>
             </div>
         `;

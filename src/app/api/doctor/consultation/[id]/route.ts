@@ -58,19 +58,49 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             medicalHistory: appt.medical_history
         };
 
-        // 2. Fetch History (Previous Appointments)
-        const historyRows = await query<any[]>(
-            `SELECT date, notes as diagnosis 
-             FROM appointments 
-             WHERE patient_id = ? AND id != ? AND status = 'COMPLETED' 
-             ORDER BY date DESC LIMIT 5`,
-            [appt.patient_id, id]
-        );
+        // 2. Fetch Full Relational History
+        const [pastAppointments, pastLabs, pastPrescriptions] = await Promise.all([
+            // A. All Completed Appointments
+            query<any[]>(
+                `SELECT id, date, notes as diagnosis, reason
+                 FROM appointments 
+                 WHERE patient_id = ? AND id != ? AND status = 'COMPLETED' 
+                 ORDER BY date DESC`,
+                [appt.patient_id, id]
+            ),
+            // B. All Requested Labs
+            query<any[]>(
+                `SELECT lr.id, lr.appointment_id, lr.status, lr.result_url, lr.requested_at, lt.name as testName
+                 FROM lab_requests lr
+                 JOIN appointments a ON lr.appointment_id = a.id
+                 JOIN lab_tests lt ON lr.test_id = lt.id
+                 WHERE a.patient_id = ? AND a.id != ?
+                 ORDER BY lr.requested_at DESC`,
+                [appt.patient_id, id]
+            ),
+            // C. All Prescriptions
+            query<any[]>(
+                `SELECT p.id as prescription_id, p.appointment_id, p.issued_at,
+                        pi.dosage, pi.frequency, pi.duration, pi.quantity,
+                        m.name as medicineName
+                 FROM prescriptions p
+                 JOIN appointments a ON p.appointment_id = a.id
+                 JOIN prescription_items pi ON p.id = pi.prescription_id
+                 JOIN medicines m ON pi.medicine_id = m.id
+                 WHERE a.patient_id = ? AND a.id != ?
+                 ORDER BY p.issued_at DESC`,
+                [appt.patient_id, id]
+            )
+        ]);
 
         return NextResponse.json({
             appointment: appointmentData,
             patient: patientData,
-            history: historyRows
+            history: {
+                appointments: pastAppointments,
+                labs: pastLabs,
+                prescriptions: pastPrescriptions
+            }
         });
 
     } catch (error) {

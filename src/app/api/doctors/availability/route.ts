@@ -18,19 +18,44 @@ export async function GET(req: Request) {
             return NextResponse.json({ message: 'Invalid input' }, { status: 400 });
         }
 
-        // Define Sessions
-        const sessions = [
-            { start: '06:30', end: '08:00' },
-            { start: '17:30', end: '22:00' } // 5:30 PM to 10:00 PM
-        ];
-        const slotDuration = 10; // minutes
+        // Fetch Doctor's Slot Duration
+        const [doctor]: any = await query('SELECT slot_duration FROM doctors WHERE user_id = ?', [doctorId]);
+        if (!doctor) {
+            return NextResponse.json({ message: 'Doctor not found' }, { status: 404 });
+        }
+        const slotDuration = parseInt(doctor.slot_duration) || 15;
+
+        // Fetch Blocked Dates (Leaves) for the given date
+        const leaves: any = await query(
+            'SELECT id FROM doctor_leaves WHERE doctor_id = ? AND DATE(date) = ?',
+            [doctorId, date]
+        );
+
+        // If the date is blocked, return no slots!
+        if (leaves.length > 0) {
+            return NextResponse.json({
+                date,
+                doctorId,
+                slots: []
+            });
+        }
+
+        // Determine Day of Week for the given date
+        const dateObj = new Date(date);
+        const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+        // Fetch Schedules for this specific day
+        const sessions: any = await query(
+            'SELECT start_time, end_time FROM doctor_schedules WHERE doctor_id = ? AND day = ?',
+            [doctorId, dayOfWeek]
+        );
 
         // Generate all possible slots
         const allSlots: string[] = [];
 
-        sessions.forEach(session => {
-            let [h, m] = session.start.split(':').map(Number);
-            const [endH, endM] = session.end.split(':').map(Number);
+        sessions.forEach((session: any) => {
+            let [h, m] = session.start_time.split(':').map(Number);
+            const [endH, endM] = session.end_time.split(':').map(Number);
             const endTimeInMinutes = endH * 60 + endM;
 
             while (true) {
@@ -43,8 +68,8 @@ export async function GET(req: Request) {
                 // Increment
                 m += slotDuration;
                 if (m >= 60) {
-                    h += 1;
-                    m -= 60;
+                    h += Math.floor(m / 60);
+                    m = m % 60;
                 }
             }
         });
@@ -56,11 +81,30 @@ export async function GET(req: Request) {
         );
         const bookedSlots = new Set(existing.map((a: any) => a.time_slot.slice(0, 5)));
 
+        // Time Validation Logic for Same-Day Bookings
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA'); // 'YYYY-MM-DD' in local timezone
+        const isToday = date === todayStr;
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+
         // Return all slots with availability status
-        const slotsWithStatus = allSlots.map(time => ({
-            time,
-            available: !bookedSlots.has(time)
-        }));
+        const slotsWithStatus = allSlots.map(time => {
+            let available = !bookedSlots.has(time);
+
+            // If it's today, check if the time has already passed
+            if (isToday && available) {
+                const [slotH, slotM] = time.split(':').map(Number);
+                if (slotH < currentHours || (slotH === currentHours && slotM <= currentMinutes)) {
+                    available = false;
+                }
+            }
+
+            return {
+                time,
+                available
+            };
+        });
 
         return NextResponse.json({
             date,

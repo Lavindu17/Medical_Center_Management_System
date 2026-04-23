@@ -9,15 +9,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 function ResetPasswordContent() {
-    const [step, setStep] = useState<1 | 2>(1);
-    const [isLoading, setIsLoading] = useState(false);
-    const [verifiedCode, setVerifiedCode] = useState('');
-
-    const router = useRouter();
     const searchParams = useSearchParams();
     const emailFromQuery = searchParams.get('email') || '';
+    const codeFromQuery = searchParams.get('code') || '';
 
-    // Step 1: Verify Code
+    // If we have a code from the URL, jump straight to step 2
+    const [step, setStep] = useState<1 | 2>(codeFromQuery ? 2 : 1);
+    const [isLoading, setIsLoading] = useState(false);
+    const [verifiedCode, setVerifiedCode] = useState(codeFromQuery);
+
+    const router = useRouter();
+
+    // Step 1: Verify Code (Only if code wasn't in URL)
     async function handleVerifyCode(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsLoading(true);
@@ -48,7 +51,7 @@ function ResetPasswordContent() {
         }
     }
 
-    // Step 2: Reset Password
+    // Step 2: Reset Password (API already verifies token + email validity again here)
     async function handleResetPassword(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsLoading(true);
@@ -74,7 +77,7 @@ function ResetPasswordContent() {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || 'Reset failed');
+                throw new Error(data.message || 'Reset link expired or invalid');
             }
 
             alert('Password reset successfully! Please log in.');
