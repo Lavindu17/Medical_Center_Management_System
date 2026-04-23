@@ -3,9 +3,15 @@ import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { z } from 'zod';
 
+/**
+ * API route for managing users in the Sethro Medical Center system.
+ * Handles CRUD operations for user accounts including doctors, pharmacists, etc.
+ */
+
 // Fetch all users
 export async function GET(req: Request) {
     try {
+        // Query to retrieve all users with basic information, ordered by creation date
         const users = await query<any[]>('SELECT id, name, email, role, phone, created_at as createdAt FROM users ORDER BY created_at DESC');
         return NextResponse.json(users);
     } catch (error) {
@@ -24,7 +30,10 @@ const createUserSchema = z.object({
     licenseNumber: z.string().optional(),
 });
 
-// Create new staff
+/**
+ * Create a new staff user in the system.
+ * Validates input, checks for existing user, and handles doctor-specific fields.
+ */
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -41,12 +50,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'User already exists' }, { status: 409 });
         }
 
+        // Start database transaction for atomicity
         const connection = await pool.getConnection();
         await connection.beginTransaction();
 
         try {
             const hashedPassword = await AuthService.hashPassword(password);
 
+            // Insert new user into users table
             const [result]: any = await connection.execute(
                 'INSERT INTO users (email, password_hash, name, role, phone) VALUES (?, ?, ?, ?, ?)',
                 [email, hashedPassword, name, role, phone || null]
@@ -54,6 +65,7 @@ export async function POST(req: Request) {
 
             const userId = result.insertId;
 
+            // If role is DOCTOR, insert additional doctor-specific information
             if (role === 'DOCTOR') {
                 if (!specialization || !licenseNumber) {
                     throw new Error('Specialization and License Number are required for Doctors');
@@ -64,13 +76,16 @@ export async function POST(req: Request) {
                 );
             }
 
+            // Commit transaction on success
             await connection.commit();
             return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
 
         } catch (err: any) {
+            // Rollback transaction on error
             await connection.rollback();
             return NextResponse.json({ message: err.message || 'Database error' }, { status: 500 });
         } finally {
+            // Always release the connection
             connection.release();
         }
 
@@ -88,7 +103,10 @@ const updateUserSchema = z.object({
     role: z.enum(['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'PATIENT']),
 });
 
-// Update User
+/**
+ * Update an existing user's information.
+ * Validates input and updates the user record in the database.
+ */
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
@@ -100,6 +118,7 @@ export async function PUT(req: Request) {
 
         const { id, name, email, phone, role } = validation.data;
 
+        // Update user information in the database
         await query(
             'UPDATE users SET name = ?, email = ?, phone = ?, role = ? WHERE id = ?',
             [name, email, phone || null, role, id]
@@ -114,6 +133,10 @@ export async function PUT(req: Request) {
 }
 
 // Delete User
+/**
+ * Delete a user from the system by ID.
+ * Uses DELETE CASCADE in schema to handle related records.
+ */
 export async function DELETE(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
@@ -121,8 +144,7 @@ export async function DELETE(req: Request) {
 
         if (!id) return NextResponse.json({ message: 'ID required' }, { status: 400 });
 
-        // Use transaction if necessary, but DELETE CASCADE in schema handles related rows usually.
-        // However, for safety:
+        // Delete user from database; related records handled by CASCADE
         await query('DELETE FROM users WHERE id = ?', [id]);
 
         return NextResponse.json({ message: 'User deleted successfully' });

@@ -14,7 +14,6 @@ export async function PUT(req: Request, props: { params: Promise<{ id: string }>
 
         const { status } = await req.json();
 
-        // Simple validation or state transition check could go here
 
         await query('UPDATE appointments SET status = ? WHERE id = ?', [status, params.id]);
 
