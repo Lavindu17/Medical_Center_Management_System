@@ -120,6 +120,24 @@ export async function GET(req: Request) {
             ORDER BY date ASC
         `, [startDateTime, endDateTime]);
 
+        // ── 8. Monthly Revenue Trend (Last 12 Months) ────────────────────────────
+        const monthlyRevenue: any = await query(`
+            SELECT
+                DATE_FORMAT(b.paid_at, '%Y-%m') as month,
+                COALESCE(SUM(b.service_charge), 0) as service_charges,
+                COALESCE(SUM(b.doctor_fee * d.commission_rate / 100), 0) as doctor_commissions,
+                COALESCE(SUM(b.lab_total), 0) as lab_revenue,
+                COALESCE(SUM(b.pharmacy_total), 0) as pharmacy_revenue,
+                COALESCE(SUM(b.service_charge + b.doctor_fee * d.commission_rate / 100 + b.lab_total + b.pharmacy_total), 0) as gross_revenue,
+                COALESCE(SUM(b.total_amount), 0) as patient_billed
+            FROM bills b
+            JOIN appointments a ON a.id = b.appointment_id
+            JOIN doctors d ON d.user_id = a.doctor_id
+            WHERE b.status = 'PAID'
+            GROUP BY DATE_FORMAT(b.paid_at, '%Y-%m')
+            ORDER BY month ASC
+        `);
+
         // query() returns rows array directly — access [0] for single-row aggregate results
         const r = revenueRows[0];
         const grossRevenue = Number(r.gross_revenue);
@@ -153,6 +171,7 @@ export async function GET(req: Request) {
             },
             doctor_payouts: doctorPayouts,
             daily: dailyRevenue,
+            monthly: monthlyRevenue,
         });
 
     } catch (error) {
