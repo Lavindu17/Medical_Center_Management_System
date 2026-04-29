@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatLKR } from '@/lib/utils';
 import {
     Banknote, TrendingUp, TrendingDown, Package, Pill,
-    FlaskConical, Stethoscope, AlertTriangle, ChevronDown
+    FlaskConical, Stethoscope, AlertTriangle, ChevronDown,
+    BarChart2, Activity, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+/* ── Types ───────────────────────────────────────────────────── */
+interface DailyEntry { date: string; gross_revenue: number; patient_billed: number; }
 interface FinancialData {
     revenue: { service_charges: number; doctor_commissions: number; lab_revenue: number; pharmacy_revenue: number; gross_revenue: number; };
     cogs: { medicine_cogs: number; lab_cogs: number; total_cogs: number; };
@@ -52,6 +55,7 @@ function MetricCard({ title, value, subtitle, icon: Icon, color }: 'blue' | 'eme
     );
 }
 
+/* ══════════════════════════════════════════════════════════════ */
 export default function RevenuePage() {
     const [data, setData] = useState<FinancialData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -59,6 +63,10 @@ export default function RevenuePage() {
     const [trendView, setTrendView] = useState<'daily' | 'monthly'>('daily');
     const [selectedMonth, setSelectedMonth] = useState<string>(new Date().getMonth().toString());
     const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+
+    const now = useMemo(() => new Date(), []);
+    const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+    const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 
     useEffect(() => {
         setLoading(true);

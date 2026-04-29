@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -114,7 +115,7 @@ export default function InventoryPage() {
                 setIsEditOpen(false);
                 resetForm();
             } else {
-                alert('Error saving medicine');
+                toast.error('Error saving medicine');
             }
         } catch (err) {
             console.error(err);
@@ -197,9 +198,9 @@ export default function InventoryPage() {
                 fetchMedicines();
                 setIsRestockOpen(false);
                 resetRestockForm();
-                alert('Stock Added Successfully');
+                toast.success('Stock Added Successfully');
             } else {
-                alert('Failed to add batch');
+                toast.error('Failed to add batch');
             }
         } catch (err) {
             console.error(err);

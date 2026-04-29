@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Users, Banknote, Activity } from 'lucide-react';
+import { SkeletonKpiRow } from '@/components/ui/skeleton';
+import { Calendar, Users, Banknote, Activity, Stethoscope, ArrowRight } from 'lucide-react';
 import { formatLKR } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function DoctorDashboard() {
     const [stats, setStats] = useState({
@@ -33,93 +37,63 @@ export default function DoctorDashboard() {
     }, []);
 
     return (
-        <div className="p-8 space-y-8 max-w-7xl mx-auto">
-            {/* Start Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                <p className="text-neutral-500 mt-2">
-                    Welcome back, <span className="font-semibold text-blue-600">{user?.name || 'Doctor'}</span>. Here is your overview.
+        <div className="space-y-6">
+            <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+            >
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">Dashboard</h1>
+                <p className="text-neutral-500 mt-0.5 text-sm">
+                    Welcome back, <span className="font-semibold text-emerald-600">{user?.name || 'Doctor'}</span>.
                 </p>
-            </div>
+            </motion.div>
 
-            {/* Metrics Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today's Appointments</CardTitle>
-                        <Calendar className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{loading ? '-' : stats.todayAppointments}</div>
-                        <p className="text-xs text-neutral-500">Scheduled for today</p>
-                    </CardContent>
-                </Card>
+            {/* KPI Grid */}
+            {loading ? <SkeletonKpiRow count={4} /> : (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                        { icon: Calendar,  label: "Today's Appointments", value: stats.todayAppointments,    sub: 'Scheduled for today',   color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                        { icon: Activity,  label: 'Upcoming',              value: stats.upcomingAppointments, sub: 'Future appointments',   color: 'text-teal-600',    bg: 'bg-teal-50' },
+                        { icon: Users,     label: 'Total Patients',         value: stats.totalPatients,        sub: 'Unique patients seen',  color: 'text-neutral-600', bg: 'bg-neutral-100' },
+                        { icon: Banknote,  label: 'Total Revenue',          value: formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), sub: 'From paid bills', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                    ].map((kpi, i) => (
+                        <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07, duration: 0.3 }}>
+                            <Card className="border border-neutral-200 shadow-none">
+                                <CardContent className="p-4">
+                                    <div className="flex items-start justify-between mb-3">
+                                        <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide leading-tight">{kpi.label}</p>
+                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${kpi.bg}`}>
+                                            <kpi.icon className={`h-3.5 w-3.5 ${kpi.color}`} />
+                                        </div>
+                                    </div>
+                                    <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                                    <p className="text-xs text-neutral-400 mt-1">{kpi.sub}</p>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    ))}
+                </div>
+            )}
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-                        <Activity className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{loading ? '-' : stats.upcomingAppointments}</div>
-                        <p className="text-xs text-neutral-500">Future appointments</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
-                        <Users className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{loading ? '-' : stats.totalPatients}</div>
-                        <p className="text-xs text-neutral-500">Unique patients seen</p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                        <Banknote className="h-4 w-4 text-neutral-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{loading ? '-' : formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                        <p className="text-xs text-neutral-500">From paid bills</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Quick Actions or Recent list placeholder */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-                <Card className="col-span-4">
-                    <CardHeader>
-                        <CardTitle>Overview</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pl-2">
-                        <div className="h-[200px] flex items-center justify-center text-neutral-400">
-                            Chart Placeholder (Revenue over time)
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="col-span-3">
-                    <CardHeader>
-                        <CardTitle>Recent Activity</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {/* Placeholder items */}
-                            <div className="flex items-center">
-                                <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                <div className="text-sm">
-                                    <p className="font-medium">Appointment Completed</p>
-                                    <p className="text-xs text-neutral-500">John Doe - 10:00 AM</p>
-                                </div>
-                            </div>
-
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            {/* Quick Actions */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+                <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Quick Actions</h2>
+                <div className="grid grid-cols-2 gap-3">
+                    {[
+                        { label: "Today's Appointments", href: '/doctor/appointments', icon: Calendar },
+                        { label: 'My Patients',           href: '/doctor/patients',     icon: Users },
+                    ].map((action) => (
+                        <Button key={action.href} asChild variant="outline" className="h-14 gap-3 justify-start border-neutral-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-200">
+                            <Link href={action.href}>
+                                <action.icon className="h-4 w-4 text-emerald-600" />
+                                <span className="text-sm font-medium">{action.label}</span>
+                                <ArrowRight className="h-3 w-3 ml-auto text-neutral-400" />
+                            </Link>
+                        </Button>
+                    ))}
+                </div>
+            </motion.div>
         </div>
     );
 }

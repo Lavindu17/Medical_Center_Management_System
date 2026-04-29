@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,7 @@ export default function BillingPage() {
                 fetchBills(statusFilter);
             } else {
                 const err = await res.json();
-                alert(err.message || 'Payment failed');
+                toast.error(err.message || 'Payment failed');
             }
         } catch (e) {
             console.error(e);

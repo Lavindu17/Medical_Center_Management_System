@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -114,7 +115,7 @@ export default function ConsultationPage() {
 
             } catch (err) {
                 console.error(err);
-                alert('Error loading consultation data');
+                toast.error('Error loading consultation data');
             } finally {
                 setLoading(false);
             }
@@ -197,12 +198,12 @@ export default function ConsultationPage() {
             if (complete) {
                 router.push('/doctor?success=consultation_complete');
             } else {
-                alert('Progress saved');
+                toast.success('Progress saved');
             }
 
         } catch (err) {
             console.error(err);
-            alert('Failed to save data');
+            toast.error('Failed to save data');
         } finally {
             setSaving(false);
         }
@@ -217,8 +218,8 @@ export default function ConsultationPage() {
             <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-4 overflow-y-auto pr-2">
                 {/* Patient Card */}
                 <Card>
-                    <CardHeader className="bg-blue-50 pb-4">
-                        <CardTitle className="text-lg text-blue-800">{patient?.name}</CardTitle>
+                    <CardHeader className="bg-emerald-50 pb-4">
+                        <CardTitle className="text-lg text-emerald-800">{patient?.name}</CardTitle>
                         <div className="text-sm text-neutral-600">
                             {patient?.age ? `${patient.age} yrs` : 'DOB: ' + new Date(patient?.dob).toLocaleDateString()} • {patient?.gender}
                         </div>
@@ -342,9 +343,9 @@ export default function ConsultationPage() {
 
                         <div className="grid lg:grid-cols-2 gap-6">
                             {/* Prescription */}
-                            <Card className="border-blue-100">
-                                <CardHeader className="bg-blue-50/50 pb-3">
-                                    <CardTitle className="flex items-center gap-2 text-base text-blue-900">
+                            <Card className="border-emerald-100">
+                                <CardHeader className="bg-emerald-50/50 pb-3">
+                                    <CardTitle className="flex items-center gap-2 text-base text-emerald-900">
                                         <Pill className="h-4 w-4" /> Prescription
                                     </CardTitle>
                                 </CardHeader>
@@ -431,7 +432,7 @@ export default function ConsultationPage() {
                                                     </Button>
                                                     <Button 
                                                         variant={selectedTimes[3] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-12 text-xs flex flex-col items-center gap-1 justify-center ${selectedTimes[3] !== '0' && 'bg-blue-900 hover:bg-blue-950'}`}
+                                                        size="sm" className={`h-12 text-xs flex flex-col items-center gap-1 justify-center ${selectedTimes[3] !== '0' && 'bg-emerald-900 hover:bg-emerald-950'}`}
                                                         onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1], selectedTimes[2], selectedTimes[3] === selectedDose ? '0' : selectedDose])}
                                                     >
                                                         <div className="flex items-center gap-1">
@@ -455,7 +456,7 @@ export default function ConsultationPage() {
                                                             {selectedMedForm === 'Cream' && ['Apply', 'Thin Layer'].map(d => (
                                                                 <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setSelectedDose(d)}>{d}</Badge>
                                                             ))}
-                                                            <Badge variant="outline" className="cursor-pointer hover:bg-blue-50 text-blue-600 border-blue-200" onClick={() => setSelectedDose(prompt('Enter custom dose:', selectedDose) || selectedDose)}>Custom</Badge>
+                                                            <Badge variant="outline" className="cursor-pointer hover:bg-emerald-50 text-emerald-600 border-emerald-200" onClick={() => setSelectedDose(prompt('Enter custom dose:', selectedDose) || selectedDose)}>Custom</Badge>
                                                         </div>
                                                     </div>
                                                     <div>
@@ -511,9 +512,9 @@ export default function ConsultationPage() {
                             </Card>
 
                             {/* Lab Requests */}
-                            <Card className="border-purple-100">
-                                <CardHeader className="bg-purple-50/50 pb-3">
-                                    <CardTitle className="flex items-center gap-2 text-base text-purple-900">
+                            <Card className="border-teal-100">
+                                <CardHeader className="bg-teal-50/50 pb-3">
+                                    <CardTitle className="flex items-center gap-2 text-base text-teal-900">
                                         <FlaskConical className="h-4 w-4" /> Lab Requests
                                     </CardTitle>
                                 </CardHeader>
@@ -572,7 +573,7 @@ export default function ConsultationPage() {
                                         const apptPrescriptions = history.prescriptions.filter((p: any) => p.appointment_id === appt.id);
 
                                         return (
-                                            <Card key={appt.id} className="mb-4 shadow-sm border-l-4 border-l-blue-500">
+                                            <Card key={appt.id} className="mb-4 shadow-sm border-l-4 border-l-emerald-500">
                                                 <CardHeader className="py-3 bg-neutral-50">
                                                     <div className="flex justify-between items-center">
                                                         <CardTitle className="text-base flex items-center gap-2">
@@ -601,7 +602,7 @@ export default function ConsultationPage() {
                                                                             {lab.testName} <span className="opacity-50 text-[10px]">({lab.status})</span>
                                                                         </Badge>
                                                                         {lab.result_url && (
-                                                                            <a href={lab.result_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="View Result">
+                                                                            <a href={lab.result_url} target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:text-emerald-700 p-1 bg-emerald-50 rounded" title="View Result">
                                                                                 <FileText className="h-4 w-4" />
                                                                             </a>
                                                                         )}
@@ -643,7 +644,7 @@ export default function ConsultationPage() {
                                             {history.labs.map((lab: any) => (
                                                 <div key={lab.id} className="p-4 flex justify-between items-center hover:bg-neutral-50 transition-colors">
                                                     <div>
-                                                        <div className="font-semibold text-purple-900">{lab.testName}</div>
+                                                        <div className="font-semibold text-teal-900">{lab.testName}</div>
                                                         <div className="text-xs text-neutral-500">Requested: {new Date(lab.requested_at).toLocaleDateString()}</div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
@@ -674,7 +675,7 @@ export default function ConsultationPage() {
                                             {history.prescriptions.map((med: any, i: number) => (
                                                 <div key={i} className="p-4 flex justify-between items-center hover:bg-neutral-50 transition-colors">
                                                     <div>
-                                                        <div className="font-semibold text-blue-900 flex items-center gap-2">
+                                                        <div className="font-semibold text-emerald-900 flex items-center gap-2">
                                                             <Pill className="h-4 w-4" /> {med.medicineName}
                                                         </div>
                                                         <div className="text-xs text-neutral-500 mt-1">

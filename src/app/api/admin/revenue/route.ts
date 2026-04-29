@@ -47,7 +47,7 @@ export async function GET(req: Request) {
             WHERE b.status = 'PAID' AND b.paid_at >= ? AND b.paid_at <= ?
         `, [startDateTime, endDateTime]);
 
-        // ── 2. Medicine COGS (buying price × dispensed qty) ──────────────────────
+        // ── 2. Medicine COGS — dispensed within the selected month ───────────────
         const cogsRows: any = await query(`
             SELECT COALESCE(SUM(pi.dispensed_quantity * COALESCE(
                 (SELECT buying_price FROM inventory_batches ib WHERE ib.medicine_id = pi.medicine_id ORDER BY id DESC LIMIT 1), 0
@@ -60,7 +60,7 @@ export async function GET(req: Request) {
               AND p.issued_at >= ? AND p.issued_at <= ?
         `, [startDateTime, endDateTime]);
 
-        // ── 3. Lab COGS (cost_price × completed tests) ───────────────────────────
+        // ── 3. Lab COGS — completed tests billed in selected month ───────────────
         const labCogsRows: any = await query(`
             SELECT COALESCE(SUM(lt.cost_price), 0) as lab_cogs
             FROM lab_requests lr
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
             WHERE lr.status = 'COMPLETED' AND lr.completed_at >= ? AND lr.completed_at <= ?
         `, [startDateTime, endDateTime]);
 
-        // ── 4. Inventory Valuation ───────────────────────────────────────────────
+        // ── 4. Inventory Valuation — always a live balance-sheet snapshot ────────
         const inventoryRows: any = await query(`
             SELECT
                 COALESCE(SUM(CASE WHEN expiry_date >= CURDATE() THEN quantity_current * buying_price ELSE 0 END), 0) as asset_value,
@@ -76,7 +76,7 @@ export async function GET(req: Request) {
             FROM inventory_batches
         `);
 
-        // ── 5. Total Doctor Net Earnings (payout obligations) ────────────────────
+        // ── 5. Doctor net payouts for selected month ──────────────────────────────
         const doctorNetRows: any = await query(`
             SELECT COALESCE(SUM(b.doctor_fee * (1 - d.commission_rate / 100)), 0) as total_doctor_payouts
             FROM bills b
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
               AND b.paid_at >= ? AND b.paid_at <= ?
         `, [startDateTime, endDateTime]);
 
-        // ── 6. Per-Doctor Payouts Table ──────────────────────────────────────────
+        // ── 6. Per-doctor breakdown for selected month ────────────────────────────
         const doctorPayouts: any = await query(`
             SELECT
                 u.name as doctor_name,
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
             ORDER BY net_payout DESC
         `, [startDateTime, endDateTime]);
 
-        // ── 7. Daily Revenue (Last 30 Days) ──────────────────────────────────────
+        // ── 7. Daily revenue — every day in the selected month ───────────────────
         const dailyRevenue: any = await query(`
             SELECT
                 DATE(b.paid_at) as date,
@@ -138,36 +138,37 @@ export async function GET(req: Request) {
             ORDER BY month ASC
         `);
 
-        // query() returns rows array directly — access [0] for single-row aggregate results
+        // ── Build response ────────────────────────────────────────────────────────
         const r = revenueRows[0];
-        const grossRevenue = Number(r.gross_revenue);
-        const medicineCogs = Number(cogsRows[0].medicine_cogs);
-        const labCogs = Number(labCogsRows[0].lab_cogs);
-        const totalCogs = medicineCogs + labCogs;
-        const totalDoctorPayouts = Number(doctorNetRows[0].total_doctor_payouts);
-        const writeOff = Number(inventoryRows[0].write_off_value);
-        const trueGrossProfit = grossRevenue - totalCogs - totalDoctorPayouts - writeOff;
+        const grossRevenue        = Number(r.gross_revenue);
+        const medicineCogs        = Number(cogsRows[0].medicine_cogs);
+        const labCogs             = Number(labCogsRows[0].lab_cogs);
+        const totalCogs           = medicineCogs + labCogs;
+        const totalDoctorPayouts  = Number(doctorNetRows[0].total_doctor_payouts);
+        const writeOff            = Number(inventoryRows[0].write_off_value);
+        const trueGrossProfit     = grossRevenue - totalCogs - totalDoctorPayouts - writeOff;
 
         return NextResponse.json({
+            filter: { month, year },
             revenue: {
-                service_charges: Number(r.service_charges),
+                service_charges:    Number(r.service_charges),
                 doctor_commissions: Number(r.doctor_commissions),
-                lab_revenue: Number(r.lab_revenue),
-                pharmacy_revenue: Number(r.pharmacy_revenue),
-                gross_revenue: grossRevenue,
+                lab_revenue:        Number(r.lab_revenue),
+                pharmacy_revenue:   Number(r.pharmacy_revenue),
+                gross_revenue:      grossRevenue,
             },
             cogs: {
                 medicine_cogs: medicineCogs,
-                lab_cogs: labCogs,
-                total_cogs: totalCogs,
+                lab_cogs:      labCogs,
+                total_cogs:    totalCogs,
             },
             inventory: {
-                asset_value: Number(inventoryRows[0].asset_value),
+                asset_value:    Number(inventoryRows[0].asset_value),
                 write_off_value: writeOff,
             },
             profit: {
                 total_doctor_payouts: totalDoctorPayouts,
-                true_gross_profit: trueGrossProfit,
+                true_gross_profit:    trueGrossProfit,
             },
             doctor_payouts: doctorPayouts,
             daily: dailyRevenue,

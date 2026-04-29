@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
@@ -127,16 +128,16 @@ export default function PatientProfilePage() {
             });
 
             if (res.ok) {
-                alert('Profile updated successfully!');
+                toast.success('Profile updated successfully!');
                 // Update initial state to current state
                 setInitialForm(JSON.parse(JSON.stringify(form)));
                 setInitialAllergyList(JSON.parse(JSON.stringify(allergyList)));
             } else {
-                alert('Failed to update profile.');
+                toast.error('Failed to update profile.');
             }
         } catch (err) {
             console.error(err);
-            alert('Error saving profile');
+            toast.error('Error saving profile');
         } finally {
             setSaving(false);
         }

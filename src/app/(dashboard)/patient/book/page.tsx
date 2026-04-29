@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea'; // Assuming Textarea exists or use standard
 import { CheckCircle2, ChevronRight, ChevronLeft, Search } from 'lucide-react';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Doctor {
     id: number;
@@ -106,20 +107,21 @@ export default function BookAppointmentPage() {
 
     async function submitBooking() {
         if (!user) {
-            alert("You must be logged in to book.");
+            toast.error('You must be logged in to book.');
             return;
         }
 
+        const toastId = toast.loading('Booking your appointment…');
         try {
             const res = await fetch('/api/appointments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    patientId: user.id, // Use dynamic ID
+                    patientId: user.id,
                     doctorId: selectedDoctor?.id,
                     date: selectedDate,
                     timeSlot: selectedSlot,
-                    reason: reason // Send reason
+                    reason: reason
                 })
             });
 
@@ -129,36 +131,53 @@ export default function BookAppointmentPage() {
             }
 
             const data = await res.json();
+            toast.success('Appointment booked!', { id: toastId, description: `Queue #${data.appointment.queueNumber}` });
             router.push(`/patient?success=true&queue=${data.appointment.queueNumber}`);
         } catch (err: any) {
-            alert(err.message);
+            toast.error(err.message || 'Booking failed', { id: toastId });
         }
     }
 
     return (
         <div className="max-w-4xl mx-auto py-8 px-4">
-            <div className="mb-8">
+            <motion.div
+                className="mb-8"
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+            >
                 <h1 className="text-3xl font-bold">Book Appointment</h1>
-                <p className="text-neutral-500">Scheduled for: <span className="font-semibold text-blue-600">{user?.name || 'Guest'}</span></p>
-            </div>
+                <p className="text-neutral-500">Scheduled for: <span className="font-semibold text-emerald-600">{user?.name || 'Guest'}</span></p>
+            </motion.div>
 
             {/* Progress Steps */}
-            <div className="flex items-center gap-2 mb-8 text-sm">
-                <span className={`px-3 py-1 rounded-full ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>1. Doctor</span>
+            <motion.div
+                className="flex items-center gap-2 mb-8 text-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+            >
+                <span className={`px-3 py-1 rounded-full transition-colors duration-300 ${step >= 1 ? 'bg-emerald-600 text-white' : 'bg-neutral-100'}`}>1. Doctor</span>
                 <div className="h-0.5 w-8 bg-neutral-200" />
-                <span className={`px-3 py-1 rounded-full ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>2. Date & Time</span>
+                <span className={`px-3 py-1 rounded-full transition-colors duration-300 ${step >= 2 ? 'bg-emerald-600 text-white' : 'bg-neutral-100'}`}>2. Date &amp; Time</span>
                 <div className="h-0.5 w-8 bg-neutral-200" />
-                <span className={`px-3 py-1 rounded-full ${step >= 3 ? 'bg-blue-600 text-white' : 'bg-neutral-100'}`}>3. Reason & Confirm</span>
-            </div>
+                <span className={`px-3 py-1 rounded-full transition-colors duration-300 ${step >= 3 ? 'bg-emerald-600 text-white' : 'bg-neutral-100'}`}>3. Reason &amp; Confirm</span>
+            </motion.div>
 
             <div className="grid gap-6">
+            <AnimatePresence mode="wait">
                 {step === 1 && (
+                    <motion.div
+                        key="step1"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.25 }}
+                    >
                     <Card>
                         <CardHeader>
                             <CardTitle>Select a Doctor</CardTitle>
                             <CardDescription>Choose a specialist for your consultation.</CardDescription>
-
-                            {/* Search Bar */}
                             <div className="relative mt-2">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
                                 <Input
@@ -176,16 +195,19 @@ export default function BookAppointmentPage() {
                                     No doctors found matching "{searchQuery}"
                                 </div>
                             ) : (
-                                filteredDoctors.map(doc => (
-                                    <div
+                                filteredDoctors.map((doc, idx) => (
+                                    <motion.div
                                         key={doc.id}
+                                        initial={{ opacity: 0, y: 16 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.05, duration: 0.2 }}
                                         onClick={() => setSelectedDoctor(doc)}
-                                        className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-blue-500 hover:bg-blue-50
-                        ${selectedDoctor?.id === doc.id ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-600' : 'border-neutral-200'}
+                                        className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-emerald-500 hover:bg-emerald-50
+                        ${selectedDoctor?.id === doc.id ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600' : 'border-neutral-200'}
                       `}
                                     >
                                         <div className="flex items-start gap-4">
-                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                                            <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
                                                 DR
                                             </div>
                                             <div>
@@ -196,7 +218,7 @@ export default function BookAppointmentPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))
                             )}
                         </CardContent>
@@ -206,12 +228,20 @@ export default function BookAppointmentPage() {
                             </Button>
                         </div>
                     </Card>
+                    </motion.div>
                 )}
 
                 {step === 2 && (
+                    <motion.div
+                        key="step2"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.25 }}
+                    >
                     <Card>
                         <CardHeader>
-                            <CardTitle>Select Date & Time</CardTitle>
+                            <CardTitle>Select Date &amp; Time</CardTitle>
                             <CardDescription>
                                 Availability for Dr. {selectedDoctor?.name}
                             </CardDescription>
@@ -246,8 +276,8 @@ export default function BookAppointmentPage() {
                                                       ${!slotObj.available
                                                             ? 'bg-red-50 text-red-500 border-red-200 cursor-not-allowed opacity-60'
                                                             : selectedSlot === slotObj.time
-                                                                ? 'bg-blue-600 text-white border-blue-600'
-                                                                : 'hover:border-blue-400 hover:bg-blue-50 bg-white'
+                                                                ? 'bg-emerald-600 text-white border-emerald-600'
+                                                                : 'hover:border-emerald-400 hover:bg-emerald-50 bg-white'
                                                         }
                                                     `}
                                                     title={!slotObj.available ? 'Already Booked' : 'Available'}
@@ -259,7 +289,7 @@ export default function BookAppointmentPage() {
                                     )}
                                     <div className="flex gap-4 text-xs mt-2">
                                         <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-white"></div> Available</div>
-                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-blue-600"></div> Selected</div>
+                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-emerald-600"></div> Selected</div>
                                         <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-red-50"></div> Booked</div>
                                     </div>
                                 </div>
@@ -274,9 +304,17 @@ export default function BookAppointmentPage() {
                             </Button>
                         </div>
                     </Card>
+                    </motion.div>
                 )}
 
                 {step === 3 && (
+                    <motion.div
+                        key="step3"
+                        initial={{ opacity: 0, x: 30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -30 }}
+                        transition={{ duration: 0.25 }}
+                    >
                     <Card>
                         <CardHeader>
                             <CardTitle>Reason & Confirm</CardTitle>
@@ -312,7 +350,7 @@ export default function BookAppointmentPage() {
                                 </div>
                                 <div className="flex justify-between border-b pb-2">
                                     <span className="text-neutral-500">Time Slot</span>
-                                    <span className="text-blue-600 font-bold">{selectedSlot}</span>
+                                    <span className="text-emerald-600 font-bold">{selectedSlot}</span>
                                 </div>
                                 <div className="flex justify-between pt-2">
                                     <span className="text-neutral-500">Consultation Fee</span>
@@ -324,12 +362,14 @@ export default function BookAppointmentPage() {
                             <Button variant="outline" onClick={() => setStep(2)}>
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Back
                             </Button>
-                            <Button className="bg-green-600 hover:bg-green-700" onClick={submitBooking}>
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={submitBooking}>
                                 <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Booking
                             </Button>
                         </div>
                     </Card>
+                    </motion.div>
                 )}
+            </AnimatePresence>
             </div>
         </div>
     );

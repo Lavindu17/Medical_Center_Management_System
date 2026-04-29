@@ -1,5 +1,6 @@
 
 'use client';
+import { toast } from 'sonner';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -36,15 +37,15 @@ export default function RegisterPatient() {
             });
 
             if (res.ok) {
-                alert('Patient Registered Successfully!');
+                toast.success('Patient Registered Successfully!');
                 router.push('/receptionist/patients');
             } else {
                 const data = await res.json();
-                alert(data.message || 'Registration Failed');
+                toast.error(data.message || 'Registration Failed');
             }
         } catch (error) {
             console.error(error);
-            alert('An error occurred');
+            toast.error('An error occurred');
         } finally {
             setLoading(false);
         }

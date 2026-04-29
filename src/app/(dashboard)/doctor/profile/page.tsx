@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -107,10 +108,10 @@ export default function DoctorProfilePage() {
                     schedules: schedules
                 })
             });
-            if (res.ok) alert('Profile updated successfully');
+            if (res.ok) toast.success('Profile updated successfully');
             else throw new Error('Failed to update');
         } catch (err) {
-            alert('Error updating profile');
+            toast.error('Error updating profile');
         } finally {
             setSaving(false);
         }

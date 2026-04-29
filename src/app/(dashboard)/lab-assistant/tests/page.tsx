@@ -1,5 +1,6 @@
 
 'use client';
+import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
 import {
@@ -68,7 +69,7 @@ export default function LabTestsPage() {
                 setNewTest({ name: '', description: '', price: '', cost_price: '' });
                 fetchTests();
             } else {
-                alert('Failed to add test');
+                toast.error('Failed to add test');
             }
         } catch (error) {
             console.error(error);

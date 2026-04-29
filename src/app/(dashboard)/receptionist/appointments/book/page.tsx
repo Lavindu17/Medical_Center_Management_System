@@ -1,5 +1,6 @@
 
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -107,10 +108,10 @@ export default function ReceptionistBookAppointment() {
             });
 
             if (res.ok) {
-                alert('Appointment Booked!');
+                toast.success('Appointment Booked!');
                 router.push('/receptionist/appointments');
             } else {
-                alert('Booking Failed');
+                toast.error('Booking Failed');
             }
         } catch (e) {
             console.error(e);

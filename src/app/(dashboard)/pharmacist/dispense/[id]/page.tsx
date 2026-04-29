@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
@@ -307,7 +308,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
             .then(res => res.json())
             .then(resData => {
                 if (resData.error) {
-                    alert(resData.error);
+                    toast.error(resData.error);
                     router.push('/pharmacist/prescriptions');
                     return;
                 }
@@ -337,10 +338,10 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                 fetchData();
             } else {
                 const err = await res.json();
-                alert('Error: ' + err.error);
+                toast.error('Error: ' + err.error);
             }
         } catch (e) {
-            alert('Failed to process');
+            toast.error('Failed to process');
         } finally {
             setProcessingId(null);
         }
@@ -363,10 +364,10 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                 fetchData();
             } else {
                 const err = await res.json();
-                alert('Error: ' + err.error);
+                toast.error('Error: ' + err.error);
             }
         } catch (e) {
-            alert('Failed to process');
+            toast.error('Failed to process');
         } finally {
             setProcessingId(null);
         }
@@ -415,10 +416,10 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
     };
 
     if (loading && !data) return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="flex items-center gap-3 text-emerald-700 bg-white px-6 py-4 rounded-full shadow-sm">
-                <RefreshCw className="animate-spin h-5 w-5" />
-                <span className="font-medium">Loading details...</span>
+        <div className="flex items-center justify-center py-24">
+            <div className="flex flex-col items-center gap-4 text-center">
+                <div className="h-12 w-12 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
+                <p className="text-sm text-neutral-500 font-medium">Loading prescription details…</p>
             </div>
         </div>
     );
@@ -618,7 +619,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                                                         )}
                                                         {item.manufacturer && (
                                                             <div className="flex items-center gap-1.5" title="Manufacturer">
-                                                                <Factory className="h-3.5 w-3.5 text-purple-400" />
+                                                                <Factory className="h-3.5 w-3.5 text-neutral-400" />
                                                                 <span className="truncate max-w-[150px]">{item.manufacturer}</span>
                                                             </div>
                                                         )}

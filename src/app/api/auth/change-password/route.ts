@@ -14,7 +14,7 @@ export async function POST(req: Request) {
         }
 
         // Get session
-        const cookieStore = cookies();
+        const cookieStore = await cookies();
         const token = cookieStore.get('auth_token');
 
         if (!token) {
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         }
 
         // Get user from DB to get the actual hash
-        const users = await query<User[]>('SELECT * FROM users WHERE id = ?', [payload.id]);
+        const users = await query<any[]>('SELECT * FROM users WHERE id = ?', [payload.id]);
         if (users.length === 0) {
             return NextResponse.json({ message: 'User not found' }, { status: 404 });
         }

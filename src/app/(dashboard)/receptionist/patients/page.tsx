@@ -1,5 +1,6 @@
 
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -75,12 +76,12 @@ export default function PatientDirectory() {
             });
 
             if (res.ok) {
-                alert('Linked Successfully');
+                toast.success('Linked Successfully');
                 setIsLinkOpen(false);
                 // Optionally, re-fetch patients or update UI to reflect the link
             } else {
                 const data = await res.json();
-                alert(data.message || 'Failed to link');
+                toast.error(data.message || 'Failed to link');
             }
         } catch (e) {
             console.error(e);

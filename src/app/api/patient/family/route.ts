@@ -83,7 +83,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Email and relationship are required' }, { status: 400 });
         }
 
-        if (email.toLowerCase() === user.email.toLowerCase()) {
+        if (email.toLowerCase() === (user as any).email?.toLowerCase()) {
             return NextResponse.json({ message: 'Cannot link your own account' }, { status: 400 });
         }
 
@@ -130,12 +130,11 @@ export async function POST(req: Request) {
             <a href="${dashboardUrl}" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:5px;">Review Request</a>
         `;
         
-        EmailService.sendEmail({
-            to: email,
-            subject: 'Sethro Medical - New Family Link Request',
-            text: `${user.name} has requested to link accounts. Log in to review.`,
-            html: emailHtml
-        }).catch(err => console.error('Email failed:', err));
+        EmailService.sendEmail(
+            email,
+            'Sethro Medical - New Family Link Request',
+            emailHtml
+        ).catch(err => console.error('Email failed:', err));
 
         return NextResponse.json({ message: 'Request sent successfully' });
 
