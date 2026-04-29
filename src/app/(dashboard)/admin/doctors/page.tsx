@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ export default function DoctorManagementPage() {
             setIsEditOpen(false);
             fetchDoctors(); // Refresh list associated
         } catch (error) {
-            alert('Error updating doctor');
+            toast.error('Error updating doctor');
         }
     };
 

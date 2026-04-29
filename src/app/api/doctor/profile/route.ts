@@ -70,7 +70,7 @@ export async function POST(req: Request) {
             // Update User
             await connection.execute(
                 'UPDATE users SET name = ?, phone = ? WHERE id = ?',
-                [name, phone, user.id]
+                [name, phone, user.id] as any[]
             );
 
             // Update Doctor (Profile Settings)
@@ -80,12 +80,12 @@ export async function POST(req: Request) {
                 `UPDATE doctors 
                  SET consultation_fee = ?, license_number = ?, slot_duration = ?
                  WHERE user_id = ?`,
-                [consultation_fee, license_number, slot_duration, user.id]
+                [consultation_fee, license_number, slot_duration, user.id] as any[]
             );
 
             // Update Schedules
             // 1. Delete existing
-            await connection.execute('DELETE FROM doctor_schedules WHERE doctor_id = ?', [user.id]);
+            await connection.execute('DELETE FROM doctor_schedules WHERE doctor_id = ?', [user.id] as any[]);
 
             // 2. Insert new
             if (schedules && Array.isArray(schedules) && schedules.length > 0) {
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
                         for (const day of block.days) {
                             await connection.execute(
                                 'INSERT INTO doctor_schedules (doctor_id, day, start_time, end_time) VALUES (?, ?, ?, ?)',
-                                [user.id, day, block.start_time, block.end_time]
+                                [user.id, day, block.start_time, block.end_time] as any[]
                             );
                         }
                     }

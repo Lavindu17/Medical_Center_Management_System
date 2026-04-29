@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -54,11 +55,11 @@ export default function FamilyDashboard() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert('Invite sent successfully!');
+                toast.success('Invite sent successfully!');
                 setInviteEmail('');
                 fetchFamilyData();
             } else {
-                alert(data.message || 'Failed to send invite');
+                toast.error(data.message || 'Failed to send invite');
             }
         } catch (error) {
             console.error(error);
@@ -76,10 +77,10 @@ export default function FamilyDashboard() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert(`Request ${action.toLowerCase()}ed.`);
+                toast(`Request ${action.toLowerCase()}ed.`);
                 fetchFamilyData();
             } else {
-                alert(data.message);
+                toast.error(data.message);
             }
         } catch (error) {
             console.error(error);
@@ -96,10 +97,10 @@ export default function FamilyDashboard() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert(`Successfully switched accounts.`);
+                toast.success(`Successfully switched accounts.`);
                 window.location.href = '/patient'; // Hard reload to reconstruct state globally
             } else {
-                alert(data.message);
+                toast.error(data.message);
             }
         } catch (error) {
             console.error(error);

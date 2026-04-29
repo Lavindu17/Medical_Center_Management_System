@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -61,12 +62,12 @@ export default function UserManagementPage() {
                 throw new Error(err.message);
             }
 
-            alert('User created successfully');
+            toast.success('User created successfully');
             setIsDialogOpen(false);
             fetchUsers();
             setFormData({ name: '', email: '', password: '', role: 'DOCTOR', phone: '', specialization: '', licenseNumber: '' });
         } catch (error: any) {
-            alert(error.message);
+            toast.error(error.message);
         }
     }
 
@@ -97,7 +98,7 @@ export default function UserManagementPage() {
             setIsEditOpen(false);
             fetchUsers();
         } catch (error: any) {
-            alert('Error updating user');
+            toast.error('Error updating user');
         }
     }
 
@@ -110,7 +111,7 @@ export default function UserManagementPage() {
 
             fetchUsers();
         } catch (error) {
-            alert('Error deleting user');
+            toast.error('Error deleting user');
         }
     }
 

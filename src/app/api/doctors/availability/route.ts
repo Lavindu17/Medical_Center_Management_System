@@ -41,7 +41,7 @@ export async function GET(req: Request) {
         }
 
         // Determine Day of Week for the given date
-        const dateObj = new Date(date);
+        const dateObj = new Date(date || new Date().toISOString());
         const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
         // Fetch Schedules for this specific day

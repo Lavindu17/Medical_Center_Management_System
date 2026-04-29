@@ -225,7 +225,7 @@ export default function RevenuePage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <KpiCard label="Gross Revenue"  value={revenue.gross_revenue}         icon={Banknote}       color={THEME.primary} sub="All income streams" delta={halfDelta} />
                 <KpiCard label="Total COGS"     value={cogs.total_cogs}               icon={TrendingDown}   color={THEME.orange}  sub="Meds + Lab costs"  negative />
-                <KpiCard label="Doctor Payouts" value={profit.total_doctor_payouts}   icon={Stethoscope}    color={THEME.indigo} sub="Net earnings paid"  negative />
+                <KpiCard label="Doctor Payouts" value={profit.total_doctor_payouts}   icon={Stethoscope}    color={THEME.teal} sub="Net earnings paid"  negative />
 
                 <Card className={`border-2 ${isProfit ? 'border-emerald-200 bg-emerald-50/60' : 'border-red-200 bg-red-50/60'}`}>
                     <CardContent className="p-4">
@@ -271,7 +271,7 @@ export default function RevenuePage() {
                                         <Cell key={i} fill={REVENUE_COLORS[i % REVENUE_COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <ReTooltip formatter={(v: number) => formatLKR(v)} />
+                                <ReTooltip formatter={(v: any) => formatLKR(Number(v))} />
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="space-y-1.5 mt-2">
@@ -371,7 +371,7 @@ export default function RevenuePage() {
                             <CartesianGrid strokeDasharray="3 3" stroke={THEME.neutral} vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 10, fill: THEME.slate }} axisLine={false} tickLine={false} />
                             <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10, fill: THEME.slate }} axisLine={false} tickLine={false} width={36} />
-                            <ReTooltip formatter={(v: number) => formatLKR(Math.abs(v))} />
+                            <ReTooltip formatter={(v: any) => formatLKR(Math.abs(Number(v)))} />
                             <ReferenceLine y={0} stroke={THEME.slate} strokeDasharray="3 3" />
                             <Bar dataKey="value" name="Amount" radius={[4,4,0,0]}>
                                 {waterfallData.map((entry, i) => (
