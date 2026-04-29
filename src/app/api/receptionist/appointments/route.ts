@@ -17,7 +17,8 @@ export async function GET(req: Request) {
         if (!await checkAuth()) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         const { searchParams } = new URL(req.url);
-        const date = searchParams.get('date'); // YYYY-MM-DD
+        const startDate = searchParams.get('startDate'); // YYYY-MM-DD
+        const endDate = searchParams.get('endDate'); // YYYY-MM-DD
         const doctorId = searchParams.get('doctorId');
 
         let sql = `
@@ -40,9 +41,15 @@ export async function GET(req: Request) {
 
         const params: any[] = [];
 
-        if (date) {
-            sql += ` AND a.date = ?`;
-            params.push(date);
+        if (startDate && endDate) {
+            sql += ` AND a.date >= ? AND a.date <= ?`;
+            params.push(startDate, endDate);
+        } else if (startDate) {
+            sql += ` AND a.date >= ?`;
+            params.push(startDate);
+        } else if (endDate) {
+            sql += ` AND a.date <= ?`;
+            params.push(endDate);
         } else {
             // Default to today if no date? Or generally filter required?
             // Let's default to today if not provided to keep list manageable
@@ -56,9 +63,9 @@ export async function GET(req: Request) {
             params.push(doctorId);
         }
 
-        sql += ` ORDER BY a.time_slot ASC, a.queue_number ASC`;
+        sql += ` ORDER BY a.date ASC, a.time_slot ASC, a.queue_number ASC`;
 
-        console.log('[ReceptionistAPI] Fetching appointments with params:', { date, doctorId, sqlParams: params });
+        console.log('[ReceptionistAPI] Fetching appointments with params:', { startDate, endDate, doctorId, sqlParams: params });
 
         const appointments = await query(sql, params);
         console.log(`[ReceptionistAPI] Found ${Array.isArray(appointments) ? appointments.length : 0} appointments`);
