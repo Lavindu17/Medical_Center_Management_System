@@ -392,16 +392,22 @@ export default function ConsultationPage() {
                             <Card className="border-emerald-100">
                                 <CardHeader className="bg-emerald-50/50 pb-3">
                                     <CardTitle className="flex items-center gap-2 text-base text-emerald-900">
-                                        <Pill className="h-4 w-4" /> Prescription
+                                        <div className="p-1.5 bg-emerald-100 rounded-lg">
+                                            <Pill className="h-4 w-4 text-emerald-700" />
+                                        </div>
+                                        Prescription Management
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="pt-4 space-y-4">
+                                <CardContent className="pt-5 space-y-5">
                                     {/* Add Med Form */}
-                                    <div id="add-med-form" className={`p-3 border rounded-lg space-y-3 shadow-sm transition-colors ${editingIndex !== null ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
+                                    <div id="add-med-form" className={`p-4 border rounded-xl space-y-4 shadow-sm transition-all duration-300 ${editingIndex !== null ? 'bg-amber-50/80 border-amber-200 ring-2 ring-amber-100' : 'bg-white border-emerald-100'}`}>
                                         {editingIndex !== null && (
-                                            <div className="flex justify-between items-center mb-2">
-                                                <Badge className="bg-amber-500">Editing Item #{editingIndex + 1}</Badge>
-                                                <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-6 w-6 p-0">
+                                            <div className="flex justify-between items-center pb-2 border-b border-amber-200/50 mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                                    <span className="text-sm font-bold text-amber-800 uppercase tracking-tight">Editing Item #{editingIndex + 1}</span>
+                                                </div>
+                                                <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-7 w-7 p-0 hover:bg-amber-200/50 text-amber-700">
                                                     <X className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -443,56 +449,50 @@ export default function ConsultationPage() {
                                             <div className="space-y-3 border-t pt-2 mt-2">
                                                 {/* Frequency Quick Select */}
                                                 <div>
-                                                    <Label className="text-xs text-neutral-500">Frequency Pre-sets <span className="text-[10px] text-neutral-400 font-normal italic">(Applies selected dose)</span></Label>
-                                                    <div className="flex gap-2 mt-1">
-                                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => setSelectedTimes([selectedDose, '0', '0', '0'])}>OD</Button>
-                                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => setSelectedTimes([selectedDose, '0', '0', selectedDose])}>BD</Button>
-                                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => setSelectedTimes([selectedDose, selectedDose, '0', selectedDose])}>TDS</Button>
-                                                        <Button variant="outline" size="sm" className="h-7 text-xs flex-1" onClick={() => setSelectedTimes([selectedDose, selectedDose, selectedDose, selectedDose])}>QDS</Button>
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <Label className="text-xs text-neutral-500 uppercase tracking-wider font-bold">Frequency Pre-sets</Label>
+                                                        <span className="text-[10px] text-neutral-400 font-medium italic">Auto-applies dose</span>
+                                                    </div>
+                                                    <div className="flex gap-1.5">
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs flex-1 border-neutral-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all" onClick={() => setSelectedTimes([selectedDose, '0', '0', '0'])}>OD</Button>
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs flex-1 border-neutral-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all" onClick={() => setSelectedTimes([selectedDose, '0', '0', selectedDose])}>BD</Button>
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs flex-1 border-neutral-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all" onClick={() => setSelectedTimes([selectedDose, selectedDose, '0', selectedDose])}>TDS</Button>
+                                                        <Button variant="outline" size="sm" className="h-8 text-xs flex-1 border-neutral-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all" onClick={() => setSelectedTimes([selectedDose, selectedDose, selectedDose, selectedDose])}>QDS</Button>
                                                     </div>
                                                 </div>
 
-                                                {/* Visual Time Grid */}
                                                 <div className="grid grid-cols-4 gap-2">
                                                     <Button 
                                                         variant={selectedTimes[0] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-12 text-xs flex flex-col items-center gap-1 justify-center ${selectedTimes[0] !== '0' && 'bg-amber-500 hover:bg-amber-600'}`}
+                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[0] !== '0' ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-100 hover:bg-amber-200' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
                                                         onClick={() => setSelectedTimes([selectedTimes[0] === selectedDose ? '0' : selectedDose, selectedTimes[1], selectedTimes[2], selectedTimes[3]])}
                                                     >
-                                                        <div className="flex items-center gap-1">
-                                                            <Sunrise className="h-4 w-4" />
-                                                            {selectedTimes[0] !== '0' && <span>{selectedTimes[0]}</span>}
-                                                        </div>
+                                                        <Sunrise className={`h-5 w-5 ${selectedTimes[0] !== '0' ? 'text-amber-600' : 'text-neutral-300'}`} />
+                                                        <span className={selectedTimes[0] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[0] !== '0' ? selectedTimes[0] : 'Morning'}</span>
                                                     </Button>
                                                     <Button 
                                                         variant={selectedTimes[1] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-12 text-xs flex flex-col items-center gap-1 justify-center ${selectedTimes[1] !== '0' && 'bg-yellow-500 hover:bg-yellow-600'}`}
+                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[1] !== '0' ? 'bg-yellow-50 text-yellow-900 border-yellow-300 ring-2 ring-yellow-50 hover:bg-yellow-100' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
                                                         onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1] === selectedDose ? '0' : selectedDose, selectedTimes[2], selectedTimes[3]])}
                                                     >
-                                                        <div className="flex items-center gap-1">
-                                                            <Sun className="h-4 w-4" />
-                                                            {selectedTimes[1] !== '0' && <span>{selectedTimes[1]}</span>}
-                                                        </div>
+                                                        <Sun className={`h-5 w-5 ${selectedTimes[1] !== '0' ? 'text-yellow-600' : 'text-neutral-300'}`} />
+                                                        <span className={selectedTimes[1] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[1] !== '0' ? selectedTimes[1] : 'Noon'}</span>
                                                     </Button>
                                                     <Button 
                                                         variant={selectedTimes[2] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-12 text-xs flex flex-col items-center gap-1 justify-center ${selectedTimes[2] !== '0' && 'bg-orange-600 hover:bg-orange-700'}`}
+                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[2] !== '0' ? 'bg-orange-50 text-orange-900 border-orange-300 ring-2 ring-orange-50 hover:bg-orange-100' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
                                                         onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1], selectedTimes[2] === selectedDose ? '0' : selectedDose, selectedTimes[3]])}
                                                     >
-                                                        <div className="flex items-center gap-1">
-                                                            <Sunset className="h-4 w-4" />
-                                                            {selectedTimes[2] !== '0' && <span>{selectedTimes[2]}</span>}
-                                                        </div>
+                                                        <Sunset className={`h-5 w-5 ${selectedTimes[2] !== '0' ? 'text-orange-600' : 'text-neutral-300'}`} />
+                                                        <span className={selectedTimes[2] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[2] !== '0' ? selectedTimes[2] : 'Evening'}</span>
                                                     </Button>
                                                     <Button 
                                                         variant={selectedTimes[3] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-12 text-xs flex flex-col items-center gap-1 justify-center ${selectedTimes[3] !== '0' && 'bg-emerald-900 hover:bg-emerald-950'}`}
+                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[3] !== '0' ? 'bg-emerald-900 text-white border-emerald-950 ring-2 ring-emerald-100 hover:bg-emerald-950' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
                                                         onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1], selectedTimes[2], selectedTimes[3] === selectedDose ? '0' : selectedDose])}
                                                     >
-                                                        <div className="flex items-center gap-1">
-                                                            <Moon className="h-4 w-4" />
-                                                            {selectedTimes[3] !== '0' && <span>{selectedTimes[3]}</span>}
-                                                        </div>
+                                                        <Moon className={`h-5 w-5 ${selectedTimes[3] !== '0' ? 'text-emerald-300' : 'text-neutral-300'}`} />
+                                                        <span className={selectedTimes[3] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[3] !== '0' ? selectedTimes[3] : 'Night'}</span>
                                                     </Button>
                                                 </div>
 
@@ -529,10 +529,10 @@ export default function ConsultationPage() {
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div className="mt-3 pt-3 border-t flex justify-between items-center text-sm">
-                                                    <span className="text-neutral-500 font-medium tracking-wide">Resulting Frequency:</span>
-                                                    <Badge variant="outline" className="font-mono bg-neutral-50 text-neutral-800 text-sm">
-                                                        {selectedTimes.join('-')}
+                                                <div className="mt-4 p-3 bg-neutral-50 rounded-lg border border-dashed border-neutral-300 flex justify-between items-center text-sm group hover:border-emerald-300 hover:bg-emerald-50/30 transition-all">
+                                                    <span className="text-neutral-500 font-bold uppercase tracking-tighter text-[11px]">Final Frequency Schema:</span>
+                                                    <Badge variant="outline" className="font-mono bg-white text-emerald-800 border-emerald-200 px-3 py-1 shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                                                        {selectedTimes.join(' - ')}
                                                     </Badge>
                                                 </div>
                                             </div>
@@ -551,28 +551,57 @@ export default function ConsultationPage() {
                                     </div>
 
                                     {/* List */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         {currentPrescription.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center p-2 bg-neutral-50 rounded border text-sm">
-                                                <div>
-                                                    <div className="font-semibold">{item.medicineName}</div>
-                                                    <div className="text-xs text-neutral-500">{item.dosage} • {item.frequency} • {item.duration}</div>
+                                            <div key={idx} className="group flex flex-col p-3 bg-white border border-emerald-100 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-200 transition-all">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex gap-3">
+                                                        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                                            <Pill className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-bold text-neutral-800 text-base leading-tight">{item.medicineName}</div>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] py-0 px-1.5 border-emerald-100 uppercase font-bold tracking-wider">{item.duration}</Badge>
+                                                                <span className="text-xs text-neutral-400 font-medium">{item.dosage}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="font-mono font-black text-xl text-emerald-900 opacity-20 group-hover:opacity-100 transition-opacity">x{item.quantity}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-bold">x{item.quantity}</span>
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => handleEditMedicine(idx)} className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" title="Edit">
-                                                            <Pencil className="h-4 w-4" />
+                                                
+                                                <div className="mt-3 pt-3 border-t border-emerald-50 flex justify-between items-center">
+                                                    <div className="flex gap-1.5">
+                                                        {item.frequency.split('-').map((val, i) => (
+                                                            <div key={i} className={`w-8 h-6 rounded flex items-center justify-center text-[10px] font-bold ${val !== '0' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-neutral-100 text-neutral-400'}`}>
+                                                                {val !== '0' ? val : '-'}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            onClick={() => handleEditMedicine(idx)} 
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
+                                                        >
+                                                            <Pencil className="h-3 w-3" /> EDIT
                                                         </button>
-                                                        <button onClick={() => handleRemoveMedicine(idx)} className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" title="Delete">
-                                                            <Trash2 className="h-4 w-4" />
+                                                        <button 
+                                                            onClick={() => handleRemoveMedicine(idx)} 
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-all"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" /> REMOVE
                                                         </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
                                         {currentPrescription.length === 0 && (
-                                            <div className="text-center text-xs text-neutral-400 py-4">No medicines added</div>
+                                            <div className="flex flex-col items-center justify-center py-10 text-neutral-300 border-2 border-dashed border-neutral-100 rounded-xl bg-neutral-50/50">
+                                                <Pill className="h-10 w-10 mb-2 opacity-20" />
+                                                <p className="text-xs font-medium uppercase tracking-widest">No medicines prescribed yet</p>
+                                            </div>
                                         )}
                                     </div>
                                 </CardContent>
