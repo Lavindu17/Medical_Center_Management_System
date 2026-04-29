@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Save, CheckCircle, Plus, Trash2, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
+import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
 import { formatLKR } from '@/lib/utils';
 
 // Interfaces
@@ -79,6 +79,7 @@ export default function ConsultationPage() {
 
     // Form State - Labs
     const [selectedLabs, setSelectedLabs] = useState<number[]>([]); // Lab Test IDs
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
     // Fetch Initial Data
     useEffect(() => {
@@ -163,7 +164,52 @@ export default function ConsultationPage() {
             quantity: qty
         };
 
-        setCurrentPrescription([...currentPrescription, newItem]);
+        if (editingIndex !== null) {
+            const newList = [...currentPrescription];
+            newList[editingIndex] = newItem;
+            setCurrentPrescription(newList);
+            setEditingIndex(null);
+        } else {
+            setCurrentPrescription([...currentPrescription, newItem]);
+        }
+        
+        setSelectedMed('');
+        setSelectedTimes(['0', '0', '0', '0']);
+        setSelectedDose('1');
+    };
+
+    const handleEditMedicine = (index: number) => {
+        const item = currentPrescription[index];
+        setEditingIndex(index);
+        setSelectedMed(item.medicineId.toString());
+        setSelectedDose(item.dosage);
+        
+        // Parse frequency back to times
+        const times = item.frequency.split('-') as [string, string, string, string];
+        setSelectedTimes(times);
+        setSelectedDuration(item.duration);
+
+        // Set form type for UI helpers
+        const med = medicines.find(m => m.id === item.medicineId);
+        if (med) {
+            const name = med.name.toLowerCase();
+            const unit = (med.unit || '').toLowerCase();
+            if (unit.includes('ml') || name.includes('syr') || name.includes('liquid')) {
+                setSelectedMedForm('Syrup');
+            } else if (unit.includes('tube') || unit.includes('g') || name.includes('cream') || name.includes('oint')) {
+                setSelectedMedForm('Cream');
+            } else {
+                setSelectedMedForm('Pill');
+            }
+        }
+        
+        // Scroll to form
+        const form = document.getElementById('add-med-form');
+        if (form) form.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingIndex(null);
         setSelectedMed('');
         setSelectedTimes(['0', '0', '0', '0']);
         setSelectedDose('1');
@@ -351,7 +397,15 @@ export default function ConsultationPage() {
                                 </CardHeader>
                                 <CardContent className="pt-4 space-y-4">
                                     {/* Add Med Form */}
-                                    <div className="p-3 bg-white border rounded-lg space-y-3 shadow-sm">
+                                    <div id="add-med-form" className={`p-3 border rounded-lg space-y-3 shadow-sm transition-colors ${editingIndex !== null ? 'bg-amber-50 border-amber-200' : 'bg-white'}`}>
+                                        {editingIndex !== null && (
+                                            <div className="flex justify-between items-center mb-2">
+                                                <Badge className="bg-amber-500">Editing Item #{editingIndex + 1}</Badge>
+                                                <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-6 w-6 p-0">
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
                                         <div className="space-y-1">
                                             <Label className="text-xs">Medicine</Label>
                                             <select
@@ -483,9 +537,17 @@ export default function ConsultationPage() {
                                                 </div>
                                             </div>
                                         )}
-                                        <Button size="sm" className="w-full mt-2" onClick={handleAddMedicine} disabled={!selectedMed}>
-                                            <Plus className="mr-2 h-4 w-4" /> Add to List
-                                        </Button>
+                                        <div className="flex gap-2 mt-2">
+                                            {editingIndex !== null && (
+                                                <Button variant="outline" size="sm" className="flex-1" onClick={handleCancelEdit}>
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                            <Button size="sm" className={`flex-1 ${editingIndex !== null ? 'bg-amber-600 hover:bg-amber-700' : ''}`} onClick={handleAddMedicine} disabled={!selectedMed}>
+                                                {editingIndex !== null ? <Save className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                                                {editingIndex !== null ? 'Update Item' : 'Add to List'}
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     {/* List */}
@@ -498,9 +560,14 @@ export default function ConsultationPage() {
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <span className="font-mono font-bold">x{item.quantity}</span>
-                                                    <button onClick={() => handleRemoveMedicine(idx)} className="text-red-500 hover:text-red-700">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => handleEditMedicine(idx)} className="p-1 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors" title="Edit">
+                                                            <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                        <button onClick={() => handleRemoveMedicine(idx)} className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors" title="Delete">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
