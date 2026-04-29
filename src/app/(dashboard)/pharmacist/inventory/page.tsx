@@ -216,7 +216,7 @@ export default function InventoryPage() {
                 </div>
                 <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">
                             <Plus className="mr-2 h-4 w-4" /> Add Medicine
                         </Button>
                     </DialogTrigger>
@@ -286,7 +286,7 @@ export default function InventoryPage() {
                                 <p className="text-xs text-neutral-500">Price per single {formData.unit || 'unit'} (not per batch)</p>
                             </div>
 
-                            <Button type="submit" className="w-full bg-emerald-600">Register Medicine</Button>
+                            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 font-bold h-11 transition-all">Register Medicine</Button>
                         </form>
                     </DialogContent>
                 </Dialog>
@@ -345,21 +345,21 @@ export default function InventoryPage() {
 
             <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                 <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b bg-neutral-50 font-semibold text-sm text-neutral-500">
-                    <div className="col-span-4">Medicine Name</div>
-                    <div className="col-span-2">Stock</div>
-                    <div className="col-span-2">Price (Sell)</div>
-                    <div className="col-span-2">Expiry</div>
-                    <div className="col-span-2 text-right">Actions</div>
+                    <div className="col-span-3">Medicine Name</div>
+                    <div className="col-span-2 pl-6">Stock Level</div>
+                    <div className="col-span-2 pl-6">Price (Sell)</div>
+                    <div className="col-span-2 pl-6">Expiry</div>
+                    <div className="col-span-3 text-right">Actions</div>
                 </div>
                 <div className="divide-y">
                     {loading ? <div className="p-8 text-center text-neutral-400">Loading...</div> : handleSearch.map((med) => (
                         <div key={med.id} className="grid grid-cols-12 gap-4 px-6 py-5 items-center hover:bg-emerald-50/30 transition-colors group">
-                            <div className="col-span-4">
+                            <div className="col-span-3">
                                 <div className="font-semibold text-neutral-900 group-hover:text-emerald-700 transition-colors">{med.name}</div>
                                 {med.generic_name && <div className="text-sm text-neutral-500 mt-0.5">{med.generic_name}</div>}
                                 {med.category && <div className="text-xs text-neutral-400 mt-1">🏷️ {med.category}</div>}
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-2 pl-6">
                                 {/* Stock Level with Progress Bar */}
                                 <div className="space-y-2">
                                     <div className="flex items-baseline gap-2">
@@ -396,11 +396,11 @@ export default function InventoryPage() {
                                     )}
                                 </div>
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-2 pl-6">
                                 <div className="font-semibold text-neutral-900">{formatLKR(med.price_per_unit)}</div>
                                 <div className="text-xs text-neutral-500">per {med.unit}</div>
                             </div>
-                            <div className="col-span-2">
+                            <div className="col-span-2 pl-6">
                                 {med.earliest_expiry ? (
                                     (() => {
                                         const expiryDate = new Date(med.earliest_expiry);
@@ -432,11 +432,11 @@ export default function InventoryPage() {
                                     <span className="text-neutral-400 text-sm italic">No stock</span>
                                 )}
                             </div>
-                            <div className="col-span-2 flex gap-2 justify-end">
+                            <div className="col-span-3 flex gap-2 justify-end">
                                 <Button size="sm" variant="outline" onClick={() => openBatches(med)} className="border-emerald-600 text-emerald-700 hover:bg-emerald-50" title="View Batches">
                                     <Package className="h-4 w-4 mr-1" /> Batches
                                 </Button>
-                                <Button size="sm" onClick={() => openRestock(med)} className="bg-emerald-600 hover:bg-emerald-700">
+                                <Button size="sm" onClick={() => openRestock(med)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-bold">
                                     Restock
                                 </Button>
                                 <Button size="sm" variant="ghost" onClick={() => openEdit(med)} className="hover:bg-neutral-100">
@@ -579,7 +579,7 @@ export default function InventoryPage() {
                                 <Input type="number" required value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} />
                             </div>
                         </div>
-                        <Button type="submit" className="w-full bg-blue-600">Update Medicine</Button>
+                        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 font-bold h-11 transition-all">Update Medicine</Button>
                     </form>
                 </DialogContent>
             </Dialog>
@@ -589,9 +589,9 @@ export default function InventoryPage() {
                 <DialogContent>
                     <DialogHeader><DialogTitle>Add New Batch</DialogTitle></DialogHeader>
                     {currentMed && (
-                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                            <p className="text-sm"><strong className="text-blue-900">{currentMed.name}</strong></p>
-                            {currentMed.generic_name && <p className="text-xs text-blue-700">{currentMed.generic_name}</p>}
+                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                            <p className="text-sm"><strong className="text-emerald-900">{currentMed.name}</strong></p>
+                            {currentMed.generic_name && <p className="text-xs text-emerald-700">{currentMed.generic_name}</p>}
                         </div>
                     )}
                     <form onSubmit={handleRestockSubmit} className="space-y-4">
@@ -626,7 +626,7 @@ export default function InventoryPage() {
                                 <li>Selling price can vary between batches</li>
                             </ul>
                         </div>
-                        <Button type="submit" className="w-full bg-emerald-600">Add Batch to Inventory</Button>
+                        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 font-bold h-11 transition-all">Add Batch to Inventory</Button>
                     </form>
                 </DialogContent>
             </Dialog>

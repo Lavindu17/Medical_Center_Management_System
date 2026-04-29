@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
@@ -14,11 +13,27 @@ async function getPharmacist() {
     return user;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
         const user = await getPharmacist();
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const url = new URL(request.url);
+        const tab = url.searchParams.get('tab') || 'active';
+        const date = url.searchParams.get('date');
+
+        let statusCondition = "p.status IN ('PENDING', 'PARTIALLY_COMPLETED')";
+        if (tab === 'passed') {
+            statusCondition = "p.status IN ('COMPLETED', 'CANCELLED', 'DISPENSED')";
+        }
+
+        let dateCondition = "";
+        const queryParams: any[] = [];
+        if (date) {
+            dateCondition = "AND DATE(p.issued_at) = ?";
+            queryParams.push(date);
         }
 
         const rows = await query(
@@ -34,8 +49,9 @@ export async function GET() {
             JOIN appointments a ON p.appointment_id = a.id
             JOIN users pat_user ON a.patient_id = pat_user.id
             JOIN users doc_user ON p.doctor_id = doc_user.id
-            WHERE p.status IN ('PENDING', 'PARTIALLY_COMPLETED')
-            ORDER BY p.issued_at ASC`
+            WHERE ${statusCondition} ${dateCondition}
+            ORDER BY p.issued_at ${tab === 'active' ? 'ASC' : 'DESC'}`,
+            queryParams
         );
 
         return NextResponse.json(rows);

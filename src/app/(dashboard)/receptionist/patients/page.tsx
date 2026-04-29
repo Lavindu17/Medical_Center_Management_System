@@ -96,7 +96,7 @@ export default function PatientDirectory() {
                     <p className="text-neutral-500">Manage patient records and accounts.</p>
                 </div>
                 <Link href="/receptionist/register">
-                    <Button className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">
                         <UserPlus className="mr-2 h-4 w-4" /> New Patient
                     </Button>
                 </Link>

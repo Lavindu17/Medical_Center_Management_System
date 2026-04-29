@@ -8,6 +8,9 @@ import { formatLKR } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+
 
 export default function DoctorDashboard() {
     const [stats, setStats] = useState({
@@ -16,6 +19,7 @@ export default function DoctorDashboard() {
         totalPatients: 0,
         revenue: 0
     });
+    const [chartData, setChartData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
 
@@ -23,14 +27,18 @@ export default function DoctorDashboard() {
         // Fetch User and Stats
         Promise.all([
             fetch('/api/auth/session').then(res => res.json()),
-            fetch('/api/doctor/stats').then(res => res.json())
-        ]).then(([userData, statsData]) => {
+            fetch('/api/doctor/stats').then(res => res.json()),
+            fetch('/api/doctor/chart-data').then(res => res.json())
+        ]).then(([userData, statsData, chartResData]) => {
             if (userData?.user) setUser(userData.user);
             // Validate statsData before setting
             if (statsData && typeof statsData.revenue === 'number') {
                 setStats(statsData);
             } else {
                 console.error("Invalid stats data:", statsData);
+            }
+            if (Array.isArray(chartResData)) {
+                setChartData(chartResData);
             }
         }).catch(err => console.error(err))
             .finally(() => setLoading(false));
@@ -76,8 +84,56 @@ export default function DoctorDashboard() {
                 </div>
             )}
 
+            {/* Charts Section */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card className="border border-neutral-200 shadow-none">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-semibold text-neutral-800">Weekly Appointments</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[250px] w-full mt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        itemStyle={{ color: '#059669', fontWeight: 600 }}
+                                    />
+                                    <Line type="monotone" dataKey="appointments" stroke="#059669" strokeWidth={3} dot={{ r: 4, fill: '#059669', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-neutral-200 shadow-none">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-base font-semibold text-neutral-800">Revenue Trends</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="h-[250px] w-full mt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => `Rs.${value/1000}k`} />
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        formatter={(value: number) => [formatLKR(value), 'Revenue']}
+                                        cursor={{ fill: '#f3f4f6' }}
+                                    />
+                                    <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+            </motion.div>
+
             {/* Quick Actions */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
                 <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Quick Actions</h2>
                 <div className="grid grid-cols-2 gap-3">
                     {[

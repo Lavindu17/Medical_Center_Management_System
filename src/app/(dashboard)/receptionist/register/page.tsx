@@ -116,8 +116,15 @@ export default function RegisterPatient() {
                         <Link href="/receptionist">
                             <Button variant="outline" type="button">Cancel</Button>
                         </Link>
-                        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
-                            {loading ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Create Account</>}
+                        <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-8 transition-all duration-200" disabled={loading}>
+                            {loading ? (
+                                <span className="flex items-center gap-2">
+                                    <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                    Processing...
+                                </span>
+                            ) : (
+                                <><Save className="mr-2 h-4 w-4" /> Create Account</>
+                            )}
                         </Button>
                     </div>
                 </form>

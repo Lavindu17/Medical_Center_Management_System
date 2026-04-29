@@ -8,11 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Using our custom Tabs if radix not avail or standard
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon } from 'lucide-react';
-import { formatLKR } from '@/lib/utils';
+import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { formatLKR, cn } from '@/lib/utils';
 
 // Interfaces
 interface Medicine {
@@ -80,6 +82,10 @@ export default function ConsultationPage() {
     // Form State - Labs
     const [selectedLabs, setSelectedLabs] = useState<number[]>([]); // Lab Test IDs
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+    // UI State for Searchable Dropdowns
+    const [medOpen, setMedOpen] = useState(false);
+    const [labOpen, setLabOpen] = useState(false);
 
     // Fetch Initial Data
     useEffect(() => {
@@ -361,12 +367,12 @@ export default function ConsultationPage() {
                             <TabsTrigger value="consultation">Current Consultation</TabsTrigger>
                             <TabsTrigger value="history">Full History</TabsTrigger>
                         </TabsList>
-                        <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving}>
+                        <div className="flex gap-3">
+                            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all">
                                 <Save className="mr-2 h-4 w-4" /> Save Draft
                             </Button>
-                            <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleSave(true)} disabled={saving}>
-                                <CheckCircle className="mr-2 h-4 w-4" /> Complete
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-6 transition-all" onClick={() => handleSave(true)} disabled={saving}>
+                                <CheckCircle className="mr-2 h-4 w-4" /> Complete Consultation
                             </Button>
                         </div>
                     </div>
@@ -414,35 +420,67 @@ export default function ConsultationPage() {
                                         )}
                                         <div className="space-y-1">
                                             <Label className="text-xs">Medicine</Label>
-                                            <select
-                                                className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                value={selectedMed}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setSelectedMed(val);
-                                                    if (!val) return;
-                                                    const med = medicines.find(m => m.id.toString() === val);
-                                                    if (med) {
-                                                        const name = med.name.toLowerCase();
-                                                        const unit = (med.unit || '').toLowerCase();
-                                                        if (unit.includes('ml') || name.includes('syr') || name.includes('liquid')) {
-                                                            setSelectedMedForm('Syrup');
-                                                            setSelectedDose('5ml');
-                                                        } else if (unit.includes('tube') || unit.includes('g') || name.includes('cream') || name.includes('oint')) {
-                                                            setSelectedMedForm('Cream');
-                                                            setSelectedDose('Apply');
-                                                        } else {
-                                                            setSelectedMedForm('Pill');
-                                                            setSelectedDose('1');
-                                                        }
-                                                    }
-                                                }}
-                                            >
-                                                <option value="">Select Medicine...</option>
-                                                {medicines.map(m => (
-                                                    <option key={m.id} value={m.id}>{m.name} (Stock: {m.stock})</option>
-                                                ))}
-                                            </select>
+                                            <Popover open={medOpen} onOpenChange={setMedOpen}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={medOpen}
+                                                        className="w-full justify-between font-normal"
+                                                    >
+                                                        {selectedMed
+                                                            ? medicines.find((m) => m.id.toString() === selectedMed)?.name
+                                                            : "Select medicine..."}
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[400px] p-0 shadow-2xl bg-white border-emerald-200 z-50" align="start">
+                                                    <Command className="bg-white">
+                                                        <CommandInput placeholder="Search medicine..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>No medicine found.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {medicines.map((med) => (
+                                                                    <CommandItem
+                                                                        key={med.id}
+                                                                        value={med.name}
+                                                                        onSelect={() => {
+                                                                            const val = med.id.toString();
+                                                                            setSelectedMed(val);
+                                                                            setMedOpen(false);
+                                                                            
+                                                                            // Auto-fill logic
+                                                                            const name = med.name.toLowerCase();
+                                                                            const unit = (med.unit || '').toLowerCase();
+                                                                            if (unit.includes('ml') || name.includes('syr') || name.includes('liquid')) {
+                                                                                setSelectedMedForm('Syrup');
+                                                                                setSelectedDose('5ml');
+                                                                            } else if (unit.includes('tube') || unit.includes('g') || name.includes('cream') || name.includes('oint')) {
+                                                                                setSelectedMedForm('Cream');
+                                                                                setSelectedDose('Apply');
+                                                                            } else {
+                                                                                setSelectedMedForm('Pill');
+                                                                                setSelectedDose('1');
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                                "mr-2 h-4 w-4",
+                                                                                selectedMed === med.id.toString() ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        <div className="flex flex-col">
+                                                                            <span>{med.name}</span>
+                                                                            <span className="text-[10px] text-neutral-400">Stock: {med.stock} {med.unit}</span>
+                                                                        </div>
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
                                         </div>
 
                                         {selectedMed && (
@@ -616,24 +654,66 @@ export default function ConsultationPage() {
                                 </CardHeader>
                                 <CardContent className="pt-4 space-y-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs">Select Tests</Label>
-                                        <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto border p-2 rounded bg-white">
-                                            {labTests.map(test => (
-                                                <label key={test.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-neutral-50 p-1 rounded">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedLabs.includes(test.id)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) setSelectedLabs([...selectedLabs, test.id]);
-                                                            else setSelectedLabs(selectedLabs.filter(id => id !== test.id));
-                                                        }}
-                                                        className="rounded border-gray-300"
-                                                    />
-                                                    <span>{test.name}</span>
-                                                    <span className="text-xs text-neutral-400 ml-auto">{formatLKR(test.price)}</span>
-                                                </label>
-                                            ))}
-                                        </div>
+                                        <Label className="text-xs">Request Lab Tests</Label>
+                                        <Popover open={labOpen} onOpenChange={setLabOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    aria-expanded={labOpen}
+                                                    className="w-full justify-between font-normal h-auto min-h-[40px] py-2"
+                                                >
+                                                    <div className="flex flex-wrap gap-1 text-left">
+                                                        {selectedLabs.length > 0 ? (
+                                                            selectedLabs.map(id => (
+                                                                <Badge key={id} variant="secondary" className="text-[10px] bg-teal-50 text-teal-700 border-teal-100">
+                                                                    {labTests.find(t => t.id === id)?.name}
+                                                                </Badge>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-neutral-500">Search and select tests...</span>
+                                                        )}
+                                                    </div>
+                                                    <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[400px] p-0 shadow-2xl bg-white border-teal-200 z-50" align="start">
+                                                <Command className="bg-white">
+                                                    <CommandInput placeholder="Search tests..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>No lab test found.</CommandEmpty>
+                                                        <CommandGroup>
+                                                            {labTests.map((test) => (
+                                                                <CommandItem
+                                                                    key={test.id}
+                                                                    value={test.name}
+                                                                    onSelect={() => {
+                                                                        if (selectedLabs.includes(test.id)) {
+                                                                            setSelectedLabs(selectedLabs.filter(id => id !== test.id));
+                                                                        } else {
+                                                                            setSelectedLabs([...selectedLabs, test.id]);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="flex items-center w-full">
+                                                                        <div className={cn(
+                                                                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                                            selectedLabs.includes(test.id)
+                                                                                ? "bg-primary text-primary-foreground"
+                                                                                : "opacity-50 [&_svg]:invisible"
+                                                                        )}>
+                                                                            <Check className="h-4 w-4" />
+                                                                        </div>
+                                                                        <span className="flex-1">{test.name}</span>
+                                                                        <span className="text-xs text-neutral-400">{formatLKR(test.price)}</span>
+                                                                    </div>
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
                                     {selectedLabs.length > 0 && (
                                         <div className="pt-2">
