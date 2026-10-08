@@ -45,3 +45,6 @@ next-env.d.ts
 
 # private patient files
 /private-uploads/
+
+# keep the template for new developers
+!.env.example
