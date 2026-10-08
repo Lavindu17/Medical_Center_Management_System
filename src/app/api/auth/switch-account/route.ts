@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { parseBody } from '@/lib/validate';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
+
+const switchSchema = z.object({
+    target_user_id: z.coerce.number({ message: 'Target user ID required' }).int('Target user ID is invalid').positive('Target user ID is invalid'),
+});
 
 export async function POST(req: Request) {
     try {
@@ -12,12 +18,9 @@ export async function POST(req: Request) {
         const currentUser = await AuthService.verifyToken(token);
         if (!currentUser) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        const body = await req.json();
-        const { target_user_id } = body;
-
-        if (!target_user_id) {
-            return NextResponse.json({ message: 'Target user ID required' }, { status: 400 });
-        }
+        const body = await parseBody(req, switchSchema);
+        if ('error' in body) return body.error;
+        const { target_user_id } = body.data;
 
         // If they specify their own ID, somehow they want to switch to themselves? 
         // Just return success context without doing anything if it matches.

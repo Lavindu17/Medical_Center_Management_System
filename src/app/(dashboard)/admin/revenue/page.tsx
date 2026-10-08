@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -112,7 +113,7 @@ export default function RevenuePage() {
         fetch(`/api/admin/revenue?month=${selectedMonth + 1}&year=${selectedYear}`)
             .then(r => r.json())
             .then(setData)
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, [selectedMonth, selectedYear]);
 
@@ -216,7 +217,7 @@ export default function RevenuePage() {
                     >
                         {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <span className="text-xs px-1.5 py-0.5 rounded-full border ml-1" style={{ backgroundColor: THEME.primary + '18', color: THEME.teal, borderColor: THEME.mint }}>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full border ml-1" style={{ backgroundColor: THEME.primary + '18', color: '#0e7490', borderColor: THEME.mint }}>
                         Filtered
                     </span>
                 </div>

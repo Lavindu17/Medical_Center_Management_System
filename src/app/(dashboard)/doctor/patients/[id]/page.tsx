@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -44,15 +45,7 @@ export default function PatientHistoryPage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
-                    <ArrowLeft className="h-5 w-5" aria-hidden />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">{patient.name}</h1>
-                    <p className="text-neutral-500">Medical Record</p>
-                </div>
-            </div>
+            <PageHeader back={{ href: '/doctor/patients', label: 'Patients' }} title={patient.name} description="Medical record" />
 
             <div className="grid grid-cols-3 gap-6">
                 {/* Left: Demographics */}

@@ -1,20 +1,11 @@
 
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/api-auth';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
 import { prescriptionStatus } from '@/lib/prescription';
 import { notify, usersWithRole } from '@/lib/notify';
-
-async function getPharmacist() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return null;
-    const user = await AuthService.verifyToken(token);
-    // @ts-ignore
-    if (!user || user.role !== 'PHARMACIST') return null;
-    return user;
-}
 
 export async function GET(
     request: Request,
@@ -22,8 +13,9 @@ export async function GET(
 ) {
     const params = await props.params;
     try {
-        const user = await getPharmacist();
-        if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('PHARMACIST');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const { id } = params;
 
@@ -111,8 +103,9 @@ export async function POST(
 ) {
     const params = await props.params;
     try {
-        const user = await getPharmacist();
-        if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('PHARMACIST');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const prescriptionId = Number(params.id);
         const body = await request.json().catch(() => ({}));

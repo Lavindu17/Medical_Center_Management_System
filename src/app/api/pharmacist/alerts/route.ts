@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 
-async function checkAuth() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    const user = await AuthService.verifyToken(token || '');
-    if (!user || user.role !== 'PHARMACIST') return false;
-    return true;
-}
-
 export async function GET() {
     try {
-        if (!await checkAuth()) {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-        }
+        const auth = await requireRole('PHARMACIST');
+        if ('error' in auth) return auth.error;
 
         const today = new Date().toISOString().split('T')[0];
         const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];

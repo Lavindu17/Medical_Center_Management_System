@@ -1,4 +1,7 @@
 'use client';
+import { toast } from 'sonner';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 
 import { useState, useEffect } from 'react';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -28,7 +31,7 @@ export default function DoctorAppointmentsPage() {
             .then(data => {
                 if (Array.isArray(data)) setAppointments(data);
             })
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, []);
 
@@ -69,10 +72,7 @@ export default function DoctorAppointmentsPage() {
         <div className="space-y-6 text-neutral-800">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Appointments</h1>
-                    <p className="text-neutral-500 mt-1">Manage patient queue and consultations.</p>
-                </div>
+                <PageHeader title="Appointments" description="Manage patient queue and consultations." />
                 <div className="flex bg-white p-1 rounded-lg border shadow-sm">
                     {(['today', 'week', 'month'] as const).map(f => (
                         <button
@@ -116,12 +116,9 @@ export default function DoctorAppointmentsPage() {
                 {/* Rows */}
                 <div className="divide-y divide-neutral-100">
                     {loading ? (
-                        <div className="p-12 flex justify-center text-neutral-400">Loading...</div>
+                        <LoadingState label="Loading appointments…" />
                     ) : filteredData.length === 0 ? (
-                        <div className="p-16 flex flex-col items-center justify-center text-neutral-400 gap-2">
-                            <CalendarDays className="h-10 w-10 text-neutral-200" />
-                            <p>No appointments found.</p>
-                        </div>
+                        <EmptyState icon={CalendarDays} title="No appointments found" description="Try another day or clear the search." className="m-6 border-0" />
                     ) : (
                         filteredData.map((appt) => (
                             <div key={appt.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-emerald-50/30 transition-colors group">

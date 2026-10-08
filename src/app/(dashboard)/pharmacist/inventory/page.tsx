@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -72,6 +73,7 @@ export default function InventoryPage() {
             }
         } catch (e) {
             console.error(e);
+            toast.error('Could not load this page. Please refresh and try again.');
         }
     };
 
@@ -85,7 +87,7 @@ export default function InventoryPage() {
         fetch('/api/pharmacist/inventory')
             .then(res => res.json())
             .then(data => setMedicines(data))
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     };
 
@@ -221,10 +223,7 @@ export default function InventoryPage() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Inventory</h1>
-                    <p className="text-neutral-500">Manage medicine stocks and pricing.</p>
-                </div>
+                <PageHeader title="Inventory" description="Manage medicine stocks and pricing." />
                 <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
                         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">

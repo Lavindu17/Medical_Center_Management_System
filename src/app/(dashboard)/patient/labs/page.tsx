@@ -1,4 +1,7 @@
 'use client';
+import { toast } from 'sonner';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -25,19 +28,16 @@ export default function LabReportsPage() {
             })
             .then(res => res.json())
             .then(setData)
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, []);
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Lab Reports</h1>
-                <p className="text-neutral-500">View and download your test results.</p>
-            </div>
+            <PageHeader title="Lab Reports" description="View and download your test results." />
 
-            {loading ? <div>Loading...</div> : data.length === 0 ? (
-                <div className="text-neutral-500">No lab reports found.</div>
+            {loading ? <LoadingState label="Loading your lab reports…" /> : data.length === 0 ? (
+                <EmptyState title="No lab reports yet" description="When a doctor orders a test, the result will be available here to view and download." />
             ) : (
                 <div className="grid gap-4">
                     {data.map((item, i) => (

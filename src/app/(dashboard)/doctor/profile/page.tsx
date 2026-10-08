@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 import { friendlyDay } from '@/lib/dates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -93,7 +94,7 @@ export default function DoctorProfilePage() {
                     setBlockedDates(data.leaves || []);
                 }
             })
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, []);
 
@@ -208,10 +209,7 @@ export default function DoctorProfilePage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Practice Profile</h1>
-                <p className="text-neutral-500">Your fee, working schedule and days off. Name, phone and password are on the Account page.</p>
-            </div>
+            <PageHeader title="Practice Profile" description="Your fee, working schedule and days off. Name, phone and password are on the Account page." />
 
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="mb-4 flex flex-wrap h-auto">

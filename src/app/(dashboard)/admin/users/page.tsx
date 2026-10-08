@@ -1,4 +1,6 @@
 'use client';
+import { LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -143,10 +145,7 @@ export default function UserManagementPage() {
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">User Management</h1>
-                    <p className="text-neutral-500">Manage staff access and patient accounts.</p>
-                </div>
+                <PageHeader title="User Management" description="Manage staff access and patient accounts." />
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button className="bg-emerald-600 hover:bg-emerald-700">
@@ -272,7 +271,7 @@ export default function UserManagementPage() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">Loading...</TableCell>
+                                    <TableCell colSpan={6}><LoadingState label="Loading users…" /></TableCell>
                                 </TableRow>
                             ) : filteredUsers.map((user) => (
                                 <TableRow key={user.id}>

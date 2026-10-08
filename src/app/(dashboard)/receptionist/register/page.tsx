@@ -1,5 +1,8 @@
-
 'use client';
+
+import { PageHeader } from '@/components/ui/page-header';
+
+
 import { toast } from 'sonner';
 
 import { useState } from 'react';
@@ -58,10 +61,7 @@ export default function RegisterPatient() {
                 <Link href="/receptionist">
                     <Button variant="ghost" size="icon" aria-label="Back"><ArrowLeft className="h-5 w-5" aria-hidden /></Button>
                 </Link>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Register New Patient</h1>
-                    <p className="text-neutral-500">Create a new patient account for walk-ins.</p>
-                </div>
+                <PageHeader title="Register New Patient" description="Create a new patient account for walk-ins." />
             </div>
 
             <div className="bg-white p-8 rounded-xl border shadow-sm">

@@ -1,4 +1,7 @@
 'use client';
+import { toast } from 'sonner';
+import { EmptyState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +22,7 @@ export default function BillingPage() {
             .then(session => fetch(`/api/patient/records?patientId=${session.user.id}&type=bills`))
             .then(res => res.json())
             .then(setData)
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, []);
 
@@ -27,16 +30,10 @@ export default function BillingPage() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Billing</h1>
-                <p className="text-sm text-neutral-500 mt-1">Itemized invoices for all your appointments.</p>
-            </div>
+            <PageHeader title="Billing" description="Itemized invoices for all your appointments." />
 
             {data.length === 0 ? (
-                <div className="text-center py-16 text-neutral-400">
-                    <Receipt className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>No bills found.</p>
-                </div>
+                <EmptyState icon={Receipt} title="No bills yet" description="A bill appears here after each completed appointment." />
             ) : (
                 <div className="space-y-4">
                     {data.map((bill) => {

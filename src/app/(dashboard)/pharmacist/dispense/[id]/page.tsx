@@ -316,7 +316,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                 }
                 setData(resData);
             })
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     };
 

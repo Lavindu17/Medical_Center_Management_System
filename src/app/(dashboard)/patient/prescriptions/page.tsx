@@ -1,4 +1,7 @@
 'use client';
+import { toast } from 'sonner';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -25,7 +28,7 @@ export default function PrescriptionsPage() {
             })
             .then(res => res.json())
             .then(setData)
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, []);
 
@@ -58,13 +61,10 @@ export default function PrescriptionsPage() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">My Prescriptions</h1>
-                <p className="text-neutral-500">History of medication issued by doctors.</p>
-            </div>
+            <PageHeader title="My Prescriptions" description="History of medication issued by doctors." />
 
-            {loading ? <div>Loading...</div> : prescriptions.length === 0 ? (
-                <div className="text-neutral-500">No prescriptions found.</div>
+            {loading ? <LoadingState label="Loading your prescriptions…" /> : prescriptions.length === 0 ? (
+                <EmptyState title="No prescriptions yet" description="Medicines your doctor prescribes after a consultation will be listed here." />
             ) : (
                 <div className="space-y-4">
                     {prescriptions.map((prescription: any) => (

@@ -1,4 +1,7 @@
 'use client';
+import { toast } from 'sonner';
+import { LoadingState, ErrorState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -19,7 +22,7 @@ export default function DoctorEarningsPage() {
         fetch(`/api/doctor/earnings?period=${period}`)
             .then(res => res.json())
             .then(setData)
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, [period]);
 
@@ -36,12 +39,7 @@ export default function DoctorEarningsPage() {
         <div className="space-y-6 max-w-5xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Earnings</h1>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        Your net earnings after the medical centre commission.
-                    </p>
-                </div>
+                <PageHeader title="Earnings" description="Your net earnings after the medical centre commission." />
                 {/* Period Tabs */}
                 <div className="flex bg-neutral-100 rounded-lg p-1 gap-1">
                     {periods.map(p => (
@@ -60,9 +58,9 @@ export default function DoctorEarningsPage() {
             </div>
 
             {loading ? (
-                <div className="text-neutral-500 text-sm">Loading earnings...</div>
+                <LoadingState label="Loading earnings…" />
             ) : !data || !data.summary ? (
-                <div className="text-red-500 text-sm">{data?.message || 'Failed to load data.'}</div>
+                <ErrorState title="Could not load your earnings" description={data?.message || 'Check your connection and try again.'} onRetry={() => window.location.reload()} />
             ) : (
                 <>
                     {/* Summary Cards */}
@@ -145,7 +143,7 @@ export default function DoctorEarningsPage() {
                             {data.appointments.length === 0 ? (
                                 <p className="text-sm text-neutral-400 text-center py-8">No completed appointments in this period.</p>
                             ) : (
-                                <div className="overflow-x-auto">
+                                <div tabIndex={0} role="region" aria-label="Earnings by appointment" className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead className="bg-neutral-50 border-b text-neutral-500 font-semibold text-xs uppercase">
                                             <tr>

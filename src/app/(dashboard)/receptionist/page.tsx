@@ -3,6 +3,10 @@ import { pool } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Calendar, Banknote, Clock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/state-views';
+import { formatLKR } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 async function getStats() {
@@ -37,49 +41,38 @@ export default async function ReceptionistDashboard() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Reception Dashboard</h1>
-                <p className="text-neutral-500 mt-0.5 text-sm">Today's overview at a glance.</p>
+            <PageHeader title="Reception Dashboard" description="Today's overview at a glance." />
+
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <StatCard
+                    label="Today's appointments" value={stats.appointments.total} icon={Calendar} href="/receptionist/appointments"
+                    hint={`${stats.appointments.checked_in} checked in, ${stats.appointments.pending} waiting`}
+                />
+                <StatCard
+                    label="Pending bills" value={stats.billing.pending_count} icon={Banknote} tone="warning" href="/receptionist/billing"
+                    hint={`${formatLKR(stats.billing.pending_amount || 0)} to collect`}
+                />
+                <StatCard
+                    label="Completed today" value={stats.appointments.completed} icon={Clock} tone="info"
+                    hint="Patients seen today"
+                />
+                <div className="flex flex-col gap-2 rounded-xl border border-neutral-200 bg-white p-4 shadow-[var(--shadow-card)]">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Quick actions</p>
+                    <Link href="/receptionist/register" className="flex min-h-9 items-center gap-2 text-sm font-medium text-emerald-700 hover:underline">
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden /> Register patient
+                    </Link>
+                    <Link href="/receptionist/appointments" className="flex min-h-9 items-center gap-2 text-sm font-medium text-emerald-700 hover:underline">
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden /> Check in patient
+                    </Link>
+                </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                    { icon: Calendar,  label: "Today's Appointments", main: stats.appointments.total,    sub: `${stats.appointments.checked_in} checked in / ${stats.appointments.pending} pending`, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { icon: Banknote,  label: 'Pending Bills',         main: stats.billing.pending_count,  sub: `${Number(stats.billing.pending_amount || 0).toFixed(2)} LKR to collect`, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { icon: Clock,     label: 'Completed Today',       main: stats.appointments.completed, sub: 'Patients discharged today', color: 'text-teal-600', bg: 'bg-teal-50' },
-                    { icon: Users,     label: 'Quick Actions',         main: null, sub: null, color: 'text-neutral-600', bg: 'bg-neutral-100' },
-                ].map((kpi, i) => kpi.main !== null ? (
-                    <Card key={kpi.label} className="border border-neutral-200 shadow-none">
-                        <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-3">
-                                <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide leading-tight">{kpi.label}</p>
-                                <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${kpi.bg}`}>
-                                    <kpi.icon className={`h-3.5 w-3.5 ${kpi.color}`} />
-                                </div>
-                            </div>
-                            <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.main}</p>
-                            <p className="text-xs text-neutral-400 mt-1">{kpi.sub}</p>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <Card key={kpi.label} className="border border-neutral-200 shadow-none">
-                        <CardContent className="p-4 flex flex-col gap-2">
-                            <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">Quick Actions</p>
-                            <Link href="/receptionist/register" className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 hover:underline font-medium">
-                                <ArrowRight className="h-3 w-3" /> Register Patient
-                            </Link>
-                            <Link href="/receptionist/appointments" className="flex items-center gap-2 text-sm text-emerald-600 hover:text-emerald-700 hover:underline font-medium">
-                                <ArrowRight className="h-3 w-3" /> Check-in Patient
-                            </Link>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            <div className="p-6 bg-white rounded-xl border border-neutral-200 shadow-none">
-                <h2 className="font-semibold mb-2 text-neutral-700">Queue Status</h2>
-                <p className="text-neutral-400 text-sm">Doctor queues will appear here once check-ins are processed.</p>
-            </div>
+            <EmptyState
+                icon={Users}
+                title="Doctor queues will appear here"
+                description="Once patients are checked in, each doctor's waiting list shows up on this screen."
+                action={{ label: 'Go to appointments', href: '/receptionist/appointments' }}
+            />
         </div>
     );
 }

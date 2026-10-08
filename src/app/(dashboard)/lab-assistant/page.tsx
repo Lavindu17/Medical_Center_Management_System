@@ -1,4 +1,8 @@
 'use client';
+import { formatDate } from '@/lib/dates';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/state-views';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -29,13 +33,6 @@ interface LabRequest {
     result_url?: string | null;
 }
 
-/** A bad or missing date must show a dash, not crash the whole page. */
-function formatDate(value: string | null) {
-    if (!value) return '—';
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? '—' : format(d, 'MMM dd, yyyy');
-}
-
 // Defined at module level: a component declared inside the page is a new component on every render, which
 // remounts every row (and closes an open upload dialog) whenever the page's state changes.
 function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: () => void }) {
@@ -55,8 +52,8 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
                 <TableBody>
                     {data.length === 0 ? (
                         <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                No requests found.
+                            <TableCell colSpan={6} className="p-0">
+                                <EmptyState icon={FlaskConical} title="No requests here" description="Test requests from doctors will appear in this list." className="border-0" />
                             </TableCell>
                         </TableRow>
                     ) : (
@@ -91,12 +88,7 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge className={`${req.status === 'PENDING'
-                                        ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                                        : 'bg-green-100 text-green-800 border-green-200'
-                                        } shadow-none hover:bg-opacity-80`}>
-                                        {req.status}
-                                    </Badge>
+                                    <StatusBadge status={req.status} kind="lab" size="sm" />
                                 </TableCell>
                                 <TableCell className="text-right">
                                     {req.status === 'PENDING' ? (
@@ -176,12 +168,10 @@ export default function LabAssistantDashboard() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Lab Requests</h1>
-                    <p className="text-muted-foreground mt-1">Manage pending test requests and view history.</p>
-                </div>
-                <div className="flex w-full sm:w-auto items-center gap-2">
+            <PageHeader
+                title="Lab Requests"
+                description="Manage pending test requests and view history."
+                actions={<div className="flex w-full items-center gap-2 sm:w-auto">
                     <div className="relative w-full sm:w-64">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -194,8 +184,8 @@ export default function LabAssistantDashboard() {
                     <Button variant="outline" size="icon" onClick={fetchRequests} aria-label="Refresh requests" title="Refresh">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
-                </div>
-            </div>
+                </div>}
+            />
 
             <Tabs defaultValue="pending" className="space-y-4">
                 <TabsList>

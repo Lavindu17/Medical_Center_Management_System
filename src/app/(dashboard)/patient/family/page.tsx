@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
@@ -113,12 +114,7 @@ export default function FamilyDashboard() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl flex items-center gap-3">
-                    <Users className="h-8 w-8 text-blue-600" /> Family Network
-                </h1>
-                <p className="text-neutral-500">Manage linked medical accounts. Authorized family members can view and manage each other's medical records.</p>
-            </div>
+            <PageHeader title="Family Network" description="Manage linked medical accounts. Authorized family members can view and manage each other's medical records." />
 
             <Tabs defaultValue="linked" className="w-full">
                 <TabsList className="grid w-full grid-cols-3 max-w-2xl mb-6">

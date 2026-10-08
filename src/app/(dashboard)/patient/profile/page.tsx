@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -166,10 +167,7 @@ export default function PatientProfilePage() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Health Profile</h1>
-                <p className="text-sm md:text-base text-neutral-500">Your medical details, allergies and emergency contact. Name, phone and password are on the Account page.</p>
-            </div>
+            <PageHeader title="Health Profile" description="Your medical details, allergies and emergency contact. Name, phone and password are on the Account page." />
 
             <Tabs defaultValue="personal" className="w-full">
                 <TabsList className="mb-6 w-full h-auto flex flex-wrap gap-2 bg-transparent sm:bg-muted p-0 sm:p-1 justify-start">

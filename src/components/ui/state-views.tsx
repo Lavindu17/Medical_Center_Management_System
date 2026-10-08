@@ -33,7 +33,7 @@ export function EmptyState({
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700" aria-hidden>
                 <Icon className="h-6 w-6" />
             </span>
-            <h3 className="mt-4 text-base font-semibold text-neutral-900">{title}</h3>
+            <h2 className="mt-4 text-base font-semibold text-neutral-900">{title}</h2>
             {description && <p className="mt-1 max-w-sm text-sm text-neutral-500">{description}</p>}
             {action && <div className="mt-5"><ActionButton action={action} /></div>}
         </div>
@@ -54,13 +54,23 @@ export function ErrorState({
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-700" aria-hidden>
                 <AlertCircle className="h-6 w-6" />
             </span>
-            <h3 className="mt-4 text-base font-semibold text-red-900">{title}</h3>
+            <h2 className="mt-4 text-base font-semibold text-red-900">{title}</h2>
             <p className="mt-1 max-w-sm text-sm text-red-800">{description}</p>
             {onRetry && (
                 <Button variant="outline" className="mt-5 gap-2 border-red-200 bg-white" onClick={onRetry}>
                     <RefreshCw className="h-4 w-4" aria-hidden /> Try again
                 </Button>
             )}
+        </div>
+    );
+}
+
+/** The "still loading" placeholder: announced to screen readers, never a bare "Loading...". */
+export function LoadingState({ label = 'Loading…', className }: { label?: string; className?: string }) {
+    return (
+        <div role="status" className={cn('flex items-center justify-center gap-2 py-12 text-sm text-neutral-500', className)}>
+            <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+            {label}
         </div>
     );
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -7,20 +8,11 @@ import { escapeHtml } from '@/lib/html';
 import { notify } from '@/lib/notify';
 import { z } from 'zod';
 
-// Helper
-async function getPatient() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return null;
-    const user = await AuthService.verifyToken(token);
-    if (!user || user.role !== 'PATIENT') return null;
-    return user;
-}
-
 export async function GET() {
     try {
-        const user = await getPatient();
-        if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('PATIENT');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         // 1. Linked Members (Bi-Directional from family_links)
         // We get both the ones where the user is primary, and where user is linked
@@ -81,8 +73,9 @@ const inviteSchema = z.object({
 
 export async function POST(req: Request) {
     try {
-        const user = await getPatient();
-        if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('PATIENT');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const parsed = inviteSchema.safeParse(await req.json().catch(() => null));
         if (!parsed.success) {

@@ -1,5 +1,7 @@
 
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { parseBody } from '@/lib/validate';
 import { query, pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 
@@ -51,20 +53,43 @@ export async function GET(req: Request) {
     }
 }
 
+const phoneText = z.string().trim().max(20, 'Phone number is too long')
+    .regex(/^[0-9+()\-\s]*$/, 'Phone number can only contain digits, spaces, + ( ) and -').nullish();
+
+const profileSchema = z.object({
+    id: z.coerce.number({ message: 'ID required' }),
+    name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100, 'Name is too long'),
+    phone: phoneText,
+    address: z.string().trim().max(500, 'Address is too long').nullish().transform((v) => v ?? ''),
+    blood_group: z.string().trim().max(10, 'Blood group is invalid').nullish(),
+    emergency_contact_name: z.string().trim().max(100, 'Emergency contact name is too long').nullish(),
+    emergency_contact_phone: phoneText,
+    // legacy clients send plain strings; current ones send { name, severity }
+    allergies: z.array(z.union([
+        z.string().max(100),
+        z.object({ name: z.string().max(100), severity: z.enum(['MILD', 'MODERATE', 'SEVERE']).optional() }),
+    ])).max(50, 'Too many allergies listed').optional(),
+});
+
 export async function POST(req: Request) {
     const auth = await requireRole('PATIENT');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 
     try {
-        const body = await req.json();
+        // Ownership first: someone editing another person's profile gets 403 whatever else is wrong with the body
+        const claimed = await req.clone().json().catch(() => null);
+        if (claimed?.id !== undefined && Number(claimed.id) !== user.id) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
+
+        const body = await parseBody(req, profileSchema);
+        if ('error' in body) return body.error;
         const {
             id, name, phone, address,
             blood_group, emergency_contact_name, emergency_contact_phone, allergies
-            // allergies is now expected to be an Array of { name, severity } objects
-        } = body;
+        } = body.data;
 
-        if (!id) return NextResponse.json({ message: 'ID required' }, { status: 400 });
         if (Number(id) !== user.id) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
         const connection = await pool.getConnection();
@@ -72,7 +97,7 @@ export async function POST(req: Request) {
 
         try {
             // 1. Update User
-            await connection.execute('UPDATE users SET name = ?, phone = ? WHERE id = ?', [name, phone, id]);
+            await connection.execute('UPDATE users SET name = ?, phone = ? WHERE id = ?', [name, phone ?? null, id]);
 
             // 2. Update Patient Details
             await connection.execute(`

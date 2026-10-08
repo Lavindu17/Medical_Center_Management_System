@@ -1,9 +1,12 @@
 'use client';
+import { toast } from 'sonner';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, User, FileText, ChevronRight } from 'lucide-react';
+import { Search, User, Users, FileText, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DoctorPatientsPage() {
@@ -28,6 +31,7 @@ export default function DoctorPatientsPage() {
             }
         } catch (err) {
             console.error(err);
+            toast.error('Could not load this page. Please refresh and try again.');
         } finally {
             setLoading(false);
         }
@@ -35,10 +39,7 @@ export default function DoctorPatientsPage() {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Patient Directory</h1>
-                <p className="text-neutral-500">Search global patient records and medical history.</p>
-            </div>
+            <PageHeader title="Patient Directory" description="Search global patient records and medical history." />
 
             <div className="relative max-w-lg">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
@@ -60,9 +61,9 @@ export default function DoctorPatientsPage() {
 
                 <div className="divide-y">
                     {loading ? (
-                        <div className="p-8 text-center text-neutral-400">Searching...</div>
+                        <LoadingState label="Searching…" />
                     ) : patients.length === 0 ? (
-                        <div className="p-12 text-center text-neutral-400">No patients found.</div>
+                        <EmptyState icon={Users} title="No patients found" description="Patients you have treated appear here. Try a different name." className="m-6 border-0" />
                     ) : (
                         patients.map(patient => ( // Explicitly any in state definition, implied here
                             <div key={patient.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors">

@@ -1,24 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
 
-async function getPharmacist() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
-    if (!token) return null;
-    const user = await AuthService.verifyToken(token);
-    // @ts-ignore
-    if (!user || user.role !== 'PHARMACIST') return null;
-    return user;
-}
-
 export async function GET(request: Request) {
     try {
-        const user = await getPharmacist();
-        if (!user) {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-        }
+        const auth = await requireRole('PHARMACIST');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const url = new URL(request.url);
         const tab = url.searchParams.get('tab') || 'active';

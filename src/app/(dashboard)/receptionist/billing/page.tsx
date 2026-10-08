@@ -1,4 +1,6 @@
 'use client';
+import { LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { toast } from 'sonner';
@@ -38,6 +40,7 @@ export default function BillingPage() {
             if (res.ok) setBills(await res.json());
         } catch (e) {
             console.error(e);
+            toast.error('Could not load this page. Please refresh and try again.');
         } finally {
             setLoading(false);
         }
@@ -92,10 +95,7 @@ export default function BillingPage() {
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Billing</h1>
-                    <p className="text-sm text-neutral-500 mt-1">Process patient payments and view billing history.</p>
-                </div>
+                <PageHeader title="Billing" description="Process patient payments and view billing history." />
                 <div className="flex gap-1 bg-neutral-100/80 p-1.5 rounded-xl border border-neutral-200">
                     {(['PENDING', 'PAID'] as StatusFilter[]).map(s => (
                         <button
@@ -167,7 +167,7 @@ export default function BillingPage() {
                 </div>
 
                 {loading ? (
-                    <div className="p-10 text-center text-neutral-400 text-sm">Loading bills...</div>
+                    <LoadingState label="Loading bills…" />
                 ) : filtered.length === 0 ? (
                     <div className="p-10 text-center text-neutral-400">
                         <Receipt className="h-10 w-10 mx-auto mb-2 opacity-30" />

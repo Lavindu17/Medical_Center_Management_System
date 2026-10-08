@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requireRole } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 
 export async function GET(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'DOCTOR') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('DOCTOR');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const { searchParams } = new URL(req.url);
         const period = searchParams.get('period') || 'all'; // 'daily' | 'weekly' | 'monthly' | 'all'

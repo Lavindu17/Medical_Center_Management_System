@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -116,10 +117,7 @@ export default function AppointmentsListPage() {
                 transition={{ duration: 0.3 }}
                 className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
             >
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">My Appointments</h1>
-                    <p className="text-neutral-500 mt-0.5 text-sm">View and manage your upcoming and past visits.</p>
-                </div>
+                <PageHeader title="My Appointments" description="View and manage your upcoming and past visits." />
                 <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 gap-2 shadow-sm">
                     <Link href="/patient/book"><Plus className="h-4 w-4" /> Book New</Link>
                 </Button>

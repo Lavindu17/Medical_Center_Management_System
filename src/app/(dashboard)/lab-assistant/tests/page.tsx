@@ -1,4 +1,6 @@
 'use client';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatLKR } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -85,10 +87,7 @@ export default function LabTestsPage() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Lab Tests</h1>
-                    <p className="text-muted-foreground mt-1">Manage the catalog of available lab tests.</p>
-                </div>
+                <PageHeader title="Lab Tests" description="Manage the catalog of available lab tests." />
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                     <DialogTrigger asChild>
                         <Button className="bg-indigo-600 hover:bg-indigo-700">
@@ -182,13 +181,11 @@ export default function LabTestsPage() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-8">Loading...</TableCell>
+                                        <TableCell colSpan={4}><LoadingState label="Loading tests…" /></TableCell>
                                     </TableRow>
                                 ) : filteredTests.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                                            No tests found. Add one to get started.
-                                        </TableCell>
+                                        <TableCell colSpan={4} className="p-0"><EmptyState title="No tests in the catalogue" description="Add a test so doctors can request it." className="border-0" /></TableCell>
                                     </TableRow>
                                 ) : (
                                     filteredTests.map((test) => (

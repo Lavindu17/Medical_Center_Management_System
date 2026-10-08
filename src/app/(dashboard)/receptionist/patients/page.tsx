@@ -1,4 +1,6 @@
 'use client';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 
 import { formatDate } from '@/lib/dates';
 
@@ -9,7 +11,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label'; // Added Label import
-import { Search, UserPlus, Link as LinkIcon, Edit } from 'lucide-react';
+import { Search, Users, UserPlus, Link as LinkIcon, Edit } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PatientDirectory() {
@@ -51,6 +53,7 @@ export default function PatientDirectory() {
             }
         } catch (e) {
             console.error(e);
+            toast.error('Could not load this page. Please refresh and try again.');
         } finally {
             setLoading(false);
         }
@@ -94,10 +97,7 @@ export default function PatientDirectory() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Patient Directory</h1>
-                    <p className="text-neutral-500">Manage patient records and accounts.</p>
-                </div>
+                <PageHeader title="Patient Directory" description="Manage patient records and accounts." />
                 <Link href="/receptionist/register">
                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">
                         <UserPlus className="mr-2 h-4 w-4" /> New Patient
@@ -126,7 +126,7 @@ export default function PatientDirectory() {
                     <div className="col-span-2 text-right">Actions</div>
                 </div>
                 <div className="divide-y">
-                    {loading ? <div className="p-8 text-center text-neutral-400">Loading...</div> : patients.length === 0 ? <div className="p-8 text-center text-neutral-500">No patients found.</div> : patients.map((patient) => (
+                    {loading ? <LoadingState label="Loading patients…" /> : patients.length === 0 ? <EmptyState icon={Users} title="No patients found" description="Check the spelling, or register a new patient." action={{ label: 'Register patient', href: '/receptionist/register' }} className="m-6 border-0" /> : patients.map((patient) => (
                         <div key={patient.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors">
                             <div className="col-span-3 font-medium text-neutral-900">{patient.name}</div>
                             <div className="col-span-3">

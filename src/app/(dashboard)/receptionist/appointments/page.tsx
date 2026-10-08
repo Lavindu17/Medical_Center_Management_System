@@ -1,5 +1,9 @@
-
 'use client';
+
+import { PageHeader } from '@/components/ui/page-header';
+
+
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
 
 import { useState, useEffect } from 'react';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -47,6 +51,7 @@ export default function ReceptionistAppointments() {
             }
         } catch (e) {
             console.error(e);
+            toast.error('Could not load this page. Please refresh and try again.');
         } finally {
             setLoading(false);
         }
@@ -82,10 +87,7 @@ export default function ReceptionistAppointments() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Appointments</h1>
-                    <p className="text-neutral-500">Manage daily check-ins and schedules.</p>
-                </div>
+                <PageHeader title="Appointments" description="Manage daily check-ins and schedules." />
                 <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                     <div className="w-full sm:w-48">
                         <Label htmlFor="f-date" className="text-xs mb-1 block">Date</Label>
@@ -118,7 +120,7 @@ export default function ReceptionistAppointments() {
                     <div className="col-span-2 text-right">Actions</div>
                 </div>
                 <div className="divide-y">
-                    {loading ? <div className="p-8 text-center">Loading...</div> : appointments.length === 0 ? <div className="p-8 text-center text-neutral-500">No appointments found.</div> : appointments.map((appt) => (
+                    {loading ? <LoadingState label="Loading appointments…" /> : appointments.length === 0 ? <EmptyState title="No appointments on this day" description="Pick another date, or book a new appointment." action={{ label: 'Book appointment', href: '/receptionist/appointments/book' }} className="m-6 border-0" /> : appointments.map((appt) => (
                         <div key={appt.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-neutral-50 transition-colors">
                             <div className="col-span-2 flex flex-col">
                                 <span className="font-medium text-neutral-900">{appt.time_slot}</span>

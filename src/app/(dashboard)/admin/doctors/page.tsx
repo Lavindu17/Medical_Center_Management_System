@@ -1,4 +1,6 @@
 'use client';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 import { formatLKR } from '@/lib/utils';
 
@@ -82,10 +84,7 @@ export default function DoctorManagementPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Doctor Management</h1>
-                <p className="text-neutral-500">Set consultation fees and view earnings configuration.</p>
-            </div>
+            <PageHeader title="Doctor Management" description="Set consultation fees and view earnings configuration." />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
                 <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900">
@@ -119,7 +118,7 @@ export default function DoctorManagementPage() {
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={5} className="text-center h-24">Loading...</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5}><LoadingState label="Loading doctors…" /></TableCell></TableRow>
                             ) : doctors.map((doc) => (
                                 <TableRow key={doc.id}>
                                     <TableCell className="font-medium">
@@ -141,7 +140,7 @@ export default function DoctorManagementPage() {
                                 </TableRow>
                             ))}
                             {!isLoading && doctors.length === 0 && (
-                                <TableRow><TableCell colSpan={5} className="text-center h-24 text-neutral-500">No doctors found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="p-0"><EmptyState title="No doctors yet" description="Add doctors from User Management and set their fees here." action={{ label: 'Manage users', href: '/admin/users' }} className="border-0" /></TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

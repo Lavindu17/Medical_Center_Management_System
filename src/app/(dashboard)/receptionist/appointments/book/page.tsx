@@ -1,5 +1,6 @@
 
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
@@ -106,7 +107,7 @@ export default function ReceptionistBookAppointment() {
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
-            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Book Appointment</h1>
+            <PageHeader back={{ href: '/receptionist/appointments', label: 'Appointments' }} title="Book Appointment" description="Choose a patient, a doctor and a time." />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left: Patient Selection */}
@@ -125,7 +126,7 @@ export default function ReceptionistBookAppointment() {
                                             onChange={e => setPatientSearch(e.target.value)}
                                         />
                                     </div>
-                                    <div className="border rounded-md max-h-60 overflow-y-auto divide-y">
+                                    <div tabIndex={0} role="region" aria-label="Matching patients" className="border rounded-md max-h-60 overflow-y-auto divide-y">
                                         {patients.map(p => (
                                             <div
                                                 key={p.id}

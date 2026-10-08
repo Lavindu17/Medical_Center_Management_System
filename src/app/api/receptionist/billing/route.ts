@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { parseBody } from '@/lib/validate';
+import { requireRole } from '@/lib/api-auth';
 import { query, pool } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -6,10 +9,9 @@ import { AuthService } from '@/services/auth.service';
 // GET Pending Bills — enriched with itemized breakdown
 export async function GET(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'RECEPTIONIST') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('RECEPTIONIST');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const { searchParams } = new URL(req.url);
         const status = searchParams.get('status') || 'PENDING'; // PENDING | PAID | ALL
@@ -75,17 +77,20 @@ export async function GET(req: Request) {
 }
 
 // POST Mark Payment as Paid
+const payBillSchema = z.object({
+    bill_id: z.coerce.number({ message: 'Bill ID is required' }).int('Bill ID is invalid').positive('Bill ID is invalid'),
+    payment_method: z.enum(['CASH', 'CARD', 'INSURANCE'], { message: 'Choose a payment method: cash, card or insurance' }),
+});
+
 export async function POST(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'RECEPTIONIST') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('RECEPTIONIST');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
-        const { bill_id, payment_method } = await req.json();
-        if (!bill_id || !payment_method) {
-            return NextResponse.json({ message: 'Bill ID and payment method required' }, { status: 400 });
-        }
+        const body = await parseBody(req, payBillSchema);
+        if ('error' in body) return body.error;
+        const { bill_id, payment_method } = body.data;
 
         const connection = await pool.getConnection();
         await connection.beginTransaction();

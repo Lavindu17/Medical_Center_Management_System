@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatLKR } from '@/lib/utils';
@@ -59,21 +60,11 @@ export default function AppointmentDetailPage() {
 
     return (
         <div className="space-y-6 max-w-5xl mx-auto pb-20">
-            {/* Header Navigation */}
-            <div className="flex items-center gap-4 mb-2">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 shrink-0" aria-label="Back">
-                    <ArrowLeft className="h-5 w-5" aria-hidden />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl flex items-center gap-3">
-                        Appointment Detail
-                        <Badge variant={appointment.status === 'CANCELLED' ? 'destructive' : 'default'} className={appointment.status !== 'CANCELLED' ? 'bg-emerald-100 text-emerald-800' : ''}>
-                            {appointment.status}
-                        </Badge>
-                    </h1>
-                    <p className="text-neutral-500 text-sm">Ref: #{appointment.id}</p>
-                </div>
-            </div>
+            <PageHeader
+                back={{ href: '/patient/appointments', label: 'My appointments' }}
+                title={<span className="flex flex-wrap items-center gap-3">Appointment detail <StatusBadge status={appointment.status} /></span>}
+                description={`Reference #${appointment.id}`}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
@@ -91,23 +82,23 @@ export default function AppointmentDetailPage() {
                         <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
+                                    <h2 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
                                         <User className="h-4 w-4" /> Doctor
-                                    </h4>
+                                    </h2>
                                     <p className="font-medium text-lg">{appointment.doctorName}</p>
                                     <p className="text-sm text-neutral-500">{appointment.specialization}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <h4 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
+                                        <h2 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
                                             <Calendar className="h-4 w-4" /> Date
-                                        </h4>
+                                        </h2>
                                         <p className="font-medium">{appointment.formatted_date}</p>
                                     </div>
                                     <div>
-                                        <h4 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
+                                        <h2 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
                                             <Clock className="h-4 w-4" /> Time
-                                        </h4>
+                                        </h2>
                                         <p className="font-medium">{appointment.timeSlot}</p>
                                     </div>
                                 </div>
@@ -115,7 +106,7 @@ export default function AppointmentDetailPage() {
                             
                             <div className="space-y-4">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-neutral-500 mb-1">Reason for Visit</h4>
+                                    <h2 className="text-sm font-semibold text-neutral-500 mb-1">Reason for Visit</h2>
                                     <p className="bg-neutral-50 p-3 rounded-lg text-sm text-neutral-700 leading-relaxed border min-h-[60px]">
                                         {appointment.reason || 'No reason provided.'}
                                     </p>
@@ -150,7 +141,7 @@ export default function AppointmentDetailPage() {
                             </div>
                             
                             <div>
-                                <h4 className="text-sm font-semibold text-neutral-500 mb-2">Doctor's Note</h4>
+                                <h2 className="text-sm font-semibold text-neutral-500 mb-2">Doctor's Note</h2>
                                 <div className="bg-neutral-50 p-4 rounded-lg text-sm text-neutral-700 whitespace-pre-wrap border min-h-[100px]">
                                     {appointment.notes || 'No consultation notes recorded yet.'}
                                 </div>

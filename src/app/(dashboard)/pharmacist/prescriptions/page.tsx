@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 import { StatusBadge } from '@/components/ui/status-badge';
 
@@ -57,10 +58,7 @@ export default function PrescriptionsPage() {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Prescriptions</h1>
-                    <p className="text-neutral-500">Manage dispensing and view history.</p>
-                </div>
+                <PageHeader title="Prescriptions" description="Manage dispensing and view history." />
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">

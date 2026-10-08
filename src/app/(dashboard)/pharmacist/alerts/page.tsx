@@ -1,4 +1,6 @@
 'use client';
+import { toast } from 'sonner';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
@@ -57,7 +59,7 @@ export default function ExpiryAlertsPage() {
         fetch('/api/pharmacist/alerts')
             .then(res => res.json())
             .then(data => setAlerts(data))
-            .catch(console.error)
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
             .finally(() => setLoading(false));
     }, []);
 
@@ -86,10 +88,7 @@ export default function ExpiryAlertsPage() {
 
     return (
         <div className="space-y-6">
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Expiry & Stock Alerts</h1>
-                <p className="text-neutral-500 mt-0.5 text-sm">Monitor batch expiries and inventory shortages.</p>
-            </motion.div>
+            <PageHeader title="Expiry & Stock Alerts" description="Monitor batch expiries and inventory shortages." />
 
             {/* Top Visuals Section */}
             <div className="grid lg:grid-cols-3 gap-6">

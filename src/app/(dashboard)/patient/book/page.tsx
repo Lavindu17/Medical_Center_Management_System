@@ -1,4 +1,5 @@
 'use client';
+import { PageHeader } from '@/components/ui/page-header';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -53,7 +54,7 @@ export default function BookAppointmentPage() {
             .then(data => {
                 if (data?.user) setUser(data.user);
             })
-            .catch(console.error);
+            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); });
 
         // 2. Fetch Doctors
         async function fetchDoctors() {
@@ -141,15 +142,7 @@ export default function BookAppointmentPage() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
-            <motion.div
-                className="mb-8"
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-            >
-                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Book Appointment</h1>
-                <p className="text-neutral-500">Scheduled for: <span className="font-semibold text-emerald-600">{user?.name || 'Guest'}</span></p>
-            </motion.div>
+            <PageHeader className="mb-8" title="Book Appointment" description={<>Scheduled for <span className="font-semibold text-emerald-700">{user?.name || 'Guest'}</span></>} />
 
             {/* Progress Steps */}
             <motion.div
@@ -190,7 +183,7 @@ export default function BookAppointmentPage() {
                                 />
                             </div>
                         </CardHeader>
-                        <CardContent className="grid md:grid-cols-2 gap-4 h-[400px] overflow-y-auto pr-2">
+                        <CardContent tabIndex={0} role="region" aria-label="Doctors" className="grid md:grid-cols-2 gap-4 h-[400px] overflow-y-auto pr-2">
                             {filteredDoctors.length === 0 ? (
                                 <div className="col-span-2 text-center py-8 text-neutral-500">
                                     No doctors found matching "{searchQuery}"

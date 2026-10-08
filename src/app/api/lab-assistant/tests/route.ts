@@ -1,5 +1,8 @@
 
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { parseBody } from '@/lib/validate';
+import { requireRole } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -7,10 +10,9 @@ import { AuthService } from '@/services/auth.service';
 // GET All Lab Tests
 export async function GET(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || (user.role !== 'LAB_ASSISTANT' && user.role !== 'DOCTOR')) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('LAB_ASSISTANT', 'DOCTOR');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
         const tests = await query('SELECT * FROM lab_tests ORDER BY name ASC');
         return NextResponse.json(tests);
@@ -19,19 +21,23 @@ export async function GET(req: Request) {
     }
 }
 
+const labTestSchema = z.object({
+    name: z.string().trim().min(2, 'Test name must be at least 2 characters').max(100, 'Test name is too long'),
+    description: z.string().trim().max(500, 'Description is too long').optional().nullable(),
+    price: z.coerce.number({ message: 'Price must be a number' }).positive('Selling price must be more than 0').max(1_000_000, 'Selling price is too high'),
+    cost_price: z.coerce.number({ message: 'Cost price must be a number' }).min(0, 'Cost price cannot be negative').max(1_000_000, 'Cost price is too high'),
+});
+
 // POST Create New Lab Test
 export async function POST(req: Request) {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || (user.role !== 'LAB_ASSISTANT' && user.role !== 'DOCTOR' && user.role !== 'ADMIN')) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const auth = await requireRole('LAB_ASSISTANT', 'DOCTOR', 'ADMIN');
+        if ('error' in auth) return auth.error;
+        const user = auth.user;
 
-        const { name, description, price, cost_price } = await req.json();
-
-        if (!name || !price || !cost_price) {
-            return NextResponse.json({ message: 'Name, Price and Cost Price are required' }, { status: 400 });
-        }
+        const body = await parseBody(req, labTestSchema);
+        if ('error' in body) return body.error;
+        const { name, description, price, cost_price } = body.data;
 
         await query(
             'INSERT INTO lab_tests (name, description, price, cost_price) VALUES (?, ?, ?, ?)',

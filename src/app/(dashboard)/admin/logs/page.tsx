@@ -1,12 +1,16 @@
+import { ScrollText } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/state-views';
+
 export default function SystemLogsPage() {
     return (
-        <div className="space-y-4">
-            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">System Logs</h1>
-            <p className="text-neutral-500">View system activities and audit trails.</p>
-
-            <div className="p-4 border rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-500 text-center">
-                Log viewer implementation pending.
-            </div>
+        <div className="space-y-6">
+            <PageHeader title="System Logs" description="System activity and audit trail." />
+            <EmptyState
+                icon={ScrollText}
+                title="The log viewer is not available yet"
+                description="Sign-ins, record changes and other activity will be listed here once audit logging is switched on."
+            />
         </div>
     );
 }
