@@ -1,4 +1,5 @@
 import { pool } from '@/lib/db';
+import { asDoctor, nameOf, notify, when } from '@/lib/notify';
 
 export class BookingError extends Error {
     constructor(public status: number, message: string) { super(message); }
@@ -10,6 +11,8 @@ export interface BookingInput {
     date: string;      // YYYY-MM-DD
     timeSlot: string;  // HH:MM, 24h
     reason?: string | null;
+    /** Who is making the booking (the patient, or a staff member) - the patient is only told when someone else booked for them */
+    actorId?: number;
 }
 
 export interface BookingResult {
@@ -70,6 +73,20 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
             'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status, reason) VALUES (?, ?, ?, ?, ?, "PENDING", ?)',
             [patientId, doctorId, date, timeSlot, queueNumber, reason || null]
         );
+
+        const patientName = await nameOf(connection, patientId);
+        await notify(connection, doctorId, {
+            type: 'APPOINTMENT_BOOKED', title: 'New appointment',
+            body: `${patientName} booked ${when(date, timeSlot)} (queue #${queueNumber}).`,
+            link: '/doctor/appointments',
+        });
+        if (input.actorId && input.actorId !== patientId) {
+            await notify(connection, patientId, {
+                type: 'APPOINTMENT_BOOKED', title: 'Appointment booked',
+                body: `The front desk booked you with ${asDoctor(await nameOf(connection, doctorId))} on ${when(date, timeSlot)} (queue #${queueNumber}).`,
+                link: '/patient/appointments',
+            });
+        }
 
         await connection.commit();
         return { appointmentId: result.insertId, queueNumber };

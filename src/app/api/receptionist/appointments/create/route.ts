@@ -14,6 +14,7 @@ const schema = z.object({
 export async function POST(req: Request) {
     const auth = await requireRole('RECEPTIONIST', 'ADMIN');
     if ('error' in auth) return auth.error;
+    const { user } = auth;
 
     try {
         const parsed = schema.safeParse(await req.json().catch(() => null));
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
 
         // Same rules, locking and queue numbering as patient self-service booking
         const { appointmentId, queueNumber } = await bookAppointment({
-            patientId: patient_id, doctorId: doctor_id, date, timeSlot: time_slot, reason,
+            patientId: patient_id, doctorId: doctor_id, date, timeSlot: time_slot, reason, actorId: user.id,
         });
 
         return NextResponse.json({

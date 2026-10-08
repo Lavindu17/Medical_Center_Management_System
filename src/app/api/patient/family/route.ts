@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 import { EmailService } from '@/services/email.service';
 import { escapeHtml } from '@/lib/html';
+import { notify } from '@/lib/notify';
 import { z } from 'zod';
 
 // Helper
@@ -148,6 +149,11 @@ export async function POST(req: Request) {
             <p>If you approve this request, they will be able to manage your appointments, view lab results, and handle prescriptions on your behalf.</p>
             <a href="${dashboardUrl}" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:5px;">Review Request</a>
         `;
+
+        await notify(null, member.id, {
+            type: 'FAMILY_REQUEST', title: 'Family link request',
+            body: `${me?.name ?? 'A patient'} asked to link accounts with you as: ${relationship.toLowerCase()}.`, link: '/patient/family',
+        });
 
         EmailService.sendEmail(
             member.email,

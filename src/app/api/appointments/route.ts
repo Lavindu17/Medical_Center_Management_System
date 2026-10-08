@@ -29,7 +29,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
 
-        const { appointmentId, queueNumber } = await bookAppointment({ patientId, doctorId, date, timeSlot, reason });
+        const { appointmentId, queueNumber } = await bookAppointment({ patientId, doctorId, date, timeSlot, reason, actorId: user.id });
         return NextResponse.json({
             message: 'Appointment booked successfully',
             appointment: { id: appointmentId, date, timeSlot, queueNumber }

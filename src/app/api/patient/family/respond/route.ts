@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { nameOf, notify } from '@/lib/notify';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -42,6 +43,10 @@ export async function POST(req: Request) {
 
             if (action === 'REJECT') {
                 await connection.execute('UPDATE patient_family_links SET status = "REJECTED" WHERE id = ?', [requestId]);
+                await notify(connection, request.requester_id, {
+                    type: 'FAMILY_RESPONSE', title: 'Family link declined',
+                    body: `${await nameOf(connection, user.id)} declined your family link request.`, link: '/patient/family',
+                });
                 await connection.commit();
                 return NextResponse.json({ message: 'Request rejected' });
             }
@@ -59,6 +64,10 @@ export async function POST(req: Request) {
                     [request.member_id, request.requester_id, request.relationship, user.id]);
             }
 
+            await notify(connection, request.requester_id, {
+                type: 'FAMILY_RESPONSE', title: 'Family link accepted',
+                body: `${await nameOf(connection, user.id)} accepted your family link request. You can now switch between your accounts.`, link: '/patient/family',
+            });
             await connection.commit();
             return NextResponse.json({ message: 'Request accepted. Accounts linked successfully.' });
         } catch (err) {

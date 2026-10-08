@@ -4,6 +4,7 @@ import { mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { nameOf, notify } from '@/lib/notify';
 import { MAX_REPORT_BYTES, detectReportType, reportDir } from '@/lib/lab-reports';
 
 // POST Upload Result
@@ -66,6 +67,20 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'A result has already been uploaded for this request' }, { status: 409 });
         }
         storedPath = null; // committed
+
+        const [who] = await query<any[]>(
+            `SELECT a.patient_id, a.doctor_id, lt.name AS test_name FROM lab_requests lr
+             JOIN appointments a ON a.id = lr.appointment_id JOIN lab_tests lt ON lt.id = lr.test_id WHERE lr.id = ?`, [requestId]);
+        if (who) {
+            await notify(null, who.doctor_id, {
+                type: 'LAB_RESULT', title: 'Lab result available',
+                body: `The ${who.test_name} result for ${await nameOf(null, who.patient_id)} is ready.`, link: '/doctor/appointments',
+            });
+            await notify(null, who.patient_id, {
+                type: 'LAB_RESULT', title: 'Lab result available',
+                body: `Your ${who.test_name} result is ready to view.`, link: '/patient/labs',
+            });
+        }
 
         return NextResponse.json({ message: 'Result Uploaded Successfully', url: `/api/lab-reports/${requestId}` });
     } catch (error) {

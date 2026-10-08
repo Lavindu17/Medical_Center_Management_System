@@ -79,6 +79,20 @@ CREATE TABLE IF NOT EXISTS `rate_limits` (
 -- Siblings can be linked by reception and by family invitations
 ALTER TABLE `family_links` MODIFY COLUMN `relationship` ENUM('PARENT','CHILD','SPOUSE','SIBLING','OTHER') NOT NULL;
 
+-- In-app notifications (shown in the bell; nothing is sent by email or SMS)
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `type` VARCHAR(50) NOT NULL,
+  `title` VARCHAR(150) NOT NULL,
+  `body` VARCHAR(500) NOT NULL,
+  `link` VARCHAR(255) NULL,
+  `is_read` BOOLEAN NOT NULL DEFAULT FALSE,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  INDEX `idx_notifications_user` (`user_id`, `is_read`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Status values the pharmacist flow writes
 ALTER TABLE prescription_items
     MODIFY COLUMN status ENUM('PENDING','PARTIALLY_COMPLETED','DISPENSED','REJECTED') NOT NULL DEFAULT 'PENDING';

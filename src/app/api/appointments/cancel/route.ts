@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
+import { nameOf, notify, when } from '@/lib/notify';
 
 const cancelSchema = z.object({
     appointmentId: z.number(),
@@ -23,7 +24,7 @@ export async function PUT(req: Request) {
 
         const { appointmentId } = validation.data;
 
-        const rows = await query<any[]>('SELECT patient_id, doctor_id, status FROM appointments WHERE id = ?', [appointmentId]);
+        const rows = await query<any[]>("SELECT patient_id, doctor_id, status, DATE_FORMAT(date, '%Y-%m-%d') AS date, time_slot FROM appointments WHERE id = ?", [appointmentId]);
         if (rows.length === 0) {
             return NextResponse.json({ message: 'Appointment not found' }, { status: 404 });
         }
@@ -39,6 +40,21 @@ export async function PUT(req: Request) {
             'UPDATE appointments SET status = "CANCELLED" WHERE id = ?',
             [appointmentId]
         );
+
+        // Tell the people involved, except the one who just did it
+        const slot = when(appt.date, appt.time_slot);
+        if (user.id !== appt.doctor_id) {
+            await notify(null, appt.doctor_id, {
+                type: 'APPOINTMENT_CANCELLED', title: 'Appointment cancelled',
+                body: `${await nameOf(null, appt.patient_id)}'s appointment on ${slot} was cancelled.`, link: '/doctor/appointments',
+            });
+        }
+        if (user.id !== appt.patient_id) {
+            await notify(null, appt.patient_id, {
+                type: 'APPOINTMENT_CANCELLED', title: 'Appointment cancelled',
+                body: `Your appointment on ${slot} was cancelled.`, link: '/patient/appointments',
+            });
+        }
 
         return NextResponse.json({ message: 'Appointment cancelled successfully' });
 

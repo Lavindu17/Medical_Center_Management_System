@@ -4,6 +4,7 @@ import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
 import { prescriptionStatus } from '@/lib/prescription';
+import { notify, usersWithRole } from '@/lib/notify';
 
 async function getPharmacist() {
     const cookieStore = await cookies();
@@ -144,7 +145,7 @@ export async function POST(
             // Lock order: prescription -> item -> batches (FEFO order). Taking the same locks in the same order
             // serialises double-clicks and competing pharmacists without deadlocking.
             const [presRows]: any = await connection.execute(
-                'SELECT id, appointment_id FROM prescriptions WHERE id = ? FOR UPDATE', [prescriptionId]);
+                'SELECT id, appointment_id, status FROM prescriptions WHERE id = ? FOR UPDATE', [prescriptionId]);
             if (presRows.length === 0) throw new HttpError(404, 'Prescription not found');
 
             const [itemRows]: any = await connection.execute(
@@ -154,6 +155,8 @@ export async function POST(
             const item = itemRows[0];
             if (item.status === 'DISPENSED') throw new HttpError(409, 'Item already fully dispensed');
             if (item.status === 'REJECTED') throw new HttpError(409, 'Item has been rejected');
+
+            let lowStock: { name: string; stock: number } | null = null;
 
             if (action === 'REJECT') {
                 await connection.execute(
@@ -198,6 +201,12 @@ export async function POST(
                     throw new HttpError(409, `Insufficient non-expired stock. Need ${left} more units.`);
                 }
 
+                // Did this dispense take the medicine down to (or below) its reorder level?
+                const [[med]]: any = await connection.execute('SELECT name, stock, min_stock_level FROM medicines WHERE id = ?', [item.medicine_id]);
+                if (med && med.min_stock_level !== null && med.stock <= med.min_stock_level && med.stock + quantityNeeded > med.min_stock_level) {
+                    lowStock = { name: med.name, stock: med.stock };
+                }
+
                 const dispensedTotal = item.dispensed_quantity + quantityNeeded;
                 await connection.execute(
                     'UPDATE prescription_items SET status = ?, dispensed_quantity = ?, dispensed_amount = dispensed_amount + ? WHERE id = ?',
@@ -222,7 +231,29 @@ export async function POST(
             const [allItems]: any = await connection.execute(
                 'SELECT status FROM prescription_items WHERE prescription_id = ?', [prescriptionId]);
             const presStatus = prescriptionStatus(allItems);
+            const previousStatus = presRows[0].status;
             await connection.execute('UPDATE prescriptions SET status = ? WHERE id = ?', [presStatus, prescriptionId]);
+
+            const [[owner]]: any = await connection.execute('SELECT patient_id FROM appointments WHERE id = ?', [presRows[0].appointment_id]);
+            if (owner) {
+                if (action === 'REJECT') {
+                    await notify(connection, owner.patient_id, {
+                        type: 'MEDICINE_UNAVAILABLE', title: 'A medicine could not be supplied',
+                        body: 'The pharmacy could not supply one of your prescribed medicines. Please speak to the pharmacist.', link: '/patient/prescriptions',
+                    });
+                } else if (presStatus === 'COMPLETED' && previousStatus !== 'COMPLETED') {
+                    await notify(connection, owner.patient_id, {
+                        type: 'PRESCRIPTION_DISPENSED', title: 'Your medicines are ready',
+                        body: 'Your prescription has been dispensed.', link: '/patient/prescriptions',
+                    });
+                }
+            }
+            if (lowStock) {
+                await notify(connection, await usersWithRole(connection, 'PHARMACIST'), {
+                    type: 'LOW_STOCK', title: 'Low stock',
+                    body: `${lowStock.name} is down to ${lowStock.stock} units.`, link: '/pharmacist/alerts',
+                });
+            }
             await connection.commit();
 
             return NextResponse.json({

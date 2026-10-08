@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { LogOut, Menu, HeartPulse, LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { NotificationBell } from '@/components/notification-bell';
 
 interface NavItem {
     icon: LucideIcon;
@@ -26,7 +27,7 @@ function SidebarNav({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?
     return (
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
             {navItems.map((item, idx) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || (item.href.split('/').length > 2 && pathname.startsWith(item.href + '/'));
                 return (
                     <motion.div
                         key={item.href}
@@ -82,7 +83,7 @@ export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
             .catch(() => {});
     }, []);
 
-    const SidebarShell = ({ children }: { children: React.ReactNode }) => (
+    const renderShell = (children: React.ReactNode, onNavigate?: () => void) => (
         <div className="flex flex-col h-full bg-white border-r border-neutral-200">
             {/* Logo */}
             <div className="h-16 flex items-center gap-3 px-5 border-b border-neutral-100">
@@ -93,6 +94,7 @@ export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
                     <span className="font-bold text-sm text-neutral-900 tracking-tight">Sethro Medical</span>
                     <span className="text-[10px] text-emerald-600 font-medium uppercase tracking-widest">{roleName}</span>
                 </Link>
+                <NotificationBell onNavigate={onNavigate} />
             </div>
 
             {children}
@@ -120,9 +122,7 @@ export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
         <>
             {/* Desktop */}
             <aside className="hidden md:flex w-64 flex-col fixed inset-y-0 z-50">
-                <SidebarShell>
-                    <SidebarNav navItems={navItems} />
-                </SidebarShell>
+                {renderShell(<SidebarNav navItems={navItems} />)}
             </aside>
 
             {/* Mobile trigger */}
@@ -139,9 +139,7 @@ export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
                 </SheetTrigger>
                 <SheetContent side="left" className="p-0 w-64 border-0">
                     <SheetTitle className="sr-only">Navigation</SheetTitle>
-                    <SidebarShell>
-                        <SidebarNav navItems={navItems} onNavigate={() => setMobileOpen(false)} />
-                    </SidebarShell>
+                    {renderShell(<SidebarNav navItems={navItems} onNavigate={() => setMobileOpen(false)} />, () => setMobileOpen(false))}
                 </SheetContent>
             </Sheet>
         </>

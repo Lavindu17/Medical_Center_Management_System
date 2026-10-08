@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { itemStatus, prescriptionStatus } from '@/lib/prescription';
+import { nameOf, notify, usersWithRole } from '@/lib/notify';
 
 const SERVICE_CHARGE = 500.0;
 const CLOSED_STATUSES = ['CANCELLED', 'ABSENT', 'NO_SHOW'];
@@ -81,11 +82,12 @@ export async function POST(req: Request) {
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
+            let newPrescription = false, newItems = 0, newLabs = 0, billCreated = false;
 
             // Lock the appointment first: every save for it is serialised, which also keeps the
             // prescription / item / bill writes below free of lock-order deadlocks.
             const [apptRows]: any = await connection.execute(
-                'SELECT id, doctor_id, status FROM appointments WHERE id = ? FOR UPDATE', [appointmentId]);
+                'SELECT id, doctor_id, patient_id, status FROM appointments WHERE id = ? FOR UPDATE', [appointmentId]);
             if (apptRows.length === 0) throw new HttpError(404, 'Appointment not found');
             const appt = apptRows[0];
             if (appt.doctor_id !== user.id) throw new HttpError(403, 'Forbidden');
@@ -112,6 +114,7 @@ export async function POST(req: Request) {
                         'INSERT INTO prescriptions (appointment_id, doctor_id, status) VALUES (?, ?, "PENDING")',
                         [appointmentId, appt.doctor_id]);
                     prescriptionId = res.insertId;
+                    newPrescription = true;
                 }
 
                 const [existing]: any = await connection.execute(
@@ -126,6 +129,7 @@ export async function POST(req: Request) {
                             `INSERT INTO prescription_items (prescription_id, medicine_id, dosage, frequency, duration, quantity)
                              VALUES (?, ?, ?, ?, ?, ?)`,
                             [prescriptionId, item.medicineId, item.dosage, item.frequency, item.duration, item.quantity]);
+                        newItems++;
                         continue;
                     }
                     const [match] = unmatched.splice(idx, 1);
@@ -156,6 +160,7 @@ export async function POST(req: Request) {
                     'SELECT id FROM lab_requests WHERE appointment_id = ? AND test_id = ?', [appointmentId, testId]);
                 if (exists.length === 0) {
                     await connection.execute('INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)', [appointmentId, testId]);
+                    newLabs++;
                 }
             }
 
@@ -182,6 +187,7 @@ export async function POST(req: Request) {
                             `INSERT INTO bills (appointment_id, doctor_fee, service_charge, pharmacy_total, lab_total, total_amount, status)
                              VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
                             [appointmentId, fee, SERVICE_CHARGE, pharmacyTotal, labTotal, fee + SERVICE_CHARGE + labTotal + pharmacyTotal]);
+                        billCreated = true;
                     } else {
                         const total = Number(bills[0].doctor_fee) + Number(bills[0].service_charge) + labTotal + pharmacyTotal;
                         await connection.execute(
@@ -189,6 +195,43 @@ export async function POST(req: Request) {
                             [labTotal, pharmacyTotal, total, bills[0].id]);
                     }
                 }
+            }
+
+            // In-app notifications (written in this transaction, so a rollback sends none)
+            const patientName = (newPrescription || newItems > 0 || newLabs > 0 || billCreated) ? await nameOf(connection, appt.patient_id) : '';
+            if (newPrescription || newItems > 0) {
+                await notify(connection, await usersWithRole(connection, 'PHARMACIST'), {
+                    type: 'PRESCRIPTION_ISSUED', title: 'New prescription',
+                    body: `A prescription for ${patientName} is ready to dispense.`, link: '/pharmacist/prescriptions',
+                });
+            }
+            if (newPrescription) {
+                await notify(connection, appt.patient_id, {
+                    type: 'PRESCRIPTION_ISSUED', title: 'Prescription issued',
+                    body: 'Your doctor issued a prescription. The pharmacy will prepare it.', link: '/patient/prescriptions',
+                });
+            }
+            if (newLabs > 0) {
+                await notify(connection, await usersWithRole(connection, 'LAB_ASSISTANT'), {
+                    type: 'LAB_REQUESTED', title: 'New lab request',
+                    body: `${newLabs} lab test${newLabs === 1 ? '' : 's'} requested for ${patientName}.`, link: '/lab-assistant',
+                });
+                await notify(connection, appt.patient_id, {
+                    type: 'LAB_REQUESTED', title: 'Lab tests requested',
+                    body: `Your doctor requested ${newLabs} lab test${newLabs === 1 ? '' : 's'}. Please visit the lab.`, link: '/patient/labs',
+                });
+            }
+            if (status === 'COMPLETED' && appt.status !== 'COMPLETED') {
+                await notify(connection, appt.patient_id, {
+                    type: 'CONSULTATION_COMPLETED', title: 'Consultation complete',
+                    body: 'Your consultation is complete. Your bill is ready to view.', link: '/patient/billing',
+                });
+            }
+            if (billCreated) {
+                await notify(connection, await usersWithRole(connection, 'RECEPTIONIST'), {
+                    type: 'BILL_READY', title: 'Bill ready',
+                    body: `A bill was generated for ${patientName}.`, link: '/receptionist/billing',
+                });
             }
 
             await connection.commit();

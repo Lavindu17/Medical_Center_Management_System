@@ -109,15 +109,16 @@ describe('profile', () => {
     });
 
     it('reports (but does not cancel) upcoming bookings that no longer fit the new hours', async () => {
-        // 2030-01-07 is a Monday
-        await saveProfile(valid({ schedules: [{ days: ['Monday'], start_time: '09:00', end_time: '12:00' }] }));
+        // 2030-01-07 is a Monday. Other suites may have bookings for this doctor, so compare against a baseline.
+        const monday = (end: string) => valid({ schedules: [{ days: ['Monday'], start_time: '09:00', end_time: end }] });
+        const outside = async (end: string) => (await (await saveProfile(monday(end))).json()).outsideSchedule as number;
+        const base11 = await outside('11:00');
+        const base12 = await outside('12:00');
         const a: any = await query(`INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, '2030-01-07', '10:00', 1, 'PENDING')`, [ALICE, DR]);
         const b: any = await query(`INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, '2030-01-07', '11:30', 2, 'PENDING')`, [ALICE, DR]);
-        const res = await saveProfile(valid({ schedules: [{ days: ['Monday'], start_time: '09:00', end_time: '11:00' }] }));
-        expect((await res.json()).outsideSchedule).toBe(1);                       // 11:30 no longer fits
+        expect(await outside('11:00')).toBe(base11 + 1);                           // 11:30 no longer fits, 10:00 still does
         expect((await one(`SELECT status FROM appointments WHERE id = ?`, [b.insertId])).status).toBe('PENDING');
-        const fits = await saveProfile(valid({ schedules: [{ days: ['Monday'], start_time: '09:00', end_time: '12:00' }] }));
-        expect((await fits.json()).outsideSchedule).toBe(0);
+        expect(await outside('12:00')).toBe(base12);                               // both fit again
         await query(`DELETE FROM appointments WHERE id IN (?, ?)`, [a.insertId, b.insertId]);
         await saveProfile(valid());
     });

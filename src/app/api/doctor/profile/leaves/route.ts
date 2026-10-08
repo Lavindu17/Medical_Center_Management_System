@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { asDoctor, nameOf, notify, usersWithRole, when } from '@/lib/notify';
 
 const leaveSchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a valid date').refine(
@@ -42,7 +43,24 @@ export async function POST(req: Request) {
             `SELECT COUNT(*) AS n FROM appointments
              WHERE doctor_id = ? AND date = ? AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED')`, [user.id, date]);
 
-        return NextResponse.json({ id, date, reason, doctor_id: user.id, affectedAppointments: Number(booked[0].n) }, { status: 201 });
+        const affected = Number(booked[0].n);
+        if (affected > 0) {
+            const doctorName = await nameOf(null, user.id);
+            const patients = await query<any[]>(
+                `SELECT DISTINCT patient_id FROM appointments
+                 WHERE doctor_id = ? AND date = ? AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED')`, [user.id, date]);
+            await notify(null, patients.map((p) => p.patient_id), {
+                type: 'DOCTOR_LEAVE', title: 'Your appointment needs rescheduling',
+                body: `${asDoctor(doctorName)} is on leave on ${when(date)}. Please book another time.`, link: '/patient/book',
+            });
+            await notify(null, await usersWithRole(null, 'RECEPTIONIST'), {
+                type: 'DOCTOR_LEAVE', title: 'Doctor on leave',
+                body: `${asDoctor(doctorName)} is on leave on ${when(date)} with ${affected} booked appointment${affected === 1 ? '' : 's'} to reschedule.`,
+                link: '/receptionist/appointments',
+            });
+        }
+
+        return NextResponse.json({ id, date, reason, doctor_id: user.id, affectedAppointments: affected }, { status: 201 });
     } catch (error) {
         console.error('Add leave error:', error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
