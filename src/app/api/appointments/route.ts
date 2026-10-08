@@ -11,6 +11,10 @@ const appointmentSchema = z.object({
     reason: z.string().optional(),
 });
 
+class BookingError extends Error {
+    constructor(public status: number, message: string) { super(message); }
+}
+
 export async function POST(req: Request) {
     const auth = await requireRole('PATIENT', 'RECEPTIONIST', 'ADMIN');
     if ('error' in auth) return auth.error;
@@ -31,41 +35,49 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
 
-        // Same-Day Time Validation
-        const now = new Date();
-        const todayStr = now.toLocaleDateString('en-CA');
+        // Reject past dates and impossible time slots up front
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        if (date < todayStr) {
+            return NextResponse.json({ message: 'Appointments cannot be booked in the past.' }, { status: 400 });
+        }
+        const slotMatch = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(timeSlot);
+        if (!slotMatch) {
+            return NextResponse.json({ message: 'Invalid time slot.' }, { status: 400 });
+        }
         if (date === todayStr) {
-            const currentHours = now.getHours();
-            const currentMinutes = now.getMinutes();
-            const [slotH, slotM] = timeSlot.split(':').map(Number);
-            
-            if (slotH < currentHours || (slotH === currentHours && slotM <= currentMinutes)) {
+            const now = new Date();
+            const slotMinutes = Number(slotMatch[1]) * 60 + Number(slotMatch[2]);
+            if (slotMinutes <= now.getHours() * 60 + now.getMinutes()) {
                 return NextResponse.json({ message: 'This time slot has already passed.' }, { status: 400 });
             }
         }
 
         const connection = await pool.getConnection();
-        await connection.beginTransaction();
-
         try {
-            // 1. Check if slot is already taken (Race condition check)
+            await connection.beginTransaction();
+
+            // Serialise bookings per doctor with one row lock. (Locking the slot range instead takes shared gap
+            // locks, so concurrent bookings for different slots deadlocked.)
+            const [doctor]: any = await connection.execute('SELECT user_id FROM doctors WHERE user_id = ? FOR UPDATE', [doctorId]);
+            if (doctor.length === 0) throw new BookingError(404, 'Doctor not found.');
+
+            const [leave]: any = await connection.execute('SELECT id FROM doctor_leaves WHERE doctor_id = ? AND date = ?', [doctorId, date]);
+            if (leave.length > 0) throw new BookingError(409, 'The doctor is not available on this date.');
+
             const [existing]: any = await connection.execute(
-                'SELECT id FROM appointments WHERE doctor_id = ? AND date = ? AND time_slot = ? AND status != "CANCELLED" FOR UPDATE',
+                'SELECT id FROM appointments WHERE doctor_id = ? AND date = ? AND time_slot = ? AND status != "CANCELLED"',
                 [doctorId, date, timeSlot]
             );
-
             if (existing.length > 0) {
-                throw new Error('This time slot has just been booked. Please choose another.');
+                throw new BookingError(409, 'This time slot has just been booked. Please choose another.');
             }
 
-            // 2. Calculate Queue Number
             const [rows]: any = await connection.execute(
                 'SELECT MAX(queue_number) as maxQueue FROM appointments WHERE doctor_id = ? AND date = ?',
                 [doctorId, date]
             );
             const nextQueue = (rows[0].maxQueue || 0) + 1;
 
-            // 3. Insert Appointment
             await connection.execute(
                 'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status, reason) VALUES (?, ?, ?, ?, ?, "PENDING", ?)',
                 [patientId, doctorId, date, timeSlot, nextQueue, reason || null]
@@ -79,8 +91,15 @@ export async function POST(req: Request) {
             }, { status: 201 });
 
         } catch (err: any) {
-            await connection.rollback();
-            return NextResponse.json({ message: err.message || 'Booking failed' }, { status: 409 });
+            await connection.rollback().catch(() => {});
+            if (err instanceof BookingError) {
+                return NextResponse.json({ message: err.message }, { status: err.status });
+            }
+            if (err?.errno === 1452) {
+                return NextResponse.json({ message: 'Unknown patient or doctor.' }, { status: 400 });
+            }
+            console.error('Booking Error:', err);
+            return NextResponse.json({ message: 'Booking failed. Please try again.' }, { status: 500 });
         } finally {
             connection.release();
         }

@@ -7,8 +7,7 @@ import {
 
 // Plan section 13, step 3: book -> check-in -> consult/complete -> dispense -> bill reconciled.
 // Seed users from full_setup.sql: 2 Dr Smith (fee 2500), 4 Alice, 5 Bob, 6 pharmacist, 8 receptionist.
-// Tests marked `it.fails` document known defects from the audit: they pass while the bug exists and
-// must be flipped to plain `it` when the bug is fixed (Milestone 5).
+// Tests marked `it.fails` would document a defect that is still present; none remain here.
 
 afterAll(async () => { await pool.end(); });
 
@@ -156,8 +155,8 @@ describe('receptionist booking', () => {
     });
 });
 
-describe('known defects (it.fails = bug still present; flip to it() when fixed)', () => {
-    it.fails('a fully emptied batch is marked DEPLETED', async () => {
+describe('regressions fixed in Milestone 5 (previously documented defects)', () => {
+    it('a fully emptied batch is marked DEPLETED', async () => {
         const med = await addMedicine('Depletium', [{ qty: 10, expiryDays: 90, sell: 4 }]);
         const appt = await makeAppointment(); await consult(appt, { status: 'ONGOING', prescription: rx(med, 10) });
         const p = await one(`SELECT id FROM prescriptions WHERE appointment_id = ?`, [appt]);
@@ -167,7 +166,7 @@ describe('known defects (it.fails = bug still present; flip to it() when fixed)'
         expect(batch).toMatchObject({ quantity_current: 0, status: 'DEPLETED' });
     });
 
-    it.fails('a batch that still has stock stays ACTIVE (remaining == taken case)', async () => {
+    it('a batch that still has stock stays ACTIVE (remaining == taken case)', async () => {
         const med = await addMedicine('Halfpill', [{ qty: 20, expiryDays: 90, sell: 4 }]);
         const appt = await makeAppointment(); await consult(appt, { status: 'ONGOING', prescription: rx(med, 10) });
         const p = await one(`SELECT id FROM prescriptions WHERE appointment_id = ?`, [appt]);
@@ -177,7 +176,7 @@ describe('known defects (it.fails = bug still present; flip to it() when fixed)'
         expect(batch).toMatchObject({ quantity_current: 10, status: 'ACTIVE' });
     });
 
-    it.fails('dispensing before the doctor completes the consultation still ends up billed', async () => {
+    it('dispensing before the doctor completes the consultation still ends up billed', async () => {
         const med = await addMedicine('Earlybird', [{ qty: 50, expiryDays: 90, sell: 10 }]);
         const appt = await makeAppointment(); await consult(appt, { status: 'ONGOING', prescription: rx(med, 5) });
         const p = await one(`SELECT id FROM prescriptions WHERE appointment_id = ?`, [appt]);
@@ -188,7 +187,7 @@ describe('known defects (it.fails = bug still present; flip to it() when fixed)'
         expect(Number(bill.pharmacy_total)).toBe(50);
     });
 
-    it.fails('re-saving a consultation keeps what the pharmacist already dispensed', async () => {
+    it('re-saving a consultation keeps what the pharmacist already dispensed', async () => {
         const med = await addMedicine('Keepsake', [{ qty: 50, expiryDays: 90, sell: 10 }]);
         const appt = await makeAppointment(); await consult(appt, { status: 'ONGOING', prescription: rx(med, 5) });
         const p = await one(`SELECT id FROM prescriptions WHERE appointment_id = ?`, [appt]);
@@ -199,7 +198,7 @@ describe('known defects (it.fails = bug still present; flip to it() when fixed)'
         expect(item).toMatchObject({ status: 'DISPENSED', dispensed_quantity: 5 });
     });
 
-    it.fails('re-saving a consultation does not alter a bill that is already PAID', async () => {
+    it('re-saving a consultation does not alter a bill that is already PAID', async () => {
         const appt = await makeAppointment(); await consult(appt, { status: 'COMPLETED' });
         await query(`UPDATE bills SET status = 'PAID', paid_at = NOW() WHERE appointment_id = ?`, [appt]);
         await query(`UPDATE doctors SET consultation_fee = 3000 WHERE user_id = ?`, [DOCTOR]);
@@ -212,7 +211,7 @@ describe('known defects (it.fails = bug still present; flip to it() when fixed)'
         }
     });
 
-    it.fails('an appointment that was cancelled cannot be completed and billed', async () => {
+    it('an appointment that was cancelled cannot be completed and billed', async () => {
         const appt = await makeAppointment(ALICE, 'CANCELLED');
         await consult(appt, { status: 'COMPLETED' });
         expect(await rows(`SELECT id FROM bills WHERE appointment_id = ?`, [appt])).toHaveLength(0);

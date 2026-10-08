@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
+import { prescriptionStatus } from '@/lib/prescription';
 
 async function getPharmacist() {
     const cookieStore = await cookies();
@@ -98,6 +99,11 @@ export async function GET(
     }
 }
 
+/** Business-rule failure that maps to a specific HTTP status instead of a generic 500. */
+class HttpError extends Error {
+    constructor(public status: number, message: string) { super(message); }
+}
+
 export async function POST(
     request: Request,
     props: { params: Promise<{ id: string }> }
@@ -107,144 +113,133 @@ export async function POST(
         const user = await getPharmacist();
         if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-        const { id } = params;
-        const body = await request.json();
-        const { action = 'DISPENSE', medicine_id, quantity_to_dispense, item_id, reason } = body;
+        const prescriptionId = Number(params.id);
+        const body = await request.json().catch(() => ({}));
+        const { action = 'DISPENSE', quantity_to_dispense, reason } = body;
+        const itemId = Number(body.item_id);
 
-        if (!item_id) {
+        if (!Number.isInteger(prescriptionId) || prescriptionId <= 0) {
+            return NextResponse.json({ error: 'Invalid prescription id' }, { status: 400 });
+        }
+        if (!Number.isInteger(itemId) || itemId <= 0) {
             return NextResponse.json({ error: 'item_id is required' }, { status: 400 });
+        }
+        if (!['DISPENSE', 'REJECT'].includes(action)) {
+            return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+        }
+        let quantityNeeded = 0;
+        if (action === 'DISPENSE') {
+            quantityNeeded = Number(quantity_to_dispense);
+            if (!Number.isInteger(quantityNeeded) || quantityNeeded <= 0) {
+                return NextResponse.json({ error: 'quantity_to_dispense must be a positive whole number' }, { status: 400 });
+            }
+        } else if (!['OUT_OF_STOCK', 'PATIENT_REJECTED'].includes(reason)) {
+            return NextResponse.json({ error: 'Invalid rejection reason.' }, { status: 400 });
         }
 
         const connection = await pool.getConnection();
-        await connection.beginTransaction();
-
         try {
-            // ─── REJECT ──────────────────────────────────
-            if (action === 'REJECT') {
-                if (!reason || !['OUT_OF_STOCK', 'PATIENT_REJECTED'].includes(reason)) {
-                    throw new Error('Invalid rejection reason.');
-                }
+            await connection.beginTransaction();
 
-                await connection.execute(
-                    'UPDATE prescription_items SET status = ?, rejection_reason = ? WHERE id = ?',
-                    ['REJECTED', reason, item_id]
-                );
-
-                const [allItems]: any = await connection.execute(
-                    'SELECT status FROM prescription_items WHERE prescription_id = ?',
-                    [id]
-                );
-                const allDone = allItems.every((i: any) => i.status === 'DISPENSED' || i.status === 'REJECTED');
-                const anyDispensed = allItems.some((i: any) => i.status === 'DISPENSED');
-                const presStatus = allDone ? (anyDispensed ? 'COMPLETED' : 'PARTIALLY_COMPLETED') : 'PARTIALLY_COMPLETED';
-
-                await connection.execute('UPDATE prescriptions SET status = ? WHERE id = ?', [presStatus, id]);
-                await connection.commit();
-                return NextResponse.json({ message: 'Item rejected', prescription_status: presStatus });
-            }
-
-            // ─── DISPENSE ─────────────────────────────────
-            if (!medicine_id || !quantity_to_dispense) {
-                throw new Error('medicine_id and quantity_to_dispense are required');
-            }
-
-            let pharmacyCost = 0;
-            let quantityNeeded = parseInt(quantity_to_dispense);
+            // Lock order: prescription -> item -> batches (FEFO order). Taking the same locks in the same order
+            // serialises double-clicks and competing pharmacists without deadlocking.
+            const [presRows]: any = await connection.execute(
+                'SELECT id, appointment_id FROM prescriptions WHERE id = ? FOR UPDATE', [prescriptionId]);
+            if (presRows.length === 0) throw new HttpError(404, 'Prescription not found');
 
             const [itemRows]: any = await connection.execute(
-                'SELECT status, quantity, dispensed_quantity FROM prescription_items WHERE id = ?',
-                [item_id]
-            );
-            if (itemRows.length === 0) throw new Error('Item not found');
-            const itemDb = itemRows[0];
-            if (itemDb.status === 'DISPENSED') throw new Error('Item already fully dispensed');
-            if (itemDb.status === 'REJECTED') throw new Error('Item has been rejected');
+                'SELECT id, medicine_id, status, quantity, dispensed_quantity FROM prescription_items WHERE id = ? AND prescription_id = ? FOR UPDATE',
+                [itemId, prescriptionId]);
+            if (itemRows.length === 0) throw new HttpError(404, 'Item not found on this prescription');
+            const item = itemRows[0];
+            if (item.status === 'DISPENSED') throw new HttpError(409, 'Item already fully dispensed');
+            if (item.status === 'REJECTED') throw new HttpError(409, 'Item has been rejected');
 
-            const remainder = itemDb.quantity - itemDb.dispensed_quantity;
-            if (quantityNeeded > remainder) {
-                throw new Error(`Cannot dispense more than prescribed. Remainder is ${remainder}.`);
-            }
-
-            // FEFO — skip expired batches
-            const [batches]: any = await connection.execute(
-                `SELECT id, quantity_current, selling_price,
-                        DATEDIFF(expiry_date, CURDATE()) as days_until_expiry
-                 FROM inventory_batches 
-                 WHERE medicine_id = ? AND quantity_current > 0
-                 ORDER BY expiry_date ASC`,
-                [medicine_id]
-            );
-
-            for (const batch of batches) {
-                if (quantityNeeded <= 0) break;
-                if (batch.days_until_expiry < 0) continue; // skip expired
-
-                const take = Math.min(quantityNeeded, batch.quantity_current);
-
+            if (action === 'REJECT') {
                 await connection.execute(
-                    `UPDATE inventory_batches 
-                     SET quantity_current = quantity_current - ?, 
-                         status = CASE WHEN quantity_current - ? = 0 THEN 'DEPLETED' ELSE status END
-                     WHERE id = ?`,
-                    [take, take, batch.id]
-                );
-                await connection.execute('UPDATE medicines SET stock = stock - ? WHERE id = ?', [take, medicine_id]);
-
-                pharmacyCost += Number(batch.selling_price) * take;
-                quantityNeeded -= take;
-            }
-
-            if (quantityNeeded > 0) {
-                throw new Error(`Insufficient non-expired stock. Need ${quantityNeeded} more units.`);
-            }
-
-            // Mark item
-            const newDispensedTotal = itemDb.dispensed_quantity + parseInt(quantity_to_dispense);
-            const newItemStatus = newDispensedTotal >= itemDb.quantity ? 'DISPENSED' : 'PARTIALLY_COMPLETED';
-            await connection.execute(
-                'UPDATE prescription_items SET status = ?, dispensed_quantity = ? WHERE id = ?',
-                [newItemStatus, newDispensedTotal, item_id]
-            );
-
-            // Update bill
-            const [rows]: any = await connection.execute('SELECT appointment_id FROM prescriptions WHERE id = ?', [id]);
-            const appointmentId = rows[0]?.appointment_id;
-            if (appointmentId) {
-                const [bills]: any = await connection.execute('SELECT id, pharmacy_total FROM bills WHERE appointment_id = ?', [appointmentId]);
-                if (bills.length > 0) {
-                    await connection.execute(
-                        `UPDATE bills SET pharmacy_total = pharmacy_total + ?, total_amount = total_amount + ? WHERE id = ?`,
-                        [pharmacyCost, pharmacyCost, bills[0].id]
-                    );
+                    'UPDATE prescription_items SET status = ?, rejection_reason = ? WHERE id = ?',
+                    ['REJECTED', reason, itemId]);
+            } else {
+                if (body.medicine_id !== undefined && Number(body.medicine_id) !== item.medicine_id) {
+                    throw new HttpError(400, 'medicine_id does not match the prescribed item');
                 }
+                const remainder = item.quantity - item.dispensed_quantity;
+                if (quantityNeeded > remainder) {
+                    throw new HttpError(409, `Cannot dispense more than prescribed. Remainder is ${remainder}.`);
+                }
+
+                // FEFO: earliest-expiring non-expired batch first
+                const [batches]: any = await connection.execute(
+                    `SELECT id, quantity_current, selling_price,
+                            DATEDIFF(expiry_date, CURDATE()) AS days_until_expiry
+                     FROM inventory_batches
+                     WHERE medicine_id = ? AND quantity_current > 0
+                     ORDER BY expiry_date ASC, id ASC
+                     FOR UPDATE`,
+                    [item.medicine_id]);
+
+                let cost = 0;
+                let left = quantityNeeded;
+                for (const batch of batches) {
+                    if (left <= 0) break;
+                    if (batch.days_until_expiry < 0) continue; // never dispense expired stock
+
+                    const take = Math.min(left, batch.quantity_current);
+                    const remaining = batch.quantity_current - take;
+                    await connection.execute(
+                        'UPDATE inventory_batches SET quantity_current = ?, status = ? WHERE id = ?',
+                        [remaining, remaining === 0 ? 'DEPLETED' : 'ACTIVE', batch.id]);
+                    await connection.execute('UPDATE medicines SET stock = stock - ? WHERE id = ?', [take, item.medicine_id]);
+
+                    cost += Number(batch.selling_price) * take;
+                    left -= take;
+                }
+                if (left > 0) {
+                    throw new HttpError(409, `Insufficient non-expired stock. Need ${left} more units.`);
+                }
+
+                const dispensedTotal = item.dispensed_quantity + quantityNeeded;
+                await connection.execute(
+                    'UPDATE prescription_items SET status = ?, dispensed_quantity = ?, dispensed_amount = dispensed_amount + ? WHERE id = ?',
+                    [dispensedTotal >= item.quantity ? 'DISPENSED' : 'PARTIALLY_COMPLETED', dispensedTotal, cost, itemId]);
             }
 
-            // Re-evaluate prescription status
-            const [allItems]: any = await connection.execute(
-                'SELECT status FROM prescription_items WHERE prescription_id = ?',
-                [id]
-            );
-            const allDone = allItems.every((i: any) => i.status === 'DISPENSED' || i.status === 'REJECTED');
-            const anyDispensed = allItems.some((i: any) => i.status === 'DISPENSED');
-            const presStatus = allDone ? (anyDispensed ? 'COMPLETED' : 'PARTIALLY_COMPLETED') : 'PARTIALLY_COMPLETED';
+            // The pharmacy line of the bill is always derived from what was actually dispensed.
+            // A bill that is already PAID is a closed financial record and is never rewritten.
+            const [bills]: any = await connection.execute(
+                'SELECT id, status FROM bills WHERE appointment_id = ? FOR UPDATE', [presRows[0].appointment_id]);
+            if (bills.length > 0 && bills[0].status !== 'PAID') {
+                await connection.execute(
+                    `UPDATE bills b SET
+                        b.pharmacy_total = (SELECT COALESCE(SUM(pi.dispensed_amount), 0) FROM prescription_items pi
+                                            JOIN prescriptions p ON p.id = pi.prescription_id WHERE p.appointment_id = b.appointment_id),
+                        b.total_amount = b.doctor_fee + b.service_charge + b.lab_total + (SELECT COALESCE(SUM(pi.dispensed_amount), 0) FROM prescription_items pi
+                                            JOIN prescriptions p ON p.id = pi.prescription_id WHERE p.appointment_id = b.appointment_id)
+                     WHERE b.id = ?`,
+                    [bills[0].id]);
+            }
 
-            await connection.execute('UPDATE prescriptions SET status = ? WHERE id = ?', [presStatus, id]);
+            const [allItems]: any = await connection.execute(
+                'SELECT status FROM prescription_items WHERE prescription_id = ?', [prescriptionId]);
+            const presStatus = prescriptionStatus(allItems);
+            await connection.execute('UPDATE prescriptions SET status = ? WHERE id = ?', [presStatus, prescriptionId]);
             await connection.commit();
 
             return NextResponse.json({
-                message: 'Item dispensed successfully',
-                fully_dispensed: allDone,
+                message: action === 'REJECT' ? 'Item rejected' : 'Item dispensed successfully',
+                fully_dispensed: presStatus === 'COMPLETED',
                 prescription_status: presStatus
             });
-
         } catch (err: any) {
-            await connection.rollback();
-            console.error(err);
-            return NextResponse.json({ error: err.message }, { status: 500 });
+            await connection.rollback().catch(() => {});
+            if (err instanceof HttpError) {
+                return NextResponse.json({ error: err.message }, { status: err.status });
+            }
+            console.error('Dispense Error:', err);
+            return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
         } finally {
             connection.release();
         }
-
     } catch (error) {
         console.error('Dispense Error:', error);
         return NextResponse.json({ error: 'Failed to process' }, { status: 500 });

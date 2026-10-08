@@ -1,6 +1,48 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { itemStatus, prescriptionStatus } from '@/lib/prescription';
+
+const SERVICE_CHARGE = 500.0;
+const CLOSED_STATUSES = ['CANCELLED', 'ABSENT', 'NO_SHOW'];
+
+/** Business-rule failure that maps to a specific HTTP status instead of a generic 500. */
+class HttpError extends Error {
+    constructor(public status: number, message: string) { super(message); }
+}
+
+const isPositiveInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0;
+const blank = (v: unknown) => v === undefined || v === null || v === '';
+
+/** Vitals may be blank, but anything provided must be a number (0 is a legitimate value). */
+function numericVital(value: unknown, label: string): number | null {
+    if (blank(value)) return null;
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) throw new HttpError(400, `${label} must be a non-negative number`);
+    return n;
+}
+
+interface PrescriptionInput { medicineId: number; dosage: string; frequency: string; duration: string; quantity: number }
+
+function parsePrescription(raw: unknown): PrescriptionInput[] {
+    if (raw === undefined || raw === null) return [];
+    if (!Array.isArray(raw)) throw new HttpError(400, 'prescription must be an array');
+    return raw.map((item: any, i) => {
+        const n = `prescription item ${i + 1}`;
+        if (!isPositiveInt(item?.medicineId)) throw new HttpError(400, `${n}: medicineId is required`);
+        if (!isPositiveInt(item?.quantity)) throw new HttpError(400, `${n}: quantity must be a positive whole number`);
+        for (const key of ['dosage', 'frequency', 'duration'] as const) {
+            if (typeof item[key] !== 'string' || item[key].trim() === '') throw new HttpError(400, `${n}: ${key} is required`);
+        }
+        return { medicineId: item.medicineId, dosage: item.dosage, frequency: item.frequency, duration: item.duration, quantity: item.quantity };
+    });
+}
+
+function parseLabIds(raw: unknown): number[] {
+    if (raw === undefined || raw === null) return [];
+    if (!Array.isArray(raw) || !raw.every(isPositiveInt)) throw new HttpError(400, 'labRequestIds must be an array of test ids');
+    return [...new Set(raw)];
+}
 
 export async function POST(req: Request) {
     const auth = await requireRole('DOCTOR');
@@ -8,9 +50,13 @@ export async function POST(req: Request) {
     const { user } = auth;
 
     try {
-        const body = await req.json();
-        const { appointmentId, notes, prescription, labRequestIds, status } = body;
-        const vitals = body.vitals ?? {};
+        const body = await req.json().catch(() => null);
+        if (!body || typeof body !== 'object') {
+            return NextResponse.json({ message: 'Invalid request body' }, { status: 400 });
+        }
+        const { appointmentId, status } = body;
+        const notes = typeof body.notes === 'string' ? body.notes : null;
+        const vitalsIn = body.vitals ?? {};
 
         if (!Number.isInteger(appointmentId)) {
             return NextResponse.json({ message: 'appointmentId is required' }, { status: 400 });
@@ -19,148 +65,144 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'status must be ONGOING or COMPLETED' }, { status: 400 });
         }
 
-        const [owned]: any = await pool.execute('SELECT doctor_id FROM appointments WHERE id = ?', [appointmentId]);
-        if (owned.length === 0) {
-            return NextResponse.json({ message: 'Appointment not found' }, { status: 404 });
+        let weight: number | null, temperature: number | null, pulse: number | null, items: PrescriptionInput[], labIds: number[];
+        try {
+            weight = numericVital(vitalsIn.weight, 'weight');
+            temperature = numericVital(vitalsIn.temperature, 'temperature');
+            pulse = numericVital(vitalsIn.pulse, 'pulse');
+            items = parsePrescription(body.prescription);
+            labIds = parseLabIds(body.labRequestIds);
+        } catch (e) {
+            if (e instanceof HttpError) return NextResponse.json({ message: e.message }, { status: e.status });
+            throw e;
         }
-        if (owned[0].doctor_id !== user.id) {
-            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-        }
+        const bloodPressure = blank(vitalsIn.blood_pressure) ? null : String(vitalsIn.blood_pressure);
 
         const connection = await pool.getConnection();
-        await connection.beginTransaction();
-
         try {
-            // 1. Update Appointment (Vitals + Notes + Status)
+            await connection.beginTransaction();
+
+            // Lock the appointment first: every save for it is serialised, which also keeps the
+            // prescription / item / bill writes below free of lock-order deadlocks.
+            const [apptRows]: any = await connection.execute(
+                'SELECT id, doctor_id, status FROM appointments WHERE id = ? FOR UPDATE', [appointmentId]);
+            if (apptRows.length === 0) throw new HttpError(404, 'Appointment not found');
+            const appt = apptRows[0];
+            if (appt.doctor_id !== user.id) throw new HttpError(403, 'Forbidden');
+            if (CLOSED_STATUSES.includes(appt.status)) {
+                throw new HttpError(409, `A ${appt.status.toLowerCase().replace('_', ' ')} appointment cannot be consulted`);
+            }
+            if (appt.status === 'COMPLETED' && status === 'ONGOING') {
+                throw new HttpError(409, 'A completed consultation cannot be reopened');
+            }
+
+            // 1. Vitals + notes + status
             await connection.execute(
-                `UPDATE appointments 
-                 SET weight = ?, blood_pressure = ?, temperature = ?, pulse = ?, notes = ?, status = ? 
+                `UPDATE appointments
+                 SET weight = ?, blood_pressure = ?, temperature = ?, pulse = ?, notes = ?, status = ?
                  WHERE id = ?`,
-                [
-                    vitals.weight || null,
-                    vitals.blood_pressure || null,
-                    vitals.temperature || null,
-                    vitals.pulse || null,
-                    notes,
-                    status,
-                    appointmentId
-                ]
-            );
+                [weight, bloodPressure, temperature, pulse, notes, status, appointmentId]);
 
-            // 2. Handle Prescriptions
-            // First, delete existing (if updating draft)? Or just insert new?
-            // To simplify "Draft" logic, we might wipe and recreate or just append. 
-            // For now, let's assume one prescription per appointment for simplicity.
-            // Check if prescription exists
-            const [existingPres]: any = await connection.execute('SELECT id FROM prescriptions WHERE appointment_id = ?', [appointmentId]);
-            let prescriptionId = existingPres[0]?.id;
-
-            if (prescription && prescription.length > 0) {
-                // Get Doctor ID from appointment
-                const [apptRows]: any = await connection.execute('SELECT doctor_id FROM appointments WHERE id = ?', [appointmentId]);
-                const doctorId = apptRows[0].doctor_id;
-
+            // 2. Prescription: update lines in place so dispensing progress is never lost
+            if (items.length > 0) {
+                const [presRows]: any = await connection.execute('SELECT id FROM prescriptions WHERE appointment_id = ?', [appointmentId]);
+                let prescriptionId: number = presRows[0]?.id;
                 if (!prescriptionId) {
                     const [res]: any = await connection.execute(
                         'INSERT INTO prescriptions (appointment_id, doctor_id, status) VALUES (?, ?, "PENDING")',
-                        [appointmentId, doctorId]
-                    );
+                        [appointmentId, appt.doctor_id]);
                     prescriptionId = res.insertId;
                 }
 
-                // Determine Items to Insert
-                // Strategy: Delete all items and re-insert (Simplest for updates)
-                await connection.execute('DELETE FROM prescription_items WHERE prescription_id = ?', [prescriptionId]);
+                const [existing]: any = await connection.execute(
+                    'SELECT id, medicine_id, quantity, status, dispensed_quantity FROM prescription_items WHERE prescription_id = ?',
+                    [prescriptionId]);
+                const unmatched = [...existing];
 
-                for (const item of prescription) {
-                    await connection.execute(
-                        `INSERT INTO prescription_items (prescription_id, medicine_id, dosage, frequency, duration, quantity) 
-                          VALUES (?, ?, ?, ?, ?, ?)`,
-                        [prescriptionId, item.medicineId, item.dosage, item.frequency, item.duration, item.quantity]
-                    );
-                }
-            }
-
-            // 3. Handle Lab Requests
-            // Similar strategy: Delete all for this appointment and re-insert?
-            // Or only insert new. Simplest: Delete all PENDING requests and re-insert. 
-            // Warning: If results uploaded, don't delete! 
-            // Safe approach: checking if exists. 
-            // For MVP: assume adding new requests.
-            if (labRequestIds && labRequestIds.length > 0) {
-                for (const testId of labRequestIds) {
-                    // Check if already requested
-                    const [exists]: any = await connection.execute(
-                        'SELECT id FROM lab_requests WHERE appointment_id = ? AND test_id = ?',
-                        [appointmentId, testId]
-                    );
-                    if (exists.length === 0) {
+                for (const item of items) {
+                    const idx = unmatched.findIndex((e: any) => e.medicine_id === item.medicineId);
+                    if (idx === -1) {
                         await connection.execute(
-                            'INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)',
-                            [appointmentId, testId]
-                        );
+                            `INSERT INTO prescription_items (prescription_id, medicine_id, dosage, frequency, duration, quantity)
+                             VALUES (?, ?, ?, ?, ?, ?)`,
+                            [prescriptionId, item.medicineId, item.dosage, item.frequency, item.duration, item.quantity]);
+                        continue;
                     }
+                    const [match] = unmatched.splice(idx, 1);
+                    if (item.quantity < match.dispensed_quantity) {
+                        throw new HttpError(409, `Quantity cannot be reduced below the ${match.dispensed_quantity} already dispensed`);
+                    }
+                    await connection.execute(
+                        'UPDATE prescription_items SET dosage = ?, frequency = ?, duration = ?, quantity = ?, status = ? WHERE id = ?',
+                        [item.dosage, item.frequency, item.duration, item.quantity,
+                         itemStatus(match.status, item.quantity, match.dispensed_quantity), match.id]);
+                }
+
+                // Lines the doctor removed: only untouched ones may go
+                for (const gone of unmatched) {
+                    if (gone.dispensed_quantity > 0) {
+                        throw new HttpError(409, 'A medicine that has already been dispensed cannot be removed from the prescription');
+                    }
+                    await connection.execute('DELETE FROM prescription_items WHERE id = ?', [gone.id]);
+                }
+
+                const [after]: any = await connection.execute('SELECT status FROM prescription_items WHERE prescription_id = ?', [prescriptionId]);
+                await connection.execute('UPDATE prescriptions SET status = ? WHERE id = ?', [prescriptionStatus(after), prescriptionId]);
+            }
+
+            // 3. Lab requests (add-only; never touch ones already carrying a result)
+            for (const testId of labIds) {
+                const [exists]: any = await connection.execute(
+                    'SELECT id FROM lab_requests WHERE appointment_id = ? AND test_id = ?', [appointmentId, testId]);
+                if (exists.length === 0) {
+                    await connection.execute('INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)', [appointmentId, testId]);
                 }
             }
 
-            // 4. Generate / Update Bill (If Completed)
+            // 4. Bill (on completion). The doctor fee is snapshotted when the bill is created, and a bill that is
+            //    already PAID is a closed record that is never rewritten.
             if (status === 'COMPLETED') {
-                // Get Doctor Fee
-                const [appt]: any = await connection.execute(
-                    'SELECT doctor_id FROM appointments WHERE id = ?', [appointmentId]
-                );
-                const [doc]: any = await connection.execute(
-                    'SELECT consultation_fee FROM doctors WHERE user_id = ?', [appt[0].doctor_id]
-                );
-                const fee = Number(doc[0]?.consultation_fee || 0);
-                const serviceCharge = 500.00;
+                const [bills]: any = await connection.execute(
+                    'SELECT id, status, doctor_fee, service_charge FROM bills WHERE appointment_id = ? FOR UPDATE', [appointmentId]);
 
-                // Calculate Lab Total from actual test prices (ALL tests on this appointment)
-                let labTotal = 0;
-                const [labRows]: any = await connection.execute(
-                    `SELECT COALESCE(SUM(lt.price), 0) as lab_total
-                     FROM lab_requests lr
-                     JOIN lab_tests lt ON lt.id = lr.test_id
-                     WHERE lr.appointment_id = ?`,
-                    [appointmentId]
-                );
-                labTotal = Number(labRows[0]?.lab_total || 0);
+                if (bills.length === 0 || bills[0].status !== 'PAID') {
+                    const [[lab]]: any = await connection.execute(
+                        `SELECT COALESCE(SUM(lt.price), 0) AS total FROM lab_requests lr
+                         JOIN lab_tests lt ON lt.id = lr.test_id WHERE lr.appointment_id = ?`, [appointmentId]);
+                    const [[pharmacy]]: any = await connection.execute(
+                        `SELECT COALESCE(SUM(pi.dispensed_amount), 0) AS total FROM prescription_items pi
+                         JOIN prescriptions p ON p.id = pi.prescription_id WHERE p.appointment_id = ?`, [appointmentId]);
+                    const labTotal = Number(lab.total);
+                    const pharmacyTotal = Number(pharmacy.total);
 
-                const [billExists]: any = await connection.execute(
-                    'SELECT id, pharmacy_total FROM bills WHERE appointment_id = ?', [appointmentId]
-                );
-
-                if (billExists.length === 0) {
-                    // Create fresh bill — pharmacy_total starts at 0, filled in by pharmacist
-                    const total = fee + serviceCharge + labTotal;
-                    await connection.execute(
-                        `INSERT INTO bills (appointment_id, doctor_fee, service_charge, pharmacy_total, lab_total, total_amount, status)
-                         VALUES (?, ?, ?, 0, ?, ?, 'PENDING')`,
-                        [appointmentId, fee, serviceCharge, labTotal, total]
-                    );
-                } else {
-                    // Bill exists (doctor finishing a draft) — recalculate lab_total and total_amount
-                    // Keep pharmacy_total as-is (already dispensed by pharmacist)
-                    const pharmacyTotal = Number(billExists[0].pharmacy_total || 0);
-                    const newTotal = fee + serviceCharge + labTotal + pharmacyTotal;
-                    await connection.execute(
-                        `UPDATE bills SET doctor_fee = ?, service_charge = ?, lab_total = ?, total_amount = ?
-                         WHERE id = ?`,
-                        [fee, serviceCharge, labTotal, newTotal, billExists[0].id]
-                    );
+                    if (bills.length === 0) {
+                        const [[doc]]: any = await connection.execute('SELECT consultation_fee FROM doctors WHERE user_id = ?', [appt.doctor_id]);
+                        const fee = Number(doc?.consultation_fee || 0);
+                        await connection.execute(
+                            `INSERT INTO bills (appointment_id, doctor_fee, service_charge, pharmacy_total, lab_total, total_amount, status)
+                             VALUES (?, ?, ?, ?, ?, ?, 'PENDING')`,
+                            [appointmentId, fee, SERVICE_CHARGE, pharmacyTotal, labTotal, fee + SERVICE_CHARGE + labTotal + pharmacyTotal]);
+                    } else {
+                        const total = Number(bills[0].doctor_fee) + Number(bills[0].service_charge) + labTotal + pharmacyTotal;
+                        await connection.execute(
+                            'UPDATE bills SET lab_total = ?, pharmacy_total = ?, total_amount = ? WHERE id = ?',
+                            [labTotal, pharmacyTotal, total, bills[0].id]);
+                    }
                 }
             }
 
             await connection.commit();
             return NextResponse.json({ message: 'Saved successfully' });
-
-        } catch (err) {
-            await connection.rollback();
+        } catch (err: any) {
+            await connection.rollback().catch(() => {});
+            if (err instanceof HttpError) return NextResponse.json({ message: err.message }, { status: err.status });
+            if (err?.errno === 1452) {
+                return NextResponse.json({ message: 'Unknown medicine or lab test in the request' }, { status: 400 });
+            }
             throw err;
         } finally {
             connection.release();
         }
-
     } catch (error) {
         console.error('Save Consultation Error:', error);
         return NextResponse.json({ message: 'Failed to save' }, { status: 500 });

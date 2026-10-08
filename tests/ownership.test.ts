@@ -70,7 +70,8 @@ describe('doctor ownership', () => {
     });
 
     it('cannot save another doctor\'s consultation', async () => {
-        vi.mocked(pool.execute).mockResolvedValueOnce([[{ doctor_id: 3 }], []] as any);
+        const conn = await pool.getConnection();
+        vi.mocked(conn.execute).mockResolvedValueOnce([[{ id: 9, doctor_id: 3, status: 'ONGOING' }], []] as any);
         const { POST } = await import('@/app/api/doctor/consultation/save/route');
         const res = await POST(new Request('http://x', json({ appointmentId: 9, status: 'COMPLETED', vitals: {} })));
         expect(res.status).toBe(403);
@@ -79,7 +80,8 @@ describe('doctor ownership', () => {
     it('rejects invalid consultation status and missing appointment', async () => {
         const { POST } = await import('@/app/api/doctor/consultation/save/route');
         expect((await POST(new Request('http://x', json({ appointmentId: 9, status: 'CANCELLED' })))).status).toBe(400);
-        vi.mocked(pool.execute).mockResolvedValueOnce([[], []] as any);
+        const conn = await pool.getConnection();
+        vi.mocked(conn.execute).mockResolvedValueOnce([[], []] as any);
         expect((await POST(new Request('http://x', json({ appointmentId: 9, status: 'ONGOING' })))).status).toBe(404);
     });
 });

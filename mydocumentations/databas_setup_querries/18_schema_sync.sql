@@ -33,6 +33,18 @@ SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `lab_tests` ADD COLUMN `cost_pr
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lab_tests' AND COLUMN_NAME = 'cost_price');
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- What was actually charged for the dispensed part of an item (sum of batch price x quantity).
+-- The bill's pharmacy_total is derived from this, so it cannot drift or be lost.
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `prescription_items` ADD COLUMN `dispensed_amount` DECIMAL(10,2) NOT NULL DEFAULT 0', 'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'prescription_items' AND COLUMN_NAME = 'dispensed_amount');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Backfill items dispensed before this column existed (estimate at the medicine's list price).
+UPDATE prescription_items pi JOIN medicines m ON m.id = pi.medicine_id
+   SET pi.dispensed_amount = pi.dispensed_quantity * m.price_per_unit
+ WHERE pi.dispensed_amount = 0 AND pi.dispensed_quantity > 0;
+
 -- Status values the pharmacist flow writes
 ALTER TABLE prescription_items
     MODIFY COLUMN status ENUM('PENDING','PARTIALLY_COMPLETED','DISPENSED','REJECTED') NOT NULL DEFAULT 'PENDING';
