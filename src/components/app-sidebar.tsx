@@ -9,6 +9,7 @@ import { LogOut, Menu, HeartPulse, LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { NotificationBell } from '@/components/notification-bell';
+import { useIsClient } from '@/hooks/useIsClient';
 
 interface NavItem {
     icon: LucideIcon;
@@ -70,6 +71,7 @@ function SidebarNav({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?
 
 export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const isClient = useIsClient();
     const [user, setUser] = useState<{name: string, email: string} | null>(null);
 
     useEffect(() => {
@@ -125,8 +127,8 @@ export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
                 {renderShell(<SidebarNav navItems={navItems} />)}
             </aside>
 
-            {/* Mobile trigger */}
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            {/* Mobile trigger (browser only: Radix ids differ between server render and hydration) */}
+            {isClient && <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
                     <Button
                         variant="ghost"
@@ -141,7 +143,7 @@ export function AppSidebar({ navItems, roleName, roleHref }: AppSidebarProps) {
                     <SheetTitle className="sr-only">Navigation</SheetTitle>
                     {renderShell(<SidebarNav navItems={navItems} onNavigate={() => setMobileOpen(false)} />, () => setMobileOpen(false))}
                 </SheetContent>
-            </Sheet>
+            </Sheet>}
         </>
     );
 }

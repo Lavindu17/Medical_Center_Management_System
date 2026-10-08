@@ -35,7 +35,7 @@ Everyone gets **in-app notifications** (bell in the sidebar): new appointments, 
 
 The seeded demo accounts in `full_setup.sql` use the password documented there; change them before any real use.
 
-> If dev mode loops or panics with Turbopack on a path containing spaces, use `npx next dev --webpack`.
+**Troubleshooting: the page reloads over and over in dev.** The terminal/`.next/dev/logs` show `Failed to write app endpoint ... Next.js package not found`. Turbopack's on-disk cache (`.next/dev/cache`) has gone stale, usually after a dev server was killed mid-write or two were started in this folder. The cache is turned off for dev in `next.config.ts`, but if it ever happens again: stop the server and run `npm run dev:clean` (deletes `.next`, then starts dev). Run only one `next dev` per project folder.
 
 ## Testing
 

@@ -6,6 +6,7 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { useIsClient } from '@/hooks/useIsClient';
 
 interface Item {
     id: number;
@@ -18,8 +19,25 @@ interface Item {
 
 const POLL_MS = 30_000;
 
-/** In-app notifications for the signed-in user. Nothing here is emailed or texted. */
+/**
+ * In-app notifications for the signed-in user. Nothing here is emailed or texted.
+ *
+ * The popover is only created in the browser: Radix generates element ids that differ between the server render and
+ * hydration, which logged a hydration mismatch on every page. The placeholder has the same size, so nothing shifts.
+ */
 export function NotificationBell({ onNavigate }: { onNavigate?: () => void }) {
+    const isClient = useIsClient();
+    if (!isClient) {
+        return (
+            <button type="button" disabled aria-label="Notifications" className="ml-auto h-9 w-9 rounded-lg flex items-center justify-center text-neutral-500">
+                <Bell className="h-4 w-4" />
+            </button>
+        );
+    }
+    return <NotificationBellInner onNavigate={onNavigate} />;
+}
+
+function NotificationBellInner({ onNavigate }: { onNavigate?: () => void }) {
     const [open, setOpen] = useState(false);
     const [items, setItems] = useState<Item[]>([]);
     const [unread, setUnread] = useState(0);

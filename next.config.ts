@@ -14,6 +14,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Turbopack keeps a ~1 GB on-disk cache under .next/dev between runs. When that cache goes stale (a dev server
+    // killed mid-write, two servers started in this folder, big refactors) Turbopack panics while building a page
+    // ("Failed to write app endpoint ... Next.js package not found"), the browser's hot-reload connection breaks and
+    // the page reloads in an endless loop. Cold starts are a few seconds slower without it; the loop cannot happen.
+    turbopackFileSystemCacheForDev: false,
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
