@@ -26,31 +26,30 @@ export async function PUT(
 
         const { id } = params;
         const body = await request.json();
-        const { name, category, stock, unit, buying_price, selling_price, expiry_date, min_stock_level, location } = body;
+        const { name, category, unit, price_per_unit, min_stock_level, location } = body;
 
         // Validation
-        if (!name || stock === undefined || !selling_price) {
+        if (!name || price_per_unit === undefined || price_per_unit === null || Number(price_per_unit) < 0) {
             return NextResponse.json(
-                { error: 'Name, stock, and selling price are required' },
+                { error: 'Name and a non-negative price per unit are required' },
                 { status: 400 }
             );
         }
 
         await query(
             `UPDATE medicines 
-       SET name = ?, generic_name = ?, manufacturer = ?, category = ?, stock = ?, min_stock_level = ?, unit = ?, buying_price = ?, selling_price = ?, expiry_date = ?, location = ?, updated_at = NOW()
+       SET name = ?, generic_name = ?, manufacturer = ?, category = ?, dosage_form = ?, strength = ?, price_per_unit = ?, min_stock_level = ?, unit = ?, location = ?
        WHERE id = ?`,
             [
                 name,
                 body.generic_name || null,
                 body.manufacturer || null,
                 category || null,
-                stock,
-                min_stock_level || 10,
+                body.dosage_form || null,
+                body.strength || null,
+                price_per_unit,
+                min_stock_level ?? 10,
                 unit || 'tablets',
-                buying_price || 0,
-                selling_price,
-                expiry_date || null,
                 location || null,
                 id
             ]

@@ -41,7 +41,7 @@ export async function GET() {
             LEFT JOIN users u1 ON fl.primary_patient_id = u1.id
             LEFT JOIN users u2 ON fl.linked_patient_id = u2.id
             WHERE fl.primary_patient_id = ? OR fl.linked_patient_id = ?
-        `, [user.id, user.id, user.id, user.id, user.id, user.id, user.id]);
+        `, [user.id, user.id, user.id, user.id, user.id]);
 
         // 2. Incoming Requests (patient_family_links where member_id = user.id AND status = 'PENDING')
         const incomingRequests = await query<any[]>(`

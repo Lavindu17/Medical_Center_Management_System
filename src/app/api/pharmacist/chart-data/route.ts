@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         `);
 
         // Generate an array of the last 30 days including empty days
-        const last30Days = [];
+        const last30Days: any[] = [];
         const today = new Date();
         for (let i = 29; i >= 0; i--) {
             const d = new Date(today);

@@ -48,7 +48,7 @@ export default function FamilyDashboard() {
         e.preventDefault();
         setSendingInvite(true);
         try {
-            const res = await fetch('/api/patient/family/request', {
+            const res = await fetch('/api/patient/family', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: inviteEmail, relationship: inviteRelationship })

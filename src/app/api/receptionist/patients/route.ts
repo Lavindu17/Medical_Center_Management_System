@@ -43,7 +43,7 @@ export async function POST(req: Request) {
             const passwordHash = await bcrypt.hash(tempPassword, 10);
 
             const [userResult]: any = await connection.execute(
-                `INSERT INTO users (email, password_hash, name, role, phone) VALUES (?, ?, ?, 'PATIENT', ?)`,
+                `INSERT INTO users (email, password_hash, name, role, phone, is_verified) VALUES (?, ?, ?, 'PATIENT', ?, TRUE)`,
                 [body.email, passwordHash, body.name, body.phone]
             );
             const userId = userResult.insertId;

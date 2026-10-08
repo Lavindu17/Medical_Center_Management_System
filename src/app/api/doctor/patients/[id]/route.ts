@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         if (!user || user.role !== 'DOCTOR') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         // 1. Fetch Patient
-        const [patientRows]: any = await query(`
+        const patientRows = await query<any[]>(`
             SELECT u.id, u.name, u.phone, u.email, p.date_of_birth, p.gender, p.medical_history, p.address
             FROM users u
             JOIN patients p ON u.id = p.user_id
@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         // Let's do a simple enrichment loop
         const enrichedHistory = await Promise.all(historyRows.map(async (visit) => {
             // Get Prescription
-            const [presRows]: any = await query('SELECT id FROM prescriptions WHERE appointment_id = ?', [visit.id]);
+            const presRows = await query<any[]>('SELECT id FROM prescriptions WHERE appointment_id = ?', [visit.id]);
             let prescriptions: any[] = [];
             if (presRows.length > 0) {
                 const pId = presRows[0].id;

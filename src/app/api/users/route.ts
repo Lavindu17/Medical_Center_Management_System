@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
             // Insert new user into users table
             const [result]: any = await connection.execute(
-                'INSERT INTO users (email, password_hash, name, role, phone) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO users (email, password_hash, name, role, phone, is_verified) VALUES (?, ?, ?, ?, ?, TRUE)',
                 [email, hashedPassword, name, role, phone || null]
             );
 

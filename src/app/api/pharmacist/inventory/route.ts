@@ -28,7 +28,8 @@ export async function GET() {
             ORDER BY m.name ASC
         `);
 
-        return NextResponse.json(medicines);
+        // SUM() comes back from mysql2 as a string; clients compare it numerically
+        return NextResponse.json((medicines as any[]).map(m => ({ ...m, batch_stock: Number(m.batch_stock) || 0 })));
     } catch (error) {
         console.error('Fetch Inventory Error:', error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });

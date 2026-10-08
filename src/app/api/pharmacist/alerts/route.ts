@@ -125,7 +125,7 @@ export async function GET() {
             expiringSoon,
             expiringLater,
             multiBatchWarnings,
-            lowStock: lowStockAlerts,
+            lowStock: (lowStockAlerts as any[]).map(m => ({ ...m, current_stock: Number(m.current_stock) || 0 })),
             summary: {
                 expiredCount: (expiredBatches as any[]).length,
                 expiringSoonCount: (expiringSoon as any[]).length,

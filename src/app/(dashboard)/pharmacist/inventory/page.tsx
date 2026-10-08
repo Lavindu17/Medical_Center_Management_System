@@ -91,8 +91,8 @@ export default function InventoryPage() {
             (m.generic_name && m.generic_name.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesCategory = categoryFilter === 'ALL' || m.category === categoryFilter;
         const matchesStock = stockFilter === 'ALL' ||
-            (stockFilter === 'LOW' && m.batch_stock <= m.min_stock_level) ||
-            (stockFilter === 'OUT' && m.batch_stock === 0);
+            (stockFilter === 'LOW' && Number(m.batch_stock) <= Number(m.min_stock_level)) ||
+            (stockFilter === 'OUT' && Number(m.batch_stock) === 0);
         return matchesSearch && matchesCategory && matchesStock;
     });
 
@@ -125,7 +125,8 @@ export default function InventoryPage() {
     const handleDelete = async (id: number) => {
         if (!confirm('Are you sure you want to delete this medicine?')) return;
         try {
-            await fetch(`/api/pharmacist/inventory/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/pharmacist/inventory/${id}`, { method: 'DELETE' });
+            if (!res.ok) toast.error('Could not delete: medicine is used by prescriptions or batches');
             fetchMedicines();
         } catch (err) {
             console.error(err);

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         }
 
         // 2. Calculate Queue Number
-        const [lastQueue]: any = await query(
+        const lastQueue = await query<any[]>(
             'SELECT MAX(queue_number) as max_q FROM appointments WHERE doctor_id = ? AND date = ?',
             [doctor_id, date]
         );

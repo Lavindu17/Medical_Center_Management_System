@@ -13,9 +13,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
         }
 
+        if (typeof newPassword !== 'string' || newPassword.length < 6) {
+            return NextResponse.json({ message: 'New password must be at least 6 characters' }, { status: 400 });
+        }
+
         // Get session
         const cookieStore = await cookies();
-        const token = cookieStore.get('auth_token');
+        const token = cookieStore.get('token');
 
         if (!token) {
             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

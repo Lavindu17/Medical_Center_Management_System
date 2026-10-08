@@ -15,27 +15,27 @@ export async function GET(req: Request) {
 
         // 1. Pending Prescriptions
         // 1. Pending Prescriptions (Include partially completed so they aren't hidden)
-        const [pendingRows]: any = await query('SELECT COUNT(*) as count FROM prescriptions WHERE status IN ("PENDING", "PARTIALLY_COMPLETED")');
+        const pendingRows = await query<any[]>('SELECT COUNT(*) as count FROM prescriptions WHERE status IN ("PENDING", "PARTIALLY_COMPLETED")');
 
         // 2. Low Stock Medicines (Below min_stock_level or < 20 if not set) AND stock > 0
-        const [lowStockRows]: any = await query(`
+        const lowStockRows = await query<any[]>(`
             SELECT COUNT(*) as count 
             FROM medicines 
             WHERE stock > 0 AND stock < COALESCE(min_stock_level, 20)
         `);
 
         // 2.5 Out of Stock 
-        const [outOfStockRows]: any = await query(`
+        const outOfStockRows = await query<any[]>(`
             SELECT COUNT(*) as count 
             FROM medicines 
             WHERE stock = 0
         `);
 
         // 3. Total Medicines
-        const [totalMedRows]: any = await query('SELECT COUNT(*) as count FROM medicines');
+        const totalMedRows = await query<any[]>('SELECT COUNT(*) as count FROM medicines');
 
         // 4. Expired Batches Count (Check anything with quantity > 0 and past expiry)
-        const [expiredRows]: any = await query(`
+        const expiredRows = await query<any[]>(`
             SELECT COUNT(*) as count 
             FROM inventory_batches 
             WHERE expiry_date < CURDATE() 
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
         `);
 
         // 5. Expiring Soon (within 30 days)
-        const [expiringSoonRows]: any = await query(`
+        const expiringSoonRows = await query<any[]>(`
             SELECT COUNT(*) as count 
             FROM inventory_batches 
             WHERE expiry_date >= CURDATE() 
