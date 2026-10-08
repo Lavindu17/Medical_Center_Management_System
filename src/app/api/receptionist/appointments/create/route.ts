@@ -1,53 +1,42 @@
-
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { cookies } from 'next/headers';
-import { AuthService } from '@/services/auth.service';
+import { z } from 'zod';
+import { requireRole } from '@/lib/api-auth';
+import { bookAppointment, BookingError } from '@/lib/booking';
+
+const schema = z.object({
+    patient_id: z.coerce.number().int().positive(),
+    doctor_id: z.coerce.number().int().positive(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    time_slot: z.string(),
+    reason: z.string().max(1000).optional(),
+});
 
 export async function POST(req: Request) {
+    const auth = await requireRole('RECEPTIONIST', 'ADMIN');
+    if ('error' in auth) return auth.error;
+
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'RECEPTIONIST') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-
-        const { patient_id, doctor_id, date, time_slot } = await req.json();
-
-        if (!patient_id || !doctor_id || !date || !time_slot) {
-            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+        const parsed = schema.safeParse(await req.json().catch(() => null));
+        if (!parsed.success) {
+            return NextResponse.json({ message: 'Missing or invalid fields', errors: parsed.error.flatten() }, { status: 400 });
         }
+        const { patient_id, doctor_id, date, time_slot, reason } = parsed.data;
 
-        // 1. Check if slot is taken
-        const existing = await query(
-            'SELECT id FROM appointments WHERE doctor_id = ? AND date = ? AND time_slot = ? AND status != "CANCELLED"',
-            [doctor_id, date, time_slot]
-        );
-
-        if ((existing as any[]).length > 0) {
-            return NextResponse.json({ message: 'Slot already taken' }, { status: 409 });
-        }
-
-        // 2. Calculate Queue Number
-        const lastQueue = await query<any[]>(
-            'SELECT MAX(queue_number) as max_q FROM appointments WHERE doctor_id = ? AND date = ?',
-            [doctor_id, date]
-        );
-        const queue_number = (lastQueue[0]?.max_q || 0) + 1;
-
-        // 3. Create Appointment
-        const result: any = await query(
-            'INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, ?, ?, ?, "PENDING")',
-            [patient_id, doctor_id, date, time_slot, queue_number]
-        );
+        // Same rules, locking and queue numbering as patient self-service booking
+        const { appointmentId, queueNumber } = await bookAppointment({
+            patientId: patient_id, doctorId: doctor_id, date, timeSlot: time_slot, reason,
+        });
 
         return NextResponse.json({
             message: 'Appointment Booked',
-            appointmentId: result.insertId,
-            queue_number
+            appointmentId,
+            queue_number: queueNumber,
         });
-
     } catch (error) {
-        console.error('Admin Book Error:', error);
-        return NextResponse.json({ message: 'Error' }, { status: 500 });
+        if (error instanceof BookingError) {
+            return NextResponse.json({ message: error.message }, { status: error.status });
+        }
+        console.error('Reception Booking Error:', error);
+        return NextResponse.json({ message: 'Booking failed. Please try again.' }, { status: 500 });
     }
 }

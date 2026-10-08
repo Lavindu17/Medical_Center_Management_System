@@ -76,6 +76,9 @@ CREATE TABLE IF NOT EXISTS `rate_limits` (
   `hits` INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Siblings can be linked by reception and by family invitations
+ALTER TABLE `family_links` MODIFY COLUMN `relationship` ENUM('PARENT','CHILD','SPOUSE','SIBLING','OTHER') NOT NULL;
+
 -- Status values the pharmacist flow writes
 ALTER TABLE prescription_items
     MODIFY COLUMN status ENUM('PENDING','PARTIALLY_COMPLETED','DISPENSED','REJECTED') NOT NULL DEFAULT 'PENDING';

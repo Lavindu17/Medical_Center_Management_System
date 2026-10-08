@@ -37,7 +37,8 @@ export default function RegisterPatient() {
             });
 
             if (res.ok) {
-                toast.success('Patient Registered Successfully!');
+                const created = await res.json();
+                toast.success(`Patient registered. One-time password: ${created.temporaryPassword} (give it to the patient; they can change it any time)`, { duration: 60000 });
                 router.push('/receptionist/patients');
             } else {
                 const data = await res.json();

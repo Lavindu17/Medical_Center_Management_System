@@ -46,7 +46,7 @@ export async function GET(req: Request) {
         } else {
             // Default to today if no date? Or generally filter required?
             // Let's default to today if not provided to keep list manageable
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('en-CA');
             sql += ` AND a.date = ?`;
             params.push(today);
         }

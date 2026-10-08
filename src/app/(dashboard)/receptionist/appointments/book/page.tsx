@@ -66,24 +66,10 @@ export default function ReceptionistBookAppointment() {
             // Let's use the new endpoint I'll make: /api/receptionist/doctors/[id]/slots?date=...
             // Or reuse /api/receptionist/appointments?date=...&doctorId=... to find taken slots and subtract.
 
-            // Reusing the receptionist appointments status API to find taken slots:
-            const res = await fetch(`/api/receptionist/appointments?date=${date}&doctorId=${selectedDoctor}`);
-            const takenAppts = await res.json();
-            const takenSlots = takenAppts.map((a: any) => a.time_slot);
-
-            // Generate all slots (9 AM to 5 PM, 15 min intervals)
-            const allSlots = [];
-            let start = 9 * 60; // 9:00 AM
-            const end = 17 * 60; // 5:00 PM
-            while (start < end) {
-                const h = Math.floor(start / 60);
-                const m = start % 60;
-                const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                allSlots.push(timeStr);
-                start += 15;
-            }
-
-            setSlots(allSlots.filter(s => !takenSlots.includes(s)));
+            // Slots come from the doctor's real schedule, leave days and existing bookings
+            const res = await fetch(`/api/doctors/availability?doctorId=${selectedDoctor}&date=${date}`);
+            const data = res.ok ? await res.json() : { slots: [] };
+            setSlots((data.slots || []).filter((s: any) => s.available).map((s: any) => s.time));
 
         } catch (e) {
             console.error(e);

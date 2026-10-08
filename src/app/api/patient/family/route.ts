@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 import { EmailService } from '@/services/email.service';
+import { escapeHtml } from '@/lib/html';
+import { z } from 'zod';
 
 // Helper
 async function getPatient() {
@@ -71,67 +73,84 @@ export async function GET() {
     }
 }
 
+const inviteSchema = z.object({
+    email: z.string().trim().email().max(255),
+    relationship: z.enum(['SPOUSE', 'CHILD', 'PARENT', 'SIBLING', 'OTHER']),
+});
+
 export async function POST(req: Request) {
     try {
         const user = await getPatient();
         if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-        const body = await req.json();
-        const { email, relationship } = body;
-
-        if (!email || !relationship) {
-            return NextResponse.json({ message: 'Email and relationship are required' }, { status: 400 });
+        const parsed = inviteSchema.safeParse(await req.json().catch(() => null));
+        if (!parsed.success) {
+            return NextResponse.json({ message: 'A valid email and relationship are required' }, { status: 400 });
         }
-
-        if (email.toLowerCase() === (user as any).email?.toLowerCase()) {
-            return NextResponse.json({ message: 'Cannot link your own account' }, { status: 400 });
-        }
+        const { email, relationship } = parsed.data;
 
         // Check if target user exists and is a PATIENT
-        const members = await query<any[]>('SELECT id, name FROM users WHERE email = ? AND role = "PATIENT"', [email]);
+        const members = await query<any[]>('SELECT id, name, email FROM users WHERE email = ? AND role = "PATIENT"', [email]);
         if (members.length === 0) {
             return NextResponse.json({ message: 'No patient found with that email address.' }, { status: 404 });
         }
         const member = members[0];
 
-        // Check if already linked
+        if (member.id === user.id) {
+            return NextResponse.json({ message: 'Cannot link your own account' }, { status: 400 });
+        }
+
+        // Already linked (either direction)?
         const existingLinks = await query<any[]>(`
-            SELECT id FROM family_links 
-            WHERE (primary_patient_id = ? AND linked_patient_id = ?) 
+            SELECT id FROM family_links
+            WHERE (primary_patient_id = ? AND linked_patient_id = ?)
                OR (primary_patient_id = ? AND linked_patient_id = ?)
         `, [user.id, member.id, member.id, user.id]);
-
         if (existingLinks.length > 0) {
             return NextResponse.json({ message: 'Already linked to this patient' }, { status: 409 });
         }
 
-        // Check if pending request exists
+        // A request already waiting in either direction blocks a new one
         const pending = await query<any[]>(`
-            SELECT id FROM patient_family_links 
-            WHERE requester_id = ? AND member_id = ? AND status = 'PENDING'
-        `, [user.id, member.id]);
-
+            SELECT id, requester_id FROM patient_family_links
+            WHERE status = 'PENDING'
+              AND ((requester_id = ? AND member_id = ?) OR (requester_id = ? AND member_id = ?))
+        `, [user.id, member.id, member.id, user.id]);
         if (pending.length > 0) {
-            return NextResponse.json({ message: 'A pending request already exists.' }, { status: 409 });
+            const theirs = pending[0].requester_id === member.id;
+            return NextResponse.json({
+                message: theirs ? 'This patient has already sent you a request. Check your incoming requests.' : 'A pending request already exists.',
+            }, { status: 409 });
         }
 
-        // Insert Request
-        await query(
-            'INSERT INTO patient_family_links (requester_id, member_id, relationship, status) VALUES (?, ?, ?, "PENDING")',
-            [user.id, member.id, relationship]
-        );
+        // Re-inviting after a rejection reuses the old row (the pair is unique); otherwise create a new request
+        const previous = await query<any[]>(
+            'SELECT id FROM patient_family_links WHERE requester_id = ? AND member_id = ?', [user.id, member.id]);
+        try {
+            if (previous.length > 0) {
+                await query('UPDATE patient_family_links SET status = "PENDING", relationship = ? WHERE id = ?', [relationship, previous[0].id]);
+            } else {
+                await query(
+                    'INSERT INTO patient_family_links (requester_id, member_id, relationship, status) VALUES (?, ?, ?, "PENDING")',
+                    [user.id, member.id, relationship]);
+            }
+        } catch (err: any) {
+            if (err?.errno === 1062) return NextResponse.json({ message: 'A pending request already exists.' }, { status: 409 });
+            throw err;
+        }
 
-        // Send Email (Fire and forget)
+        // Send Email (fire and forget). Every value that came from a user is escaped.
+        const [me] = await query<any[]>('SELECT name FROM users WHERE id = ?', [user.id]);
         const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/patient/family`;
         const emailHtml = `
             <h2>Family Link Request</h2>
-            <p><strong>${user.name}</strong> has requested to link medical accounts with you as: ${relationship}.</p>
+            <p><strong>${escapeHtml(me?.name)}</strong> has requested to link medical accounts with you as: ${escapeHtml(relationship)}.</p>
             <p>If you approve this request, they will be able to manage your appointments, view lab results, and handle prescriptions on your behalf.</p>
             <a href="${dashboardUrl}" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:5px;">Review Request</a>
         `;
-        
+
         EmailService.sendEmail(
-            email,
+            member.email,
             'Sethro Medical - New Family Link Request',
             emailHtml
         ).catch(err => console.error('Email failed:', err));
