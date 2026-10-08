@@ -1,5 +1,6 @@
 'use client';
 import { toast } from 'sonner';
+import { asDoctor } from '@/lib/names';
 
 import { useState, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
@@ -508,7 +509,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                         <div className="flex flex-col gap-1 text-sm border-l px-6 border-neutral-100 hidden md:flex">
                             <div className="flex items-center gap-2 text-neutral-700 font-medium">
                                 <Stethoscope className="h-4 w-4 text-emerald-600" />
-                                <span>Dr. {prescription.doctor_name}</span>
+                                <span>{asDoctor(prescription.doctor_name)}</span>
                             </div>
                             <div className="flex items-center gap-2 text-neutral-500">
                                 <Calendar className="h-4 w-4 text-neutral-400" />

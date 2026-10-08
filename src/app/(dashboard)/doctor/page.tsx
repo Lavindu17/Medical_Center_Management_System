@@ -12,6 +12,14 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 
 
 
+/** 500 -> Rs.500, 2500 -> Rs.2.5k, 1,200,000 -> Rs.1.2M */
+function compactLKR(value: number) {
+    if (!Number.isFinite(value)) return '';
+    if (Math.abs(value) >= 1_000_000) return `Rs.${+(value / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(value) >= 1_000) return `Rs.${+(value / 1_000).toFixed(1)}k`;
+    return `Rs.${value}`;
+}
+
 export default function DoctorDashboard() {
     const [stats, setStats] = useState({
         todayAppointments: 0,
@@ -63,7 +71,7 @@ export default function DoctorDashboard() {
                     {[
                         { icon: Calendar,  label: "Today's Appointments", value: stats.todayAppointments,    sub: 'Scheduled for today',   color: 'text-emerald-600', bg: 'bg-emerald-50' },
                         { icon: Activity,  label: 'Upcoming',              value: stats.upcomingAppointments, sub: 'Future appointments',   color: 'text-teal-600',    bg: 'bg-teal-50' },
-                        { icon: Users,     label: 'Total Patients',         value: stats.totalPatients,        sub: 'Unique patients seen',  color: 'text-neutral-600', bg: 'bg-neutral-100' },
+                        { icon: Users,     label: 'Total Patients',         value: stats.totalPatients,        sub: 'Patients with a completed visit',  color: 'text-neutral-600', bg: 'bg-neutral-100' },
                         { icon: Banknote,  label: 'Total Revenue',          value: formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), sub: 'From paid bills', color: 'text-emerald-600', bg: 'bg-emerald-50' },
                     ].map((kpi, i) => (
                         <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07, duration: 0.3 }}>
@@ -118,10 +126,10 @@ export default function DoctorDashboard() {
                                 <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => `Rs.${value/1000}k`} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => compactLKR(Number(value))} />
                                     <Tooltip 
                                         contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(value: number) => [formatLKR(value), 'Revenue']}
+                                        formatter={(value) => [formatLKR(Number(value ?? 0)), 'Revenue']}
                                         cursor={{ fill: '#f3f4f6' }}
                                     />
                                     <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} maxBarSize={40} />

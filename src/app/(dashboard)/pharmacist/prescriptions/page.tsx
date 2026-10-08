@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Loader2, Pill, User, Clock, CalendarIcon, X } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { asDoctor } from '@/lib/names';
 
 export default function PrescriptionsPage() {
     const [queue, setQueue] = useState<any[]>([]);
@@ -14,12 +15,9 @@ export default function PrescriptionsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('active');
     const [selectedDate, setSelectedDate] = useState('');
+    const [loadFailed, setLoadFailed] = useState(false);
 
-    useEffect(() => {
-        fetchQueue();
-    }, [activeTab, selectedDate]);
-
-    const fetchQueue = () => {
+    const fetchQueue = useCallback(() => {
         setLoading(true);
         const params = new URLSearchParams({ tab: activeTab });
         if (selectedDate) params.append('date', selectedDate);
@@ -29,21 +27,29 @@ export default function PrescriptionsPage() {
             .then(data => {
                 if (Array.isArray(data)) {
                     setQueue(data);
+                    setLoadFailed(false);
                 } else {
                     console.error('Failed to fetch queue:', data);
                     setQueue([]);
+                    setLoadFailed(true);
                 }
             })
             .catch(err => {
                 console.error(err);
                 setQueue([]);
+                setLoadFailed(true);
             })
             .finally(() => setLoading(false));
-    };
+    }, [activeTab, selectedDate]);
+
+    useEffect(() => {
+        const timer = setTimeout(fetchQueue, 0);
+        return () => clearTimeout(timer);
+    }, [fetchQueue]);
 
     const filteredQueue = queue.filter(item =>
-        item.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.doctor_name.toLowerCase().includes(searchTerm.toLowerCase())
+        (item.patient_name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.doctor_name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -56,7 +62,7 @@ export default function PrescriptionsPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-[300px]">
+                <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-[300px]">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="active">Active Queue</TabsTrigger>
                         <TabsTrigger value="passed">History</TabsTrigger>
@@ -99,6 +105,12 @@ export default function PrescriptionsPage() {
                     <div className="flex justify-center p-12">
                         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
                     </div>
+                ) : loadFailed ? (
+                    <div role="alert" className="text-center p-12 bg-red-50 rounded-xl border border-red-200">
+                        <h3 className="text-lg font-medium text-red-800">Could not load prescriptions</h3>
+                        <p className="text-red-600 mb-4">Check your connection and try again.</p>
+                        <Button variant="outline" onClick={fetchQueue}>Try again</Button>
+                    </div>
                 ) : filteredQueue.length === 0 ? (
                     <div className="text-center p-12 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
                         <Pill className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
@@ -114,13 +126,13 @@ export default function PrescriptionsPage() {
                         <div key={item.id} className="bg-white p-6 rounded-xl border border-neutral-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all flex justify-between items-center group">
                             <div className="flex gap-6 items-center">
                                 <div className={`h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg ${activeTab === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-600'}`}>
-                                    {item.patient_name.charAt(0)}
+                                    {(item.patient_name ?? '?').charAt(0)}
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-semibold text-neutral-900">{item.patient_name}</h3>
                                     <div className="flex items-center gap-4 text-sm text-neutral-500 mt-1">
                                         <span className="flex items-center gap-1">
-                                            <User className="h-3 w-3" /> Dr. {item.doctor_name}
+                                            <User className="h-3 w-3" /> {asDoctor(item.doctor_name)}
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <Clock className="h-3 w-3" /> {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

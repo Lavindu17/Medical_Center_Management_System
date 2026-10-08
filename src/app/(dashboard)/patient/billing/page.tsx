@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatLKR } from '@/lib/utils';
 import { Stethoscope, FlaskConical, Pill, Receipt, ChevronDown, ChevronUp } from 'lucide-react';
+import { asDoctor } from '@/lib/names';
 
 export default function BillingPage() {
     const [data, setData] = useState<any[]>([]);
@@ -61,7 +62,7 @@ export default function BillingPage() {
                                             </div>
                                             <p className="text-sm text-neutral-500 mt-0.5">
                                                 {new Date(bill.appointmentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                                &nbsp;·&nbsp; Dr. {bill.doctorName}
+                                                &nbsp;·&nbsp; {asDoctor(bill.doctorName)}
                                                 {bill.specialization && <span className="text-neutral-400"> ({bill.specialization})</span>}
                                             </p>
                                         </div>
@@ -88,7 +89,7 @@ export default function BillingPage() {
                                                         <span className="font-medium text-neutral-700">Doctor Consultation Fee</span>
                                                         <span className="font-semibold">{formatLKR(bill.doctor_fee)}</span>
                                                     </div>
-                                                    <p className="text-xs text-neutral-400">Dr. {bill.doctorName} · {bill.specialization}</p>
+                                                    <p className="text-xs text-neutral-400">{asDoctor(bill.doctorName)} · {bill.specialization}</p>
                                                 </div>
                                             </div>
 

@@ -1,64 +1,41 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { cookies } from 'next/headers';
-import { AuthService } from '@/services/auth.service';
+import { requireRole } from '@/lib/api-auth';
 
-export async function GET(req: Request) {
+export async function GET() {
+    const auth = await requireRole('DOCTOR');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
-        // 1. Authenticate
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-
-        const user = await AuthService.verifyToken(token);
-        if (!user || user.role !== 'DOCTOR') {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-        }
-
-        // 2. Fetch Stats
-        // Use Local Date YYYY-MM-DD
+        // Local calendar day (YYYY-MM-DD)
         const today = new Date().toLocaleDateString('en-CA');
 
-        // Today's Appointments
-        // Use DATE_FORMAT to match only the date part string-wise
-        const todayRows = await query<any[]>(
-            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND DATE_FORMAT(date, "%Y-%m-%d") = ? AND status != "CANCELLED"',
-            [user.id, today]
-        );
-
-        // Upcoming Appointments
-        const upcomingRows = await query<any[]>(
-            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND DATE_FORMAT(date, "%Y-%m-%d") > ? AND status != "CANCELLED"',
-            [user.id, today]
-        );
-
-        // Total Patients (Unique)
-        const patientRows = await query<any[]>(
-            'SELECT COUNT(DISTINCT patient_id) as count FROM appointments WHERE doctor_id = ?',
-            [user.id]
-        );
-
-        // Revenue Calculation
-        // Option A: Realized (Paid Bills) -> Might be 0 if billing not used yet.
-        // Option B: Projected (Appointments * Fee). Let's use Projected for better UX now.
-
-        // Get Doctor Fee
-        const docFeeRows = await query<any[]>('SELECT consultation_fee FROM doctors WHERE user_id = ?', [user.id]);
-        const fee = docFeeRows[0]?.consultation_fee || 0;
-
-        // Count all valid appointments (Past + Future)
-        const totalApptRows = await query<any[]>(
-            'SELECT COUNT(*) as count FROM appointments WHERE doctor_id = ? AND status != "CANCELLED"',
-            [user.id]
-        );
-
-        const totalRevenue = totalApptRows[0].count * fee;
+        const [todayRows, upcomingRows, seenRows, revenueRows] = await Promise.all([
+            query<any[]>(
+                'SELECT COUNT(*) AS count FROM appointments WHERE doctor_id = ? AND date = ? AND status != "CANCELLED"',
+                [user.id, today]),
+            query<any[]>(
+                'SELECT COUNT(*) AS count FROM appointments WHERE doctor_id = ? AND date > ? AND status != "CANCELLED"',
+                [user.id, today]),
+            // "Unique patients seen": people whose consultation was actually completed
+            query<any[]>(
+                'SELECT COUNT(DISTINCT patient_id) AS count FROM appointments WHERE doctor_id = ? AND status = "COMPLETED"',
+                [user.id]),
+            // Revenue is what has actually been paid: the doctor's fee on paid bills of completed visits.
+            // (The Earnings page shows the same gross figure, plus the commission breakdown.)
+            query<any[]>(
+                `SELECT COALESCE(SUM(b.doctor_fee), 0) AS total
+                 FROM appointments a JOIN bills b ON b.appointment_id = a.id
+                 WHERE a.doctor_id = ? AND a.status = "COMPLETED" AND b.status = "PAID"`,
+                [user.id]),
+        ]);
 
         return NextResponse.json({
-            todayAppointments: todayRows[0].count,
-            upcomingAppointments: upcomingRows[0].count,
-            totalPatients: patientRows[0].count,
-            revenue: totalRevenue // Projected Revenue
+            todayAppointments: Number(todayRows[0].count),
+            upcomingAppointments: Number(upcomingRows[0].count),
+            totalPatients: Number(seenRows[0].count),
+            revenue: Number(revenueRows[0].total),
         });
 
     } catch (error) {

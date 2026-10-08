@@ -48,3 +48,6 @@ next-env.d.ts
 
 # keep the template for new developers
 !.env.example
+
+# lab reports now live outside public/ (see UPLOAD_DIR); legacy files stay on disk but are not versioned
+/public/uploads/

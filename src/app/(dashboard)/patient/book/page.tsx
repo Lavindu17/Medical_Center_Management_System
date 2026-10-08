@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { CheckCircle2, ChevronRight, ChevronLeft, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { asDoctor } from '@/lib/names';
 
 interface Doctor {
     id: number;
@@ -243,7 +244,7 @@ export default function BookAppointmentPage() {
                         <CardHeader>
                             <CardTitle>Select Date &amp; Time</CardTitle>
                             <CardDescription>
-                                Availability for Dr. {selectedDoctor?.name}
+                                Availability for {asDoctor(selectedDoctor?.name)}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">

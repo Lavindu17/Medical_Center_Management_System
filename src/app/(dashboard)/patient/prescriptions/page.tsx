@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Pill, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { asDoctor } from '@/lib/names';
 
 export default function PrescriptionsPage() {
     const [data, setData] = useState<any[]>([]);
@@ -79,7 +80,7 @@ export default function PrescriptionsPage() {
                                     <div>
                                         <h3 className="font-bold text-lg">Prescription #{prescription.id}</h3>
                                         <div className="text-sm text-neutral-500 mt-1">
-                                            Dr. {prescription.doctorName} <span className="mx-1">•</span> {prescription.specialization}
+                                            {asDoctor(prescription.doctorName)} <span className="mx-1">•</span> {prescription.specialization}
                                         </div>
                                     </div>
                                 </div>

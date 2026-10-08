@@ -1,5 +1,8 @@
 import { query } from '@/lib/db';
 import type { Role } from '@/types';
+import { asDoctor } from '@/lib/names';
+
+export { asDoctor };
 
 /** Anything with mysql2's `execute` (a pool connection inside a transaction) - or null to use the pool. */
 type Executor = { execute: (sql: string, params?: any[]) => Promise<any> } | null;
@@ -61,10 +64,4 @@ export function when(date: string | Date, time?: string): string {
     const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
     const day = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     return time ? `${day}, ${String(time).slice(0, 5)}` : day;
-}
-
-/** Doctors are stored as "Dr. Jane Doe" or just "Jane Doe": add the title only when it is missing. */
-export function asDoctor(name: string): string {
-    const trimmed = name.trim();
-    return /^dr\.?\s/i.test(trimmed) ? trimmed : `Dr. ${trimmed}`;
 }
