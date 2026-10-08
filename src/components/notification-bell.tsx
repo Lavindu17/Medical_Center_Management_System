@@ -29,7 +29,7 @@ export function NotificationBell({ onNavigate }: { onNavigate?: () => void }) {
     const isClient = useIsClient();
     if (!isClient) {
         return (
-            <button type="button" disabled aria-label="Notifications" className="ml-auto h-9 w-9 rounded-lg flex items-center justify-center text-neutral-500">
+            <button type="button" disabled aria-label="Notifications" className="ml-auto h-11 w-11 rounded-lg flex items-center justify-center text-neutral-500 md:h-9 md:w-9">
                 <Bell className="h-4 w-4" />
             </button>
         );
@@ -126,7 +126,7 @@ function NotificationBellInner({ onNavigate }: { onNavigate?: () => void }) {
             <PopoverTrigger asChild>
                 <button
                     type="button"
-                    className="relative ml-auto h-9 w-9 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+                    className="relative ml-auto h-11 w-11 md:h-9 md:w-9 rounded-lg flex items-center justify-center text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
                     aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
                 >
                     <Bell className="h-4 w-4" />
@@ -137,14 +137,14 @@ function NotificationBellInner({ onNavigate }: { onNavigate?: () => void }) {
                     )}
                 </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-80 p-0 overflow-hidden">
+            <PopoverContent align="start" collisionPadding={12} className="w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden p-0">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
                     <span className="text-sm font-semibold text-neutral-900">Notifications</span>
                     <button
                         type="button"
                         disabled={unread === 0}
                         onClick={() => markRead({ all: true })}
-                        className="flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 disabled:text-neutral-300 disabled:cursor-default"
+                        className="flex min-h-9 items-center gap-1 text-sm font-medium text-emerald-700 hover:text-emerald-800 disabled:cursor-default disabled:text-neutral-400"
                     >
                         <CheckCheck className="h-3.5 w-3.5" /> Mark all read
                     </button>

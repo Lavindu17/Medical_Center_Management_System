@@ -1,4 +1,5 @@
 'use client';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { toast } from 'sonner';
 import { EmptyState, LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
@@ -69,62 +70,55 @@ export default function PrescriptionsPage() {
                 <div className="space-y-4">
                     {prescriptions.map((prescription: any) => (
                         <Card key={prescription.id} className="overflow-hidden">
-                            {/* Prescription Header (Clickable) */}
-                            <div 
-                                className="p-6 cursor-pointer hover:bg-neutral-50 flex items-center justify-between transition-colors"
+                            <button
+                                type="button"
+                                aria-expanded={Boolean(expandedPrescriptions[prescription.id])}
                                 onClick={() => togglePrescription(prescription.id)}
+                                className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-neutral-50 active:bg-neutral-100 sm:gap-4 sm:p-5"
                             >
-                                <div className="flex items-start gap-4">
-                                    <div className="p-3 bg-emerald-100 rounded-lg text-emerald-600 block">
-                                        <Pill className="h-6 w-6" />
-                                    </div>
-                                    <div>
-                                        <h2 className="font-bold text-lg">Prescription #{prescription.id}</h2>
-                                        <div className="text-sm text-neutral-500 mt-1">
-                                            {asDoctor(prescription.doctorName)} <span className="mx-1">•</span> {prescription.specialization}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-4 text-right">
-                                    <div className="hidden sm:block">
-                                        <Badge variant={prescription.status === 'DISPENSED' ? 'default' : 'secondary'} className={prescription.status === 'DISPENSED' ? 'bg-emerald-100 text-emerald-800' : ''}>
-                                            {prescription.status}
-                                        </Badge>
-                                        <div className="text-sm text-neutral-500 mt-1 flex items-center justify-end gap-1">
-                                            <Calendar className="h-3 w-3" />
-                                            {formatDate(prescription.issued_at)}
-                                        </div>
-                                    </div>
-                                    <div className="text-neutral-400">
-                                        {expandedPrescriptions[prescription.id] ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                                    </div>
-                                </div>
-                            </div>
+                                <span className="hidden h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 sm:flex" aria-hidden>
+                                    <Pill className="h-5 w-5" />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="flex flex-wrap items-center gap-2">
+                                        <span className="font-bold text-neutral-900">Prescription #{prescription.id}</span>
+                                        <StatusBadge status={prescription.status} kind="prescription" size="sm" />
+                                    </span>
+                                    <span className="mt-0.5 block text-sm text-neutral-600">
+                                        {asDoctor(prescription.doctorName)}{prescription.specialization ? ` · ${prescription.specialization}` : ''}
+                                    </span>
+                                    <span className="mt-0.5 flex items-center gap-1.5 text-sm text-neutral-500">
+                                        <Calendar className="h-3.5 w-3.5" aria-hidden /> {formatDate(prescription.issued_at)}
+                                        <span aria-hidden>·</span> {prescription.items.length} {prescription.items.length === 1 ? 'medicine' : 'medicines'}
+                                    </span>
+                                </span>
+                                {expandedPrescriptions[prescription.id]
+                                    ? <ChevronDown className="h-5 w-5 flex-shrink-0 text-neutral-500" aria-hidden />
+                                    : <ChevronRight className="h-5 w-5 flex-shrink-0 text-neutral-500" aria-hidden />}
+                                <span className="sr-only">{expandedPrescriptions[prescription.id] ? 'Hide medicines' : 'Show medicines'}</span>
+                            </button>
 
-                            {/* Prescription Items (Collapsible) */}
                             {expandedPrescriptions[prescription.id] && (
-                                <div className="border-t bg-neutral-50/50 p-6">
-                                    <h3 className="font-semibold text-sm text-neutral-500 mb-4 uppercase tracking-wider">Prescribed Medications</h3>
-                                    <div className="space-y-4">
+                                <div className="border-t bg-neutral-50/60 p-4 sm:p-5">
+                                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-600">Prescribed medicines</h3>
+                                    <ul className="space-y-3">
                                         {prescription.items.map((item: any, idx: number) => (
-                                            <div key={idx} className="flex justify-between items-start bg-white p-4 border rounded-lg shadow-sm">
-                                                <div>
-                                                    <h5 className="font-bold text-emerald-700">{item.medicineName}</h5>
-                                                    <div className="flex flex-wrap gap-2 sm:gap-4 text-sm text-neutral-600 mt-1">
-                                                        <span className="font-medium text-neutral-800">Dose:</span> {item.dosage}
-                                                        <span className="hidden sm:inline">•</span>
-                                                        <span className="font-medium text-neutral-800">Frequency:</span> {item.frequency}
-                                                        <span className="hidden sm:inline">•</span>
-                                                        <span className="font-medium text-neutral-800">Duration:</span> {item.duration}
-                                                    </div>
+                                            <li key={idx} className="rounded-xl border bg-white p-4 shadow-sm">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <p className="font-bold text-emerald-800">{item.medicineName}</p>
+                                                    <p className="flex-shrink-0 rounded-md bg-neutral-100 px-2 py-0.5 text-sm font-semibold text-neutral-800">Qty {item.quantity}</p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <span className="text-xs text-neutral-500 block mb-1">Qty</span>
-                                                    <span className="font-bold text-lg">{item.quantity}</span>
-                                                </div>
-                                            </div>
+                                                <dl className="mt-2.5 grid grid-cols-3 gap-2 text-sm">
+                                                    {[['Dose', item.dosage], ['How often', item.frequency], ['For', item.duration]].map(([label, value]) => (
+                                                        <div key={label}>
+                                                            <dt className="text-xs text-neutral-500">{label}</dt>
+                                                            <dd className="font-medium text-neutral-900">{value}</dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            </li>
                                         ))}
-                                    </div>
+                                    </ul>
                                 </div>
                             )}
                         </Card>

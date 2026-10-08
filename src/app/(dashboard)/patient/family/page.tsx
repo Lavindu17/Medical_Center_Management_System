@@ -117,17 +117,17 @@ export default function FamilyDashboard() {
             <PageHeader title="Family Network" description="Manage linked medical accounts. Authorized family members can view and manage each other's medical records." />
 
             <Tabs defaultValue="linked" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 max-w-2xl mb-6">
-                    <TabsTrigger value="linked">My Family ({familyData.linked_members.length})</TabsTrigger>
-                    <TabsTrigger value="requests">Requests ({familyData.incoming_requests.length + familyData.outgoing_requests.length})</TabsTrigger>
-                    <TabsTrigger value="add">Add Member</TabsTrigger>
+                <TabsList className="mb-6 grid h-auto w-full max-w-2xl grid-cols-3">
+                    <TabsTrigger value="linked" className="min-h-11 px-2">My Family ({familyData.linked_members.length})</TabsTrigger>
+                    <TabsTrigger value="requests" className="min-h-11 px-2">Requests ({familyData.incoming_requests.length + familyData.outgoing_requests.length})</TabsTrigger>
+                    <TabsTrigger value="add" className="min-h-11 px-2">Add Member</TabsTrigger>
                 </TabsList>
 
                 {/* TAB 1: Linked Members */}
                 <TabsContent value="linked" className="space-y-4">
                     {familyData.linked_members.length === 0 ? (
                         <Card className="bg-neutral-50 border-dashed">
-                            <CardContent className="flex flex-col items-center justify-center p-12 text-center text-neutral-500">
+                            <CardContent className="flex flex-col items-center justify-center p-8 text-center text-neutral-500 sm:p-12">
                                 <Users className="h-12 w-12 text-neutral-300 mb-4" />
                                 <p>You do not have any linked family accounts.</p>
                                 <p className="text-sm">Click "Add Member" to connect with a relative.</p>
@@ -182,11 +182,11 @@ export default function FamilyDashboard() {
                                                 <p className="font-medium text-neutral-900">{req.requester_name} <span className="text-neutral-500 font-normal">({req.requester_email})</span></p>
                                                 <p className="text-sm text-neutral-500 mt-1">Requested to link as: <strong>{req.relationship}</strong></p>
                                             </div>
-                                            <div className="flex gap-2 shrink-0">
-                                                <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleRespond(req.id, 'REJECT')}>
+                                            <div className="grid shrink-0 grid-cols-2 gap-2 md:flex">
+                                                <Button size="sm" variant="outline" className="h-11 text-red-700 hover:bg-red-50 md:h-9" onClick={() => handleRespond(req.id, 'REJECT')}>
                                                     <XCircle className="w-4 h-4 mr-2" /> Reject
                                                 </Button>
-                                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleRespond(req.id, 'ACCEPT')}>
+                                                <Button size="sm" className="h-11 bg-emerald-600 hover:bg-emerald-700 md:h-9" onClick={() => handleRespond(req.id, 'ACCEPT')}>
                                                     <CheckCircle className="w-4 h-4 mr-2" /> Accept
                                                 </Button>
                                             </div>
@@ -241,7 +241,7 @@ export default function FamilyDashboard() {
                                         <Input id="f-patient-s-registered-email" 
                                             type="email" 
                                             required 
-                                            className="pl-10" 
+                                            className="h-11 pl-10 text-base" 
                                             placeholder="patient@example.com"
                                             value={inviteEmail}
                                             onChange={e => setInviteEmail(e.target.value)}
@@ -251,7 +251,7 @@ export default function FamilyDashboard() {
                                 <div className="space-y-2">
                                     <Label htmlFor="f-their-relationship-to-you">Their Relationship to You</Label>
                                     <select id="f-their-relationship-to-you" 
-                                        className="w-full h-10 px-3 py-2 border rounded-md bg-background text-sm ring-offset-background"
+                                        className="h-11 w-full rounded-md border bg-background px-3 py-2 text-base ring-offset-background"
                                         value={inviteRelationship}
                                         onChange={e => setInviteRelationship(e.target.value)}
                                     >
@@ -262,7 +262,7 @@ export default function FamilyDashboard() {
                                         <option value="OTHER">Other</option>
                                     </select>
                                 </div>
-                                <Button type="submit" disabled={sendingInvite} className="w-full mt-4">
+                                <Button type="submit" disabled={sendingInvite} className="mt-4 h-12 w-full text-base">
                                     {sendingInvite ? 'Sending Invite...' : 'Send Link Request'}
                                 </Button>
                             </form>

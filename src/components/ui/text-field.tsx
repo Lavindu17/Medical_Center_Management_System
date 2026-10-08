@@ -48,7 +48,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(func
                     required={required}
                     aria-invalid={error ? true : undefined}
                     aria-describedby={describedBy}
-                    className={cn('h-11 md:h-10', trailing ? 'pr-12' : '', className)}
+                    className={cn('h-11 md:h-10', trailing ? 'pr-12 md:pr-12' : '', className)}
                     {...props}
                 />
                 {trailing && <div className="absolute inset-y-0 right-1 flex items-center">{trailing}</div>}
@@ -80,7 +80,7 @@ export const PasswordField = React.forwardRef<HTMLInputElement, Omit<TextFieldPr
                     onClick={() => setVisible((v) => !v)}
                     aria-label={visible ? 'Hide password' : 'Show password'}
                     aria-pressed={visible}
-                    className="flex h-9 w-9 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                    className="flex h-11 w-11 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 md:h-9 md:w-9"
                 >
                     {visible ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
                 </button>

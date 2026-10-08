@@ -1,6 +1,7 @@
 'use client';
 import { PageHeader } from '@/components/ui/page-header';
-import { formatDate } from '@/lib/dates';
+import { formatDate, shortTime } from '@/lib/dates';
+import { asDoctor } from '@/lib/names';
 
 import { useState, useEffect } from 'react';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -42,18 +43,18 @@ function AppointmentCard({ apt, isPast = false, index = 0 }: { apt: Appointment;
                         <CardContent className="flex-1 p-4 flex flex-col sm:flex-row justify-between items-start gap-3">
                             <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <h2 className="font-semibold text-neutral-900 text-base">{apt.doctorName}</h2>
+                                    <h2 className="font-semibold text-neutral-900 text-base">{asDoctor(apt.doctorName)}</h2>
                                     <StatusPill status={apt.status} />
                                 </div>
-                                <p className="text-xs text-neutral-400 mb-2">{apt.specialization}</p>
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600">
+                                <p className="text-sm text-neutral-500 mb-2">{apt.specialization}</p>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-700">
                                     <span className="flex items-center gap-1">
-                                        <Calendar className="h-3 w-3 text-emerald-500" />
+                                        <Calendar className="h-4 w-4 text-emerald-700" aria-hidden />
                                         {formatDate(apt.date)}
                                     </span>
                                     <span className="flex items-center gap-1">
-                                        <Clock className="h-3 w-3 text-emerald-500" />
-                                        {apt.timeSlot}
+                                        <Clock className="h-4 w-4 text-emerald-700" aria-hidden />
+                                        {shortTime(apt.timeSlot)}
                                     </span>
                                 </div>
                             </div>
@@ -118,7 +119,7 @@ export default function AppointmentsListPage() {
                 className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
             >
                 <PageHeader title="My Appointments" description="View and manage your upcoming and past visits." />
-                <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 gap-2 shadow-sm">
+                <Button asChild className="hidden h-10 gap-2 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 md:inline-flex">
                     <Link href="/patient/book"><Plus className="h-4 w-4" /> Book New</Link>
                 </Button>
             </motion.div>
@@ -128,13 +129,13 @@ export default function AppointmentsListPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.1, duration: 0.25 }}
-                className="flex gap-1 p-1 bg-neutral-100 rounded-lg w-fit"
+                className="grid w-full grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:inline-grid sm:w-auto"
             >
                 {(['upcoming', 'history'] as const).map(t => (
                     <button
                         key={t}
                         onClick={() => setTab(t)}
-                        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 capitalize ${tab === t
+                        className={`min-h-11 px-5 rounded-lg text-sm font-semibold transition-all duration-200 capitalize ${tab === t
                             ? 'bg-white text-neutral-900 shadow-sm'
                             : 'text-neutral-500 hover:text-neutral-700'
                         }`}

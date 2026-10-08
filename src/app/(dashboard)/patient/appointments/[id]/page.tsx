@@ -1,6 +1,7 @@
 'use client';
 import { PageHeader } from '@/components/ui/page-header';
-import { formatDate } from '@/lib/dates';
+import { formatDate, shortTime } from '@/lib/dates';
+import { asDoctor } from '@/lib/names';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatLKR } from '@/lib/utils';
 
@@ -85,7 +86,7 @@ export default function AppointmentDetailPage() {
                                     <h2 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
                                         <User className="h-4 w-4" /> Doctor
                                     </h2>
-                                    <p className="font-medium text-lg">{appointment.doctorName}</p>
+                                    <p className="font-medium text-lg">{asDoctor(appointment.doctorName)}</p>
                                     <p className="text-sm text-neutral-500">{appointment.specialization}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -93,13 +94,13 @@ export default function AppointmentDetailPage() {
                                         <h2 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
                                             <Calendar className="h-4 w-4" /> Date
                                         </h2>
-                                        <p className="font-medium">{appointment.formatted_date}</p>
+                                        <p className="font-medium">{formatDate(appointment.date)}</p>
                                     </div>
                                     <div>
                                         <h2 className="text-sm font-semibold text-neutral-500 mb-1 flex items-center gap-2">
                                             <Clock className="h-4 w-4" /> Time
                                         </h2>
-                                        <p className="font-medium">{appointment.timeSlot}</p>
+                                        <p className="font-medium">{shortTime(appointment.timeSlot)}</p>
                                     </div>
                                 </div>
                             </div>

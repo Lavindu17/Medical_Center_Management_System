@@ -1,4 +1,6 @@
 'use client';
+import { asDoctor } from '@/lib/names';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { toast } from 'sonner';
 import { EmptyState, LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
@@ -42,28 +44,26 @@ export default function LabReportsPage() {
                 <div className="grid gap-4">
                     {data.map((item, i) => (
                         <Card key={i}>
-                            <CardContent className="pt-6 flex justify-between items-center">
-                                <div className="flex items-start gap-4">
-                                    <div className="p-3 bg-purple-100 rounded-lg text-purple-600">
-                                        <FileText className="h-6 w-6" />
-                                    </div>
-                                    <div>
-                                        <h2 className="font-bold text-lg">{item.testName}</h2>
-                                        <p className="text-sm text-neutral-500">{item.description}</p>
-                                        <div className="text-xs text-neutral-400 mt-1">
-                                            Ordered by {item.doctorName} • {formatDate(item.requested_at)}
-                                        </div>
+                            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                                <div className="flex min-w-0 items-start gap-3.5">
+                                    <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-700" aria-hidden>
+                                        <FileText className="h-5 w-5" />
+                                    </span>
+                                    <div className="min-w-0">
+                                        <h2 className="font-bold text-neutral-900">{item.testName}</h2>
+                                        {item.description && <p className="text-sm text-neutral-600">{item.description}</p>}
+                                        <p className="mt-1 text-sm text-neutral-500">
+                                            Ordered by {asDoctor(item.doctorName)} · {formatDate(item.requested_at)}
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    <Badge variant={item.status === 'COMPLETED' ? 'default' : 'secondary'}>
-                                        {item.status}
-                                    </Badge>
+                                <div className="flex items-center justify-between gap-3 sm:justify-end">
+                                    <StatusBadge status={item.status} kind="lab" size="sm" />
                                     {item.result_url && (
-                                        <Button variant="outline" size="sm" asChild>
+                                        <Button variant="outline" asChild className="h-11 flex-1 sm:h-9 sm:flex-none">
                                             <a href={item.result_url} target="_blank" rel="noopener noreferrer">
-                                                <Download className="mr-2 h-4 w-4" /> Download
+                                                <Download className="mr-2 h-4 w-4" aria-hidden /> Download report
                                             </a>
                                         </Button>
                                     )}

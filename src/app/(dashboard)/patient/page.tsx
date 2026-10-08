@@ -4,8 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    ArrowRight, CalendarCheck, CalendarClock, CalendarX, CheckCircle2, Clock, CreditCard, FileText, Pill, Plus, X,
-} from 'lucide-react';
+    ArrowRight, CalendarCheck, CalendarClock, CalendarX, CheckCircle2, Clock, CreditCard, FileText, Pill, Plus, X, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
@@ -95,17 +94,17 @@ function NextVisit({ appointment, onCancel }: { appointment: Appointment; onCanc
                     </p>
                 </div>
 
-                <div className="flex items-center gap-5">
-                    <div className="rounded-xl bg-emerald-50 px-5 py-3 text-center" aria-label={`Queue number ${appointment.queueNumber}`}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+                    <div className="self-start rounded-xl bg-emerald-50 px-5 py-3 text-center" aria-label={`Queue number ${appointment.queueNumber}`}>
                         <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-800">Queue</p>
                         <p className="text-3xl font-bold leading-none text-emerald-800 tabular">#{appointment.queueNumber}</p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <Button asChild variant="outline" size="sm">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-col">
+                        <Button asChild variant="outline" size="sm" className="h-11 sm:h-9">
                             <Link href={`/patient/appointments/${appointment.id}`}>View details</Link>
                         </Button>
                         {CANCELLABLE.includes(appointment.status) && (
-                            <Button variant="ghost" size="sm" className="text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onCancel(appointment)}>
+                            <Button variant="ghost" size="sm" className="h-11 text-red-700 hover:bg-red-50 hover:text-red-800 sm:h-9" onClick={() => onCancel(appointment)}>
                                 Cancel visit
                             </Button>
                         )}
@@ -130,7 +129,7 @@ function VisitRow({ appointment, onCancel }: { appointment: Appointment; onCance
             <div className="flex items-center gap-3">
                 <StatusBadge status={appointment.status} size="sm" />
                 {onCancel && CANCELLABLE.includes(appointment.status) && (
-                    <Button variant="ghost" size="sm" className="text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onCancel(appointment)}>
+                    <Button variant="ghost" size="sm" className="h-10 text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onCancel(appointment)}>
                         Cancel
                     </Button>
                 )}
@@ -210,7 +209,8 @@ export default function PatientDashboard() {
                 title={name ? `${greeting()}, ${name}` : greeting()}
                 description="Here is what is coming up and where to find your records."
                 actions={
-                    <Button asChild size="lg" className="gap-2">
+                    // Phones have "Book" in the tab bar; this button is for larger screens
+                    <Button asChild size="lg" className="hidden gap-2 md:inline-flex">
                         <Link href="/patient/book"><Plus className="h-4 w-4" aria-hidden /> Book appointment</Link>
                     </Button>
                 }
@@ -241,28 +241,29 @@ export default function PatientDashboard() {
                         />
                     )}
 
-                    <section aria-label="Overview" className="grid grid-cols-3 gap-3">
-                        <StatCard label="Upcoming" value={upcoming.length} icon={CalendarClock} tone="brand" href="/patient/appointments" />
-                        <StatCard label="Completed" value={completedCount} icon={CheckCircle2} tone="info" />
-                        <StatCard label="Cancelled" value={cancelledCount} icon={CalendarX} tone="neutral" />
+                    <section aria-label="Overview" className="grid grid-cols-3 gap-2 sm:gap-3">
+                        <StatCard compact label="Upcoming" value={upcoming.length} icon={CalendarClock} tone="brand" href="/patient/appointments" />
+                        <StatCard compact label="Completed" value={completedCount} icon={CheckCircle2} tone="info" />
+                        <StatCard compact label="Cancelled" value={cancelledCount} icon={CalendarX} tone="neutral" />
                     </section>
 
                     <section aria-labelledby="quick-heading" className="space-y-3">
                         <h2 id="quick-heading" className="text-base font-semibold text-neutral-900">Quick actions</h2>
-                        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
                             {QUICK_ACTIONS.map(({ href, label, hint, icon: Icon }) => (
                                 <li key={href}>
                                     <Link
                                         href={href}
-                                        className="group flex h-full min-h-[88px] items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-[var(--shadow-card)] transition-all hover:border-emerald-300 hover:shadow-[var(--shadow-raised)]"
+                                        className="group flex h-full min-h-16 items-center gap-3 rounded-xl border border-neutral-200 bg-white p-3 shadow-[var(--shadow-card)] transition-all hover:border-emerald-300 hover:shadow-[var(--shadow-raised)] active:bg-neutral-50 sm:min-h-[88px] sm:p-4"
                                     >
                                         <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition-colors group-hover:bg-emerald-100">
                                             <Icon className="h-5 w-5" aria-hidden />
                                         </span>
-                                        <span className="min-w-0">
+                                        <span className="min-w-0 flex-1">
                                             <span className="block font-semibold text-neutral-900">{label}</span>
                                             <span className="block text-xs text-neutral-500">{hint}</span>
                                         </span>
+                                        <ChevronRight className="h-5 w-5 flex-shrink-0 text-neutral-300 sm:hidden" aria-hidden />
                                     </Link>
                                 </li>
                             ))}
@@ -282,7 +283,7 @@ export default function PatientDashboard() {
                         <section aria-labelledby="history-heading" className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <h2 id="history-heading" className="text-base font-semibold text-neutral-900">Recent history</h2>
-                                <Link href="/patient/appointments" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:underline">
+                                <Link href="/patient/appointments" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-emerald-700 hover:underline">
                                     View all <ArrowRight className="h-4 w-4" aria-hidden />
                                 </Link>
                             </div>

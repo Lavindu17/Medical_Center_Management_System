@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { LogOut, Menu, HeartPulse, LucideIcon } from 'lucide-react';
+import { LogOut, Menu, MoreHorizontal, HeartPulse, LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { NotificationBell } from '@/components/notification-bell';
 import { useAuth } from '@/context/AuthContext';
 import { useIsClient } from '@/hooks/useIsClient';
@@ -18,8 +18,20 @@ export interface NavItem {
     href: string;
 }
 
+export interface BottomTab extends NavItem {
+    /** The main action of the app (booking): drawn as a filled button so it is the easiest thing to reach */
+    primary?: boolean;
+}
+
 interface AppShellProps {
     navItems: NavItem[];
+    /**
+     * Phone-only tab bar fixed to the bottom of the screen, within thumb reach. The last slot is always "More",
+     * which opens the full menu. Without it, phones get the hamburger menu in the top bar instead.
+     */
+    bottomTabs?: BottomTab[];
+    /** Pages that bring their own bottom action bar (the booking steps), where the tab bar would get in the way */
+    hideTabsOn?: string[];
     /** "Patient Portal", "Pharmacy"... shown under the brand name */
     roleName: string;
     roleHref: string;
@@ -88,7 +100,7 @@ function SidebarNav({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?
 function AccountCard() {
     const { user } = useAuth();
     return (
-        <div className="space-y-1 border-t border-neutral-100 p-3">
+        <div className="space-y-1 border-t border-neutral-100 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             {user && (
                 <div className="flex items-center gap-3 rounded-lg px-2 py-2">
                     <span
@@ -118,9 +130,11 @@ function AccountCard() {
  * The frame around every signed-in screen: a fixed sidebar on desktop, a sticky top bar with a menu drawer on phones,
  * and the page content in a landmark that the "Skip to main content" link jumps to.
  */
-export function AppShell({ navItems, roleName, roleHref, children }: AppShellProps) {
+export function AppShell({ navItems, roleName, roleHref, bottomTabs, hideTabsOn = [], children }: AppShellProps) {
+    const pathname = usePathname();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const isClient = useIsClient();   // Radix generates different ids on server and client; create the drawer in the browser only
+    const showTabs = Boolean(bottomTabs) && !hideTabsOn.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
     return (
         <div className="flex min-h-screen bg-background">
@@ -137,29 +151,15 @@ export function AppShell({ navItems, roleName, roleHref, children }: AppShellPro
             <div className="flex min-h-screen min-w-0 flex-1 flex-col md:pl-64">
                 {/* Phone top bar: menu, brand, notifications */}
                 <header data-app-header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-neutral-200 bg-white/95 px-3 backdrop-blur md:hidden">
-                    {isClient ? (
-                        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                            <SheetTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="flex h-11 w-11 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
-                                    aria-label="Open menu"
-                                >
-                                    <Menu className="h-5 w-5" aria-hidden />
-                                </button>
-                            </SheetTrigger>
-                            <SheetContent side="left" className="w-72 gap-0 border-0 p-0">
-                                <SheetTitle className="sr-only">Navigation</SheetTitle>
-                                <SheetDescription className="sr-only">Pages you can open</SheetDescription>
-                                <div className="flex h-16 items-center border-b border-neutral-100 px-4">
-                                    <Brand roleName={roleName} roleHref={roleHref} />
-                                </div>
-                                <SidebarNav navItems={navItems} onNavigate={() => setDrawerOpen(false)} />
-                                <AccountCard />
-                            </SheetContent>
-                        </Sheet>
-                    ) : (
-                        <span className="h-11 w-11" aria-hidden />
+                    {!bottomTabs && (
+                        <button
+                            type="button"
+                            onClick={() => setDrawerOpen(true)}
+                            className="flex h-11 w-11 items-center justify-center rounded-lg text-neutral-700 hover:bg-neutral-100"
+                            aria-label="Open menu"
+                        >
+                            <Menu className="h-5 w-5" aria-hidden />
+                        </button>
                     )}
                     <div className="min-w-0 flex-1">
                         <Brand roleName={roleName} roleHref={roleHref} />
@@ -168,11 +168,73 @@ export function AppShell({ navItems, roleName, roleHref, children }: AppShellPro
                 </header>
 
                 <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
-                    <div className="mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8">
+                    <div className={cn('mx-auto w-full max-w-7xl p-4 md:p-6 lg:p-8', showTabs && 'pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8')}>
                         {children}
                     </div>
                 </main>
             </div>
+
+            {showTabs && bottomTabs && (
+                <nav
+                    aria-label="Quick navigation"
+                    className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+                >
+                    <ul className="mx-auto grid max-w-md grid-cols-5 items-end px-1">
+                        {bottomTabs.map((tab) => {
+                            const active = isActivePath(pathname, tab.href);
+                            return (
+                                <li key={tab.href}>
+                                    <Link
+                                        href={tab.href}
+                                        aria-current={active ? 'page' : undefined}
+                                        className={cn(
+                                            'flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1 pb-1 pt-1.5 text-[11px] font-semibold transition-colors',
+                                            active ? 'text-emerald-800' : 'text-neutral-600 active:bg-neutral-100',
+                                        )}
+                                    >
+                                        {tab.primary ? (
+                                            <span className="-mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-[var(--shadow-raised)] ring-4 ring-white">
+                                                <tab.icon className="h-6 w-6" aria-hidden />
+                                            </span>
+                                        ) : (
+                                            <span className={cn('flex h-7 w-12 items-center justify-center rounded-full transition-colors', active && 'bg-emerald-100')}>
+                                                <tab.icon className="h-5 w-5" aria-hidden />
+                                            </span>
+                                        )}
+                                        <span>{tab.label}</span>
+                                    </Link>
+                                </li>
+                            );
+                        })}
+                        <li>
+                            <button
+                                type="button"
+                                onClick={() => setDrawerOpen(true)}
+                                className="flex min-h-14 w-full flex-col items-center justify-center gap-0.5 rounded-lg px-1 pb-1 pt-1.5 text-[11px] font-semibold text-neutral-600 active:bg-neutral-100"
+                            >
+                                <span className="flex h-7 w-12 items-center justify-center rounded-full">
+                                    <MoreHorizontal className="h-5 w-5" aria-hidden />
+                                </span>
+                                <span>More</span>
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            )}
+
+            {isClient && (
+                <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                    <SheetContent side="left" className="w-72 gap-0 border-0 p-0">
+                        <SheetTitle className="sr-only">Navigation</SheetTitle>
+                        <SheetDescription className="sr-only">Pages you can open</SheetDescription>
+                        <div className="flex h-16 items-center border-b border-neutral-100 px-4">
+                            <Brand roleName={roleName} roleHref={roleHref} />
+                        </div>
+                        <SidebarNav navItems={navItems} onNavigate={() => setDrawerOpen(false)} />
+                        <AccountCard />
+                    </SheetContent>
+                </Sheet>
+            )}
         </div>
     );
 }

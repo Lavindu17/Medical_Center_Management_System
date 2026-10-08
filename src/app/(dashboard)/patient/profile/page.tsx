@@ -170,17 +170,17 @@ export default function PatientProfilePage() {
             <PageHeader title="Health Profile" description="Your medical details, allergies and emergency contact. Name, phone and password are on the Account page." />
 
             <Tabs defaultValue="personal" className="w-full">
-                <TabsList className="mb-6 w-full h-auto flex flex-wrap gap-2 bg-transparent sm:bg-muted p-0 sm:p-1 justify-start">
-                    <TabsTrigger value="personal" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                <TabsList className="-mx-4 mb-5 flex h-auto w-[calc(100%+2rem)] flex-nowrap justify-start gap-1.5 overflow-x-auto rounded-none bg-transparent px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:w-full sm:flex-wrap sm:rounded-lg sm:bg-muted sm:p-1">
+                    <TabsTrigger value="personal" className="min-h-11 shrink-0 border bg-white data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm sm:border-none sm:bg-transparent sm:data-[state=active]:bg-white">
                         <User className="h-4 w-4 mr-2" /> Personal Info
                     </TabsTrigger>
-                    <TabsTrigger value="medical" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                    <TabsTrigger value="medical" className="min-h-11 shrink-0 border bg-white data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm sm:border-none sm:bg-transparent sm:data-[state=active]:bg-white">
                         <HeartPulse className="h-4 w-4 mr-2" /> Medical Details
                     </TabsTrigger>
-                    <TabsTrigger value="emergency" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                    <TabsTrigger value="emergency" className="min-h-11 shrink-0 border bg-white data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm sm:border-none sm:bg-transparent sm:data-[state=active]:bg-white">
                         <Phone className="h-4 w-4 mr-2" /> Emergency Contact
                     </TabsTrigger>
-                    <TabsTrigger value="family" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
+                    <TabsTrigger value="family" className="min-h-11 shrink-0 border bg-white data-[state=active]:border-emerald-600 data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-900 data-[state=active]:shadow-sm sm:border-none sm:bg-transparent sm:data-[state=active]:bg-white">
                         <Users className="h-4 w-4 mr-2" /> Family Accounts
                     </TabsTrigger>
                 </TabsList>
@@ -216,7 +216,7 @@ export default function PatientProfilePage() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex justify-end border-t pt-4">
+                        <CardFooter className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 flex justify-end border-t bg-white/95 pt-4 backdrop-blur md:static md:bg-transparent">
                             <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-emerald-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
@@ -286,7 +286,7 @@ export default function PatientProfilePage() {
                             </div>
 
                         </CardContent>
-                        <CardFooter className="flex justify-end border-t pt-4">
+                        <CardFooter className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 flex justify-end border-t bg-white/95 pt-4 backdrop-blur md:static md:bg-transparent">
                             <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-emerald-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>
@@ -311,7 +311,7 @@ export default function PatientProfilePage() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex justify-end border-t pt-4">
+                        <CardFooter className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-20 flex justify-end border-t bg-white/95 pt-4 backdrop-blur md:static md:bg-transparent">
                             <Button onClick={handleSave} disabled={!hasChanges || saving} className="bg-emerald-600 w-full sm:w-auto h-11 md:h-10"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </CardFooter>
                     </Card>

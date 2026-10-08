@@ -1,17 +1,19 @@
 'use client';
-import { PageHeader } from '@/components/ui/page-header';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatLKR } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
+import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Search, Stethoscope } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, ChevronRight, ChevronLeft, Search } from 'lucide-react';
-import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import { asDoctor } from '@/lib/names';
+import { EmptyState, LoadingState } from '@/components/ui/state-views';
+import { useAuth } from '@/context/AuthContext';
+import { asDoctor, initialOf } from '@/lib/names';
+import { formatDate, shortTime } from '@/lib/dates';
+import { cn, formatLKR } from '@/lib/utils';
 
 interface Doctor {
     id: number;
@@ -25,94 +27,96 @@ interface Slot {
     available: boolean;
 }
 
+const STEPS = ['Doctor', 'Date & time', 'Confirm'] as const;
+const REASON_HINTS = ['Fever', 'Headache', 'Cough or cold', 'Stomach pain', 'Check-up', 'Follow-up visit'];
+const DAYS_SHOWN = 14;
+
+/** Local calendar day as YYYY-MM-DD (toISOString() would give the UTC day, which is wrong for part of the day in Sri Lanka). */
+function dayString(date: Date) {
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${mm}-${dd}`;
+}
+
+function upcomingDays() {
+    return Array.from({ length: DAYS_SHOWN }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        return {
+            value: dayString(d),
+            top: i === 0 ? 'Today' : i === 1 ? 'Tmrw' : d.toLocaleDateString('en-GB', { weekday: 'short' }),
+            num: d.getDate(),
+            month: d.toLocaleDateString('en-GB', { month: 'short' }),
+        };
+    });
+}
+
 export default function BookAppointmentPage() {
     const router = useRouter();
+    const { user } = useAuth();
     const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [user, setUser] = useState<any>(null);
+    const [submitting, setSubmitting] = useState(false);
 
-    // Data
     const [doctors, setDoctors] = useState<Doctor[]>([]);
-    const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
+    const [doctorsLoading, setDoctorsLoading] = useState(true);
     const [slots, setSlots] = useState<Slot[]>([]);
+    const [slotsLoading, setSlotsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
-    // Selection
     const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-    const [selectedDate, setSelectedDate] = useState<string>('');
-    const [selectedSlot, setSelectedSlot] = useState<string>('');
-    const [reason, setReason] = useState<string>('');
+    const [selectedDate, setSelectedDate] = useState('');
+    const [selectedSlot, setSelectedSlot] = useState('');
+    const [reason, setReason] = useState('');
 
-    // Fetch User Session & Doctors on Mount
+    const days = useMemo(upcomingDays, []);
+    const today = days[0].value;
+    const topRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        // 1. Fetch Session
-        fetch('/api/auth/session')
-            .then(res => {
-                if (res.ok) return res.json();
-                // If not logged in, maybe redirect? For now, let fail gracefully or showing loading
+        fetch('/api/doctors')
+            .then(async (res) => {
+                if (!res.ok) throw new Error();
+                setDoctors(await res.json());
             })
-            .then(data => {
-                if (data?.user) setUser(data.user);
-            })
-            .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); });
-
-        // 2. Fetch Doctors
-        async function fetchDoctors() {
-            const res = await fetch('/api/doctors');
-            if (res.ok) {
-                const data = await res.json();
-                setDoctors(data);
-                setFilteredDoctors(data);
-            }
-        }
-        fetchDoctors();
+            .catch(() => toast.error('Could not load the doctors. Please refresh and try again.'))
+            .finally(() => setDoctorsLoading(false));
     }, []);
 
-    // Filter Doctors
-    useEffect(() => {
-        if (!searchQuery) {
-            setFilteredDoctors(doctors);
-        } else {
-            const lower = searchQuery.toLowerCase();
-            setFilteredDoctors(doctors.filter(d =>
-                d.name.toLowerCase().includes(lower) ||
-                d.specialization.toLowerCase().includes(lower)
-            ));
-        }
-    }, [searchQuery, doctors]);
+    const filteredDoctors = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q) return doctors;
+        return doctors.filter((d) => d.name.toLowerCase().includes(q) || d.specialization.toLowerCase().includes(q));
+    }, [doctors, searchQuery]);
 
-
-    // Fetch Slots when Date/Doctor changes
     useEffect(() => {
-        if (selectedDoctor && selectedDate) {
-            fetchSlots();
-        }
+        if (!selectedDoctor || !selectedDate) return;
+        let cancelled = false;
+        setSlotsLoading(true);
+        setSlots([]);
+        setSelectedSlot('');
+        fetch(`/api/doctors/availability?doctorId=${selectedDoctor.id}&date=${selectedDate}`)
+            .then(async (res) => {
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                if (!cancelled) setSlots(data.slots ?? []);
+            })
+            .catch(() => { if (!cancelled) toast.error('Could not load the available times. Please try again.'); })
+            .finally(() => { if (!cancelled) setSlotsLoading(false); });
+        return () => { cancelled = true; };
     }, [selectedDoctor, selectedDate]);
 
-    async function fetchSlots() {
-        setLoading(true);
-        setSlots([]);
-        setSelectedSlot(''); // Reset selection
-        try {
-            const res = await fetch(`/api/doctors/availability?doctorId=${selectedDoctor?.id}&date=${selectedDate}`);
-            if (res.ok) {
-                const data = await res.json();
-                // API now returns { time, available } objects
-                setSlots(data.slots);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+    // Each step starts at the top of the screen, so a phone does not stay scrolled down the previous list
+    function goTo(next: number) {
+        setStep(next);
+        topRef.current?.scrollIntoView({ block: 'start' });
     }
 
     async function submitBooking() {
         if (!user) {
-            toast.error('You must be logged in to book.');
+            toast.error('You must be signed in to book.');
             return;
         }
-
+        setSubmitting(true);
         const toastId = toast.loading('Booking your appointment…');
         try {
             const res = await fetch('/api/appointments', {
@@ -123,247 +127,279 @@ export default function BookAppointmentPage() {
                     doctorId: selectedDoctor?.id,
                     date: selectedDate,
                     timeSlot: selectedSlot,
-                    reason: reason
-                })
+                    reason,
+                }),
             });
+            const body = await res.json().catch(() => null);
+            if (!res.ok) throw new Error(body?.message || 'Booking failed');
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message);
-            }
-
-            const data = await res.json();
-            toast.success('Appointment booked!', { id: toastId, description: `Queue #${data.appointment.queueNumber}` });
-            router.push(`/patient?success=true&queue=${data.appointment.queueNumber}`);
-        } catch (err: any) {
-            toast.error(err.message || 'Booking failed', { id: toastId });
+            toast.success('Appointment booked', { id: toastId, description: `Queue #${body.appointment.queueNumber}` });
+            router.push(`/patient?success=true&queue=${body.appointment.queueNumber}`);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Booking failed', { id: toastId });
+            setSubmitting(false);
         }
     }
 
+    const canContinue = step === 1 ? Boolean(selectedDoctor) : step === 2 ? Boolean(selectedDate && selectedSlot) : true;
+    const summary = step === 1
+        ? selectedDoctor ? asDoctor(selectedDoctor.name) : 'Choose a doctor to continue'
+        : step === 2
+            ? selectedSlot ? `${formatDate(selectedDate)} at ${shortTime(selectedSlot)}` : 'Choose a day and a time'
+            : formatLKR(selectedDoctor?.consultationFee);
+
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
-            <PageHeader className="mb-8" title="Book Appointment" description={<>Scheduled for <span className="font-semibold text-emerald-700">{user?.name || 'Guest'}</span></>} />
+        <div ref={topRef} className="mx-auto max-w-3xl scroll-mt-20 space-y-5 pb-4">
+            <PageHeader title="Book appointment" description="Three quick steps. You get a queue number straight away." />
 
-            {/* Progress Steps */}
-            <motion.div
-                className="flex items-center gap-2 mb-8 text-sm"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.3 }}
-            >
-                <span className={`px-3 py-1 rounded-full transition-colors duration-300 ${step >= 1 ? 'bg-emerald-600 text-white' : 'bg-neutral-100'}`}>1. Doctor</span>
-                <div className="h-0.5 w-8 bg-neutral-200" />
-                <span className={`px-3 py-1 rounded-full transition-colors duration-300 ${step >= 2 ? 'bg-emerald-600 text-white' : 'bg-neutral-100'}`}>2. Date &amp; Time</span>
-                <div className="h-0.5 w-8 bg-neutral-200" />
-                <span className={`px-3 py-1 rounded-full transition-colors duration-300 ${step >= 3 ? 'bg-emerald-600 text-white' : 'bg-neutral-100'}`}>3. Reason &amp; Confirm</span>
-            </motion.div>
+            {/* Progress: a bar and the current step's name, instead of three pills that do not fit a phone */}
+            <div aria-label={`Step ${step} of ${STEPS.length}`} role="group">
+                <div className="mb-2 flex items-baseline justify-between text-sm">
+                    <p className="font-semibold text-neutral-900">{STEPS[step - 1]}</p>
+                    <p className="text-neutral-500">Step {step} of {STEPS.length}</p>
+                </div>
+                <div className="flex gap-1.5" aria-hidden>
+                    {STEPS.map((_, i) => (
+                        <span key={i} className={cn('h-1.5 flex-1 rounded-full transition-colors', i < step ? 'bg-emerald-600' : 'bg-neutral-200')} />
+                    ))}
+                </div>
+            </div>
 
-            <div className="grid gap-6">
-            <AnimatePresence mode="wait">
-                {step === 1 && (
-                    <motion.div
-                        key="step1"
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -30 }}
-                        transition={{ duration: 0.25 }}
-                    >
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Select a Doctor</CardTitle>
-                            <CardDescription>Choose a specialist for your consultation.</CardDescription>
-                            <div className="relative mt-2">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-neutral-500" />
+            <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                    key={step}
+                    initial={{ opacity: 0, x: 24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -24 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    {step === 1 && (
+                        <section aria-labelledby="doctor-heading" className="space-y-3">
+                            <h2 id="doctor-heading" className="sr-only">Choose a doctor</h2>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" aria-hidden />
                                 <Input
                                     type="search"
-                                    placeholder="Search by name or specialization..."
-                                    className="pl-9"
+                                    aria-label="Search doctors by name or speciality"
+                                    placeholder="Search by name or speciality"
+                                    className="h-12 pl-10 text-base"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                        </CardHeader>
-                        <CardContent tabIndex={0} role="region" aria-label="Doctors" className="grid md:grid-cols-2 gap-4 h-[400px] overflow-y-auto pr-2">
-                            {filteredDoctors.length === 0 ? (
-                                <div className="col-span-2 text-center py-8 text-neutral-500">
-                                    No doctors found matching "{searchQuery}"
-                                </div>
-                            ) : (
-                                filteredDoctors.map((doc, idx) => (
-                                    <motion.div
-                                        key={doc.id}
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.05, duration: 0.2 }}
-                                        onClick={() => setSelectedDoctor(doc)}
-                                        className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-emerald-500 hover:bg-emerald-50
-                        ${selectedDoctor?.id === doc.id ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600' : 'border-neutral-200'}
-                      `}
-                                    >
-                                        <div className="flex items-start gap-4">
-                                            <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold">
-                                                DR
-                                            </div>
-                                            <div>
-                                                <h2 className="font-semibold">{doc.name}</h2>
-                                                <p className="text-sm text-neutral-500">{doc.specialization}</p>
-                                                <div className="mt-2 text-xs font-mono bg-white inline-block px-1 rounded border">
-                                                    Fee: {formatLKR(doc.consultationFee)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))
-                            )}
-                        </CardContent>
-                        <div className="p-6 border-t flex justify-end">
-                            <Button disabled={!selectedDoctor} onClick={() => setStep(2)}>
-                                Next Step <ChevronRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </div>
-                    </Card>
-                    </motion.div>
-                )}
 
-                {step === 2 && (
-                    <motion.div
-                        key="step2"
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -30 }}
-                        transition={{ duration: 0.25 }}
-                    >
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Select Date &amp; Time</CardTitle>
-                            <CardDescription>
-                                Availability for {asDoctor(selectedDoctor?.name)}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="f-date">Date</Label>
-                                <Input id="f-date"
-                                    type="date"
-                                    min={new Date().toISOString().split('T')[0]}
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                    className="max-w-[200px]"
+                            {doctorsLoading ? (
+                                <LoadingState label="Loading doctors…" />
+                            ) : filteredDoctors.length === 0 ? (
+                                <EmptyState
+                                    icon={Stethoscope}
+                                    title={searchQuery ? 'No doctor matches your search' : 'No doctors available right now'}
+                                    description={searchQuery ? 'Try a different name or speciality.' : 'Please check back later.'}
                                 />
+                            ) : (
+                                <ul className="space-y-2.5">
+                                    {filteredDoctors.map((doc) => {
+                                        const selected = selectedDoctor?.id === doc.id;
+                                        return (
+                                            <li key={doc.id}>
+                                                <button
+                                                    type="button"
+                                                    aria-pressed={selected}
+                                                    onClick={() => setSelectedDoctor(doc)}
+                                                    className={cn(
+                                                        'flex min-h-20 w-full items-center gap-3.5 rounded-xl border bg-white p-3.5 text-left shadow-[var(--shadow-card)] transition-colors active:bg-neutral-50',
+                                                        selected ? 'border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600' : 'border-neutral-200 hover:border-emerald-400',
+                                                    )}
+                                                >
+                                                    <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 text-lg font-bold text-emerald-800" aria-hidden>
+                                                        {initialOf(doc.name)}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate font-semibold text-neutral-900">{asDoctor(doc.name)}</span>
+                                                        <span className="block truncate text-sm text-neutral-600">{doc.specialization}</span>
+                                                        <span className="mt-0.5 block text-sm font-medium text-neutral-800">{formatLKR(doc.consultationFee)} <span className="font-normal text-neutral-500">per visit</span></span>
+                                                    </span>
+                                                    <span
+                                                        className={cn('flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2', selected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-neutral-300')}
+                                                        aria-hidden
+                                                    >
+                                                        {selected && <CheckCircle2 className="h-4 w-4" />}
+                                                    </span>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </section>
+                    )}
+
+                    {step === 2 && (
+                        <section aria-labelledby="when-heading" className="space-y-5">
+                            <div>
+                                <h2 id="when-heading" className="text-lg font-semibold text-neutral-900">When would you like to see {asDoctor(selectedDoctor?.name)}?</h2>
                             </div>
 
-                            {selectedDate && (
-                                <div className="space-y-2">
-                                    <Label>Select Time Slot (10 min)</Label>
-                                    {loading ? (
-                                        <div className="py-8 text-neutral-500">Loading slots...</div>
-                                    ) : slots.length === 0 ? (
-                                        <div className="py-8 text-neutral-500">No slots available (or closed).</div>
-                                    ) : (
-                                        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-                                            {slots.map((slotObj, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    disabled={!slotObj.available}
-                                                    onClick={() => slotObj.available && setSelectedSlot(slotObj.time)}
-                                                    className={`py-2 px-1 text-sm rounded border text-center transition-colors
-                                                      ${!slotObj.available
-                                                            ? 'bg-red-50 text-red-500 border-red-200 cursor-not-allowed opacity-60'
-                                                            : selectedSlot === slotObj.time
-                                                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                                                : 'hover:border-emerald-400 hover:bg-emerald-50 bg-white'
-                                                        }
-                                                    `}
-                                                    title={!slotObj.available ? 'Already Booked' : 'Available'}
-                                                >
-                                                    {slotObj.time}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <div className="flex gap-4 text-xs mt-2">
-                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-white"></div> Available</div>
-                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-emerald-600"></div> Selected</div>
-                                        <div className="flex items-center gap-1"><div className="w-3 h-3 border rounded bg-red-50"></div> Booked</div>
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                        <div className="p-6 border-t flex justify-between">
-                            <Button variant="outline" onClick={() => setStep(1)}>
-                                <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                            </Button>
-                            <Button disabled={!selectedDate || !selectedSlot} onClick={() => setStep(3)}>
-                                Next: Details <ChevronRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        </div>
-                    </Card>
-                    </motion.div>
-                )}
-
-                {step === 3 && (
-                    <motion.div
-                        key="step3"
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -30 }}
-                        transition={{ duration: 0.25 }}
-                    >
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Reason & Confirm</CardTitle>
-                            <CardDescription>Please explain your visit regarding and review details.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            {/* Reason Input */}
                             <div className="space-y-2">
-                                <Label htmlFor="reason">Reason for Visit (Symptoms, etc.)</Label>
-                                <div className="relative">
-                                    <textarea
-                                        id="reason"
-                                        className="flex min-h-[80px] w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-950 dark:ring-offset-neutral-950 dark:placeholder:text-neutral-400 dark:focus-visible:ring-neutral-300"
-                                        placeholder="e.g. Severe headache, Fever since yesterday..."
-                                        value={reason}
-                                        onChange={(e) => setReason(e.target.value)}
+                                <p className="text-sm font-medium text-neutral-800" id="day-label">Day</p>
+                                <div
+                                    role="group"
+                                    aria-labelledby="day-label"
+                                    className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:flex-wrap md:px-0"
+                                >
+                                    {days.map((d) => {
+                                        const selected = selectedDate === d.value;
+                                        return (
+                                            <button
+                                                key={d.value}
+                                                type="button"
+                                                aria-pressed={selected}
+                                                onClick={() => setSelectedDate(d.value)}
+                                                className={cn(
+                                                    'flex h-[72px] w-16 flex-shrink-0 snap-start flex-col items-center justify-center rounded-xl border text-center transition-colors',
+                                                    selected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-neutral-200 bg-white text-neutral-800 active:bg-neutral-50',
+                                                )}
+                                            >
+                                                <span className={cn('text-[11px] font-semibold uppercase', selected ? 'text-emerald-100' : 'text-neutral-500')}>{d.top}</span>
+                                                <span className="text-xl font-bold leading-tight">{d.num}</span>
+                                                <span className={cn('text-[11px]', selected ? 'text-emerald-100' : 'text-neutral-500')}>{d.month}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex items-center gap-2 pt-1">
+                                    <Label htmlFor="other-date" className="flex items-center gap-1.5 text-sm font-normal text-neutral-600">
+                                        <CalendarDays className="h-4 w-4" aria-hidden /> Another date
+                                    </Label>
+                                    <Input
+                                        id="other-date"
+                                        type="date"
+                                        min={today}
+                                        value={selectedDate}
+                                        onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                                        className="h-11 w-auto text-base"
                                     />
                                 </div>
                             </div>
 
-                            <div className="bg-neutral-50 p-6 rounded-lg space-y-4 max-w-lg mx-auto border">
-                                <div className="flex justify-between border-b pb-2">
-                                    <span className="text-neutral-500">Doctor</span>
-                                    <span className="font-semibold">{selectedDoctor?.name}</span>
+                            {selectedDate && (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium text-neutral-800" id="time-label">Time on {formatDate(selectedDate)}</p>
+                                    {slotsLoading ? (
+                                        <LoadingState label="Checking available times…" />
+                                    ) : slots.length === 0 ? (
+                                        <EmptyState
+                                            icon={CalendarDays}
+                                            title="No times available on this day"
+                                            description="The doctor may be away or fully booked. Try another day."
+                                        />
+                                    ) : (
+                                        <>
+                                            <div role="group" aria-labelledby="time-label" className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+                                                {slots.map((slot) => {
+                                                    const selected = selectedSlot === slot.time;
+                                                    return (
+                                                        <button
+                                                            key={slot.time}
+                                                            type="button"
+                                                            disabled={!slot.available}
+                                                            aria-pressed={selected}
+                                                            onClick={() => setSelectedSlot(slot.time)}
+                                                            className={cn(
+                                                                'h-12 rounded-lg border text-base font-semibold tabular transition-colors',
+                                                                !slot.available
+                                                                    ? 'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-500 line-through'
+                                                                    : selected
+                                                                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                                        : 'border-neutral-300 bg-white text-neutral-900 active:bg-emerald-50',
+                                                            )}
+                                                        >
+                                                            {shortTime(slot.time)}
+                                                            {!slot.available && <span className="sr-only"> (already booked)</span>}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <p className="text-xs text-neutral-500">Crossed-out times are already booked.</p>
+                                        </>
+                                    )}
                                 </div>
-                                <div className="flex justify-between border-b pb-2">
-                                    <span className="text-neutral-500">Specialization</span>
-                                    <span>{selectedDoctor?.specialization}</span>
+                            )}
+                        </section>
+                    )}
+
+                    {step === 3 && (
+                        <section aria-labelledby="confirm-heading" className="space-y-5">
+                            <h2 id="confirm-heading" className="text-lg font-semibold text-neutral-900">Check and confirm</h2>
+
+                            <dl className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white text-sm shadow-[var(--shadow-card)]">
+                                {[
+                                    ['Doctor', asDoctor(selectedDoctor?.name)],
+                                    ['Speciality', selectedDoctor?.specialization],
+                                    ['Date', formatDate(selectedDate)],
+                                    ['Time', shortTime(selectedSlot)],
+                                ].map(([label, value]) => (
+                                    <div key={label} className="flex items-center justify-between gap-4 px-4 py-3">
+                                        <dt className="text-neutral-600">{label}</dt>
+                                        <dd className="text-right font-semibold text-neutral-900">{value}</dd>
+                                    </div>
+                                ))}
+                                <div className="flex items-center justify-between gap-4 bg-emerald-50 px-4 py-3">
+                                    <dt className="font-medium text-emerald-900">Consultation fee</dt>
+                                    <dd className="text-base font-bold text-emerald-900">{formatLKR(selectedDoctor?.consultationFee)}</dd>
                                 </div>
-                                <div className="flex justify-between border-b pb-2">
-                                    <span className="text-neutral-500">Date</span>
-                                    <span>{selectedDate}</span>
+                            </dl>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="reason" className="text-sm font-medium text-neutral-800">
+                                    Reason for the visit <span className="font-normal text-neutral-500">(optional)</span>
+                                </Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {REASON_HINTS.map((hint) => (
+                                        <button
+                                            key={hint}
+                                            type="button"
+                                            onClick={() => setReason((r) => (r.toLowerCase().includes(hint.toLowerCase()) ? r : r ? `${r}, ${hint.toLowerCase()}` : hint))}
+                                            className="min-h-10 rounded-full border border-neutral-300 bg-white px-3.5 text-sm text-neutral-800 active:bg-emerald-50"
+                                        >
+                                            {hint}
+                                        </button>
+                                    ))}
                                 </div>
-                                <div className="flex justify-between border-b pb-2">
-                                    <span className="text-neutral-500">Time Slot</span>
-                                    <span className="text-emerald-600 font-bold">{selectedSlot}</span>
-                                </div>
-                                <div className="flex justify-between pt-2">
-                                    <span className="text-neutral-500">Consultation Fee</span>
-                                    <span className="font-mono text-lg">{formatLKR(selectedDoctor?.consultationFee)}</span>
-                                </div>
+                                <textarea
+                                    id="reason"
+                                    rows={3}
+                                    maxLength={500}
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    placeholder="Describe your symptoms in your own words"
+                                    className="flex min-h-24 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base placeholder:text-neutral-500 focus-visible:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600/30"
+                                />
                             </div>
-                        </CardContent>
-                        <div className="p-6 border-t flex justify-between">
-                            <Button variant="outline" onClick={() => setStep(2)}>
-                                <ChevronLeft className="mr-2 h-4 w-4" /> Back
-                            </Button>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={submitBooking}>
-                                <CheckCircle2 className="mr-2 h-4 w-4" /> Confirm Booking
-                            </Button>
-                        </div>
-                    </Card>
-                    </motion.div>
-                )}
+                        </section>
+                    )}
+                </motion.div>
             </AnimatePresence>
+
+            {/* The primary action stays at the bottom of the screen, under the thumb, however long the list above is */}
+            <div className="sticky bottom-0 z-30 -mx-4 border-t border-neutral-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur md:mx-0 md:rounded-xl md:border md:pb-3">
+                <p className="mb-2 truncate text-sm text-neutral-600" aria-live="polite">{summary}</p>
+                <div className="flex gap-2">
+                    {step > 1 && (
+                        <Button type="button" variant="outline" className="h-12 flex-shrink-0 px-4" onClick={() => goTo(step - 1)} disabled={submitting}>
+                            <ChevronLeft className="h-4 w-4" aria-hidden /> Back
+                        </Button>
+                    )}
+                    {step < 3 ? (
+                        <Button type="button" className="h-12 flex-1 text-base" disabled={!canContinue} onClick={() => goTo(step + 1)}>
+                            Continue <ChevronRight className="h-4 w-4" aria-hidden />
+                        </Button>
+                    ) : (
+                        <Button type="button" className="h-12 flex-1 text-base" disabled={submitting} onClick={submitBooking}>
+                            <CheckCircle2 className="h-4 w-4" aria-hidden /> {submitting ? 'Booking…' : 'Confirm booking'}
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );
