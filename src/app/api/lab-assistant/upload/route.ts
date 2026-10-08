@@ -1,53 +1,75 @@
-
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
+import { mkdir, unlink, writeFile } from 'fs/promises';
+import path from 'path';
 import { query } from '@/lib/db';
-import { cookies } from 'next/headers';
-import { AuthService } from '@/services/auth.service';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
+import { requireRole } from '@/lib/api-auth';
+import { MAX_REPORT_BYTES, detectReportType, reportDir } from '@/lib/lab-reports';
 
 // POST Upload Result
 export async function POST(req: Request) {
+    const auth = await requireRole('LAB_ASSISTANT');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
+    let storedPath: string | null = null;
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'LAB_ASSISTANT') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        const formData = await req.formData().catch(() => null);
+        const file = formData?.get('file');
+        const requestId = Number(formData?.get('requestId'));
 
-        const formData = await req.formData();
-        const file = formData.get('file') as File;
-        const requestId = formData.get('requestId') as string;
-
-        if (!file || !requestId) {
-            return NextResponse.json({ message: 'Missing file or request ID' }, { status: 400 });
+        if (!(file instanceof File) || !Number.isInteger(requestId) || requestId <= 0) {
+            return NextResponse.json({ message: 'A report file and a valid request ID are required' }, { status: 400 });
+        }
+        if (file.size === 0) {
+            return NextResponse.json({ message: 'The file is empty' }, { status: 400 });
+        }
+        if (file.size > MAX_REPORT_BYTES) {
+            return NextResponse.json({ message: 'The file is too large (10 MB maximum)' }, { status: 413 });
         }
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        // Save file locally (In production, use S3/Cloud Storage)
-        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-        const uploadDir = join(process.cwd(), 'public', 'uploads', 'lab-reports');
-        const filepath = join(uploadDir, filename);
-
-        // Ensure directory exists (node 10+ handles with recursive param, but usually good to check)
-        // For simplicity assuming public/uploads/lab-reports exists or handled by deploy script. 
-        // Let's rely on basic fs, possibly needing mkdir.
-        const fs = require('fs');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        const type = detectReportType(buffer);
+        if (!type) {
+            return NextResponse.json({ message: 'Only PDF, PNG and JPEG reports are accepted' }, { status: 415 });
         }
 
-        await writeFile(filepath, buffer);
-        const fileUrl = `/uploads/lab-reports/${filename}`;
+        const requests = await query<any[]>(
+            `SELECT lr.status AS lab_status, a.status AS appointment_status
+             FROM lab_requests lr JOIN appointments a ON a.id = lr.appointment_id WHERE lr.id = ?`,
+            [requestId]);
+        if (requests.length === 0) {
+            return NextResponse.json({ message: 'Lab request not found' }, { status: 404 });
+        }
+        if (requests[0].lab_status !== 'PENDING') {
+            return NextResponse.json({ message: 'A result has already been uploaded for this request' }, { status: 409 });
+        }
+        if (requests[0].appointment_status === 'CANCELLED') {
+            return NextResponse.json({ message: 'This appointment was cancelled' }, { status: 409 });
+        }
 
-        // Update Database
-        await query(
-            `UPDATE lab_requests SET status = 'COMPLETED', result_url = ?, completed_at = NOW() WHERE id = ?`,
-            [fileUrl, requestId]
-        );
+        // The stored name is generated here; nothing from the client's filename reaches the file system.
+        const storedName = `${requestId}-${randomUUID()}.${type.ext}`;
+        const dir = reportDir();
+        await mkdir(dir, { recursive: true });
+        storedPath = path.join(dir, storedName);
+        await writeFile(storedPath, buffer, { flag: 'wx' });
 
-        return NextResponse.json({ message: 'Result Uploaded Successfully', url: fileUrl });
+        // Atomic claim: only one concurrent upload can move the request out of PENDING.
+        const result: any = await query(
+            `UPDATE lab_requests
+             SET status = 'COMPLETED', result_file = ?, result_url = ?, uploaded_by = ?, completed_at = NOW()
+             WHERE id = ? AND status = 'PENDING'`,
+            [storedName, `/api/lab-reports/${requestId}`, user.id, requestId]);
+        if (result.affectedRows !== 1) {
+            await unlink(storedPath).catch(() => {});
+            return NextResponse.json({ message: 'A result has already been uploaded for this request' }, { status: 409 });
+        }
+        storedPath = null; // committed
 
+        return NextResponse.json({ message: 'Result Uploaded Successfully', url: `/api/lab-reports/${requestId}` });
     } catch (error) {
+        if (storedPath) await unlink(storedPath).catch(() => {});
         console.error('Upload Error:', error);
         return NextResponse.json({ message: 'Error' }, { status: 500 });
     }

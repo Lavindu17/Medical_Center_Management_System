@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 import dotenv from 'dotenv';
+import os from 'os';
 
 // Credentials come from .env.local, but the database is ALWAYS the isolated test schema.
 dotenv.config({ path: '.env.local', quiet: true });
@@ -28,6 +29,7 @@ export default defineConfig({
             MYSQL_PASSWORD: process.env.MYSQL_PASSWORD ?? '',
             MYSQL_DATABASE: TEST_DB,
             JWT_SECRET: 'integration-test-secret',
+            UPLOAD_DIR: path.join(os.tmpdir(), 'sethro-test-uploads'),
         },
     },
 });

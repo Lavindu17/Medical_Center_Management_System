@@ -18,6 +18,8 @@ export async function GET(req: Request) {
                 lr.id as request_id,
                 lr.status,
                 lr.requested_at,
+                lr.result_url,
+                lr.completed_at,
                 lt.name as test_name,
                 lt.price,
                 p.name as patient_name,
@@ -28,6 +30,7 @@ export async function GET(req: Request) {
             JOIN appointments a ON lr.appointment_id = a.id
             JOIN users p ON a.patient_id = p.id
             JOIN users d ON a.doctor_id = d.id
+            WHERE a.status <> 'CANCELLED'
             ORDER BY lr.requested_at DESC
         `);
 

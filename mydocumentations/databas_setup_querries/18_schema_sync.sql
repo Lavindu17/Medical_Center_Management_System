@@ -45,6 +45,17 @@ UPDATE prescription_items pi JOIN medicines m ON m.id = pi.medicine_id
    SET pi.dispensed_amount = pi.dispensed_quantity * m.price_per_unit
  WHERE pi.dispensed_amount = 0 AND pi.dispensed_quantity > 0;
 
+-- Lab reports are stored privately and served through /api/lab-reports/:id
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `lab_requests` ADD COLUMN `result_file` VARCHAR(100) NULL', 'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lab_requests' AND COLUMN_NAME = 'result_file');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `lab_requests` ADD COLUMN `uploaded_by` INT NULL', 'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lab_requests' AND COLUMN_NAME = 'uploaded_by');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Status values the pharmacist flow writes
 ALTER TABLE prescription_items
     MODIFY COLUMN status ENUM('PENDING','PARTIALLY_COMPLETED','DISPENSED','REJECTED') NOT NULL DEFAULT 'PENDING';
