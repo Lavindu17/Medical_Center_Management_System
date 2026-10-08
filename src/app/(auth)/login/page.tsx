@@ -1,24 +1,44 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { HeartPulse } from 'lucide-react';
+import { FormAlert, PasswordField, TextField } from '@/components/ui/text-field';
+import { AuthShell } from '@/components/auth/AuthShell';
 
-export default function LoginPage() {
-    const [isLoading, setIsLoading] = useState(false);
+const HOME_BY_ROLE: Record<string, string> = {
+    ADMIN: '/admin',
+    DOCTOR: '/doctor',
+    PATIENT: '/patient',
+    PHARMACIST: '/pharmacist',
+    LAB_ASSISTANT: '/lab-assistant',
+    RECEPTIONIST: '/receptionist',
+};
+
+const NOTICES: Record<string, string> = {
+    verified: 'Your email is verified. You can sign in now.',
+    reset: 'Your password was changed. Sign in with the new one.',
+};
+
+function LoginForm() {
     const router = useRouter();
+    const params = useSearchParams();
+    const notice = NOTICES[params.get('notice') ?? ''];
+
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsLoading(true);
+        setError(null);
+        setUnverifiedEmail(null);
 
         const formData = new FormData(event.currentTarget);
-        const email = formData.get('email');
+        const email = String(formData.get('email') ?? '').trim();
         const password = formData.get('password');
 
         try {
@@ -27,72 +47,85 @@ export default function LoginPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
             });
-
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                throw new Error(data.message || 'Login failed');
+                if (response.status === 403) setUnverifiedEmail(email);
+                throw new Error(data.message || 'Sign-in failed. Please try again.');
             }
 
-            // Redirect based on role
-            switch (data.user.role) {
-                case 'ADMIN': router.push('/admin'); break;
-                case 'DOCTOR': router.push('/doctor'); break;
-                case 'PATIENT': router.push('/patient'); break;
-                case 'PHARMACIST': router.push('/pharmacist'); break;
-                case 'LAB_ASSISTANT': router.push('/lab-assistant'); break;
-                case 'RECEPTIONIST': router.push('/receptionist'); break;
-                default: router.push('/');
-            }
-
-        } catch (error: any) {
-            alert(error.message); // Simple alert for now, can perform better toast later
-        } finally {
+            router.push(HOME_BY_ROLE[data.user.role] ?? '/');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
             setIsLoading(false);
         }
+        // On success the page navigates away, so the button stays in its busy state until then
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
-            <Card className="w-full max-w-md shadow-lg border-neutral-200 dark:border-neutral-800">
-                <CardHeader className="space-y-1 items-center text-center">
-                    <div className="h-12 w-12 bg-emerald-600 rounded-xl flex items-center justify-center text-white mb-4">
-                        <HeartPulse className="h-7 w-7" />
-                    </div>
-                    <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-                    <CardDescription>
-                        Sign in to your Sethro Medical account
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input id="email" name="email" type="email" placeholder="m@example.com" required className="focus-visible:ring-emerald-500" />
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Password</Label>
-                                <Link href="/forgot-password" className="text-sm text-emerald-600 hover:underline">
-                                    Forgot password?
-                                </Link>
-                            </div>
-                            <Input id="password" name="password" type="password" required className="focus-visible:ring-emerald-500" />
-                        </div>
-                        <Button disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
-                            {isLoading ? 'Signing In...' : 'Sign In'}
-                        </Button>
-                    </form>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4 text-center">
-                    <div className="text-sm text-neutral-500">
-                        Don't have an account?{' '}
-                        <Link href="/register" className="text-emerald-600 hover:underline font-medium">
-                            Create Patient Account
+        <AuthShell
+            title="Welcome back"
+            subtitle="Sign in to your Sethro Medical account"
+            footer={
+                <>
+                    New here?{' '}
+                    <Link href="/register" className="font-semibold text-emerald-700 hover:underline">Create a patient account</Link>
+                </>
+            }
+        >
+            <form onSubmit={handleSubmit} className="space-y-5" aria-busy={isLoading}>
+                {notice && !error && <FormAlert tone="success">{notice}</FormAlert>}
+                {error && (
+                    <FormAlert>
+                        <p className="font-medium">{error}</p>
+                        {unverifiedEmail && (
+                            <p className="mt-1">
+                                <Link
+                                    href={`/verify-email?email=${encodeURIComponent(unverifiedEmail)}`}
+                                    className="font-semibold underline underline-offset-2"
+                                >
+                                    Verify your email
+                                </Link>{' '}
+                                to finish setting up your account.
+                            </p>
+                        )}
+                    </FormAlert>
+                )}
+
+                <TextField
+                    label="Email"
+                    name="email"
+                    type="email"
+                    autoComplete="username"
+                    inputMode="email"
+                    placeholder="you@example.com"
+                    autoFocus
+                    required
+                />
+                <PasswordField
+                    label="Password"
+                    name="password"
+                    autoComplete="current-password"
+                    required
+                    labelAction={
+                        <Link href="/forgot-password" className="text-sm font-medium text-emerald-700 hover:underline">
+                            Forgot password?
                         </Link>
-                    </div>
-                </CardFooter>
-            </Card>
-        </div>
+                    }
+                />
+
+                <Button type="submit" size="lg" disabled={isLoading} className="h-11 w-full text-base">
+                    {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Signing in...</>) : 'Sign in'}
+                </Button>
+            </form>
+        </AuthShell>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
     );
 }

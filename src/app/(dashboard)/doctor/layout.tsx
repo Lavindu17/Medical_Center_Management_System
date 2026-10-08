@@ -1,6 +1,6 @@
 'use client';
 
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppShell } from '@/components/app-shell';
 import { LayoutDashboard, Calendar, Users, Banknote, User } from 'lucide-react';
 
 const navItems = [
@@ -13,13 +13,8 @@ const navItems = [
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="min-h-screen bg-neutral-50 flex font-sans">
-            <AppSidebar navItems={navItems} roleName="Doctor Portal" roleHref="/doctor" />
-            <main className="flex-1 md:ml-64 min-h-screen">
-                <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto pt-16 md:pt-6">
-                    {children}
-                </div>
-            </main>
-        </div>
+        <AppShell navItems={navItems} roleName="Doctor Portal" roleHref="/doctor">
+            {children}
+        </AppShell>
     );
 }

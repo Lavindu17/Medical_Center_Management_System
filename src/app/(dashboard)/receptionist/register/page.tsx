@@ -56,7 +56,7 @@ export default function RegisterPatient() {
         <div className="max-w-3xl mx-auto space-y-8">
             <div className="flex items-center gap-4">
                 <Link href="/receptionist">
-                    <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
+                    <Button variant="ghost" size="icon" aria-label="Back"><ArrowLeft className="h-5 w-5" aria-hidden /></Button>
                 </Link>
                 <div>
                     <h1 className="text-3xl font-bold text-neutral-900">Register New Patient</h1>
@@ -67,31 +67,31 @@ export default function RegisterPatient() {
             <div className="bg-white p-8 rounded-xl border shadow-sm">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <Label>Full Name</Label>
-                        <Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="John Doe" />
+                        <Label htmlFor="f-full-name">Full Name</Label>
+                        <Input id="f-full-name" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="John Doe" />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="john@example.com" />
+                            <Label htmlFor="f-email">Email</Label>
+                            <Input id="f-email" type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} placeholder="john@example.com" />
                             <p className="text-xs text-neutral-500">Used for login and notifications.</p>
                         </div>
                         <div className="space-y-2">
-                            <Label>Phone Number</Label>
-                            <Input required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+1 234 567 890" />
+                            <Label htmlFor="f-phone-number">Phone Number</Label>
+                            <Input id="f-phone-number" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} placeholder="+1 234 567 890" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <Label>Date of Birth</Label>
-                            <Input type="date" required value={formData.date_of_birth} onChange={e => setFormData({ ...formData, date_of_birth: e.target.value })} />
+                            <Label htmlFor="f-date-of-birth">Date of Birth</Label>
+                            <Input id="f-date-of-birth" type="date" required value={formData.date_of_birth} onChange={e => setFormData({ ...formData, date_of_birth: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label>Gender</Label>
+                            <Label htmlFor="f-gender">Gender</Label>
                             <Select value={formData.gender} onValueChange={val => setFormData({ ...formData, gender: val })}>
-                                <SelectTrigger>
+                                <SelectTrigger id="f-gender">
                                     <SelectValue placeholder="Select Gender" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -104,13 +104,13 @@ export default function RegisterPatient() {
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Address</Label>
-                        <Textarea required value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St, City, Country" />
+                        <Label htmlFor="f-address">Address</Label>
+                        <Textarea id="f-address" required value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St, City, Country" />
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Initial Medical History (Optional)</Label>
-                        <Textarea value={formData.medical_history} onChange={e => setFormData({ ...formData, medical_history: e.target.value })} placeholder="Known allergies, conditions, etc." />
+                        <Label htmlFor="f-initial-medical-history-optional">Initial Medical History (Optional)</Label>
+                        <Textarea id="f-initial-medical-history-optional" value={formData.medical_history} onChange={e => setFormData({ ...formData, medical_history: e.target.value })} placeholder="Known allergies, conditions, etc." />
                     </div>
 
                     <div className="pt-4 flex justify-end gap-3">

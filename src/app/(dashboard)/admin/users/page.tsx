@@ -1,5 +1,6 @@
 'use client';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { User } from '@/types';
 import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
 
 export default function UserManagementPage() {
+    const confirm = useConfirm();
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -103,15 +105,23 @@ export default function UserManagementPage() {
     }
 
     async function handleDeleteUser(id: string) {
-        if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
+        const ok = await confirm({
+            title: 'Delete this user?',
+            description: 'Their account and sign-in are removed. This cannot be undone. People with appointments or medical records cannot be deleted.',
+            confirmLabel: 'Delete user',
+            cancelLabel: 'Keep user',
+            destructive: true,
+        });
+        if (!ok) return;
 
         try {
             const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('Failed to delete');
+            if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Failed to delete');
 
+            toast.success('User deleted');
             fetchUsers();
         } catch (error) {
-            toast.error('Error deleting user');
+            toast.error(error instanceof Error ? error.message : 'Error deleting user');
         }
     }
 
@@ -133,7 +143,7 @@ export default function UserManagementPage() {
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
+                    <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
                     <p className="text-neutral-500">Manage staff access and patient accounts.</p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -152,8 +162,8 @@ export default function UserManagementPage() {
                         <form onSubmit={handleCreateUser} className="space-y-4 py-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Name</Label>
-                                    <Input name="name" value={formData.name} onChange={handleInputChange} required />
+                                    <Label htmlFor="f-name">Name</Label>
+                                    <Input id="f-name" name="name" value={formData.name} onChange={handleInputChange} required />
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Role</Label>
@@ -175,12 +185,12 @@ export default function UserManagementPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Email</Label>
-                                <Input type="email" name="email" value={formData.email} onChange={handleInputChange} required />
+                                <Label htmlFor="f-email">Email</Label>
+                                <Input id="f-email" type="email" name="email" value={formData.email} onChange={handleInputChange} required />
                             </div>
                             <div className="space-y-2">
-                                <Label>Password</Label>
-                                <Input type="password" name="password" value={formData.password} onChange={handleInputChange} required />
+                                <Label htmlFor="f-password">Password</Label>
+                                <Input id="f-password" type="password" name="password" value={formData.password} onChange={handleInputChange} required />
                             </div>
 
                             {formData.role === 'DOCTOR' && (
@@ -202,8 +212,8 @@ export default function UserManagementPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>License #</Label>
-                                        <Input name="licenseNumber" value={formData.licenseNumber} onChange={handleInputChange} required />
+                                        <Label htmlFor="f-license">License #</Label>
+                                        <Input id="f-license" name="licenseNumber" value={formData.licenseNumber} onChange={handleInputChange} required />
                                     </div>
                                 </div>
                             )}
@@ -231,7 +241,7 @@ export default function UserManagementPage() {
                             />
                         </div>
                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-[180px]" aria-label="Filter by role">
                                 <SelectValue placeholder="Filter by Role" />
                             </SelectTrigger>
                             <SelectContent>
@@ -278,11 +288,11 @@ export default function UserManagementPage() {
                                     <TableCell>{user.phone || '-'}</TableCell>
                                     <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(user)}>
-                                            <Edit className="h-4 w-4 text-neutral-500" />
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(user)} aria-label="Edit">
+                                            <Edit className="h-4 w-4 text-neutral-500" aria-hidden />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)}>
-                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} aria-label="Delete">
+                                            <Trash2 className="h-4 w-4 text-red-500" aria-hidden />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -300,24 +310,24 @@ export default function UserManagementPage() {
                     </DialogHeader>
                     <form onSubmit={handleUpdateUser} className="space-y-4">
                         <div className="space-y-2">
-                            <Label>Name</Label>
-                            <Input
+                            <Label htmlFor="f-name-2">Name</Label>
+                            <Input id="f-name-2"
                                 value={editFormData.name}
                                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
                                 required
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input
+                            <Label htmlFor="f-email-2">Email</Label>
+                            <Input id="f-email-2"
                                 value={editFormData.email}
                                 onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
                                 required
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Phone</Label>
-                            <Input
+                            <Label htmlFor="f-phone">Phone</Label>
+                            <Input id="f-phone"
                                 value={editFormData.phone}
                                 onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
                             />

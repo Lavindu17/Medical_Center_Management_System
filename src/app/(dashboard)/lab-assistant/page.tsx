@@ -178,7 +178,7 @@ export default function LabAssistantDashboard() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-gray-900">Lab Dashboard</h2>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Lab Dashboard</h1>
                     <p className="text-muted-foreground mt-1">Manage pending test requests and view history.</p>
                 </div>
                 <div className="flex w-full sm:w-auto items-center gap-2">

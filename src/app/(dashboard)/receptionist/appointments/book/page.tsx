@@ -113,7 +113,7 @@ export default function ReceptionistBookAppointment() {
                 <div className="space-y-6">
                     <Card>
                         <CardContent className="pt-6">
-                            <h3 className="font-semibold mb-4 flex items-center"><UserCheck className="mr-2 h-4 w-4" /> Select Patient</h3>
+                            <h2 className="font-semibold mb-4 flex items-center"><UserCheck className="mr-2 h-4 w-4" /> Select Patient</h2>
                             {!selectedPatient ? (
                                 <div className="space-y-4">
                                     <div className="relative">
@@ -158,12 +158,12 @@ export default function ReceptionistBookAppointment() {
                 <div className="space-y-6">
                     <Card>
                         <CardContent className="pt-6 space-y-4">
-                            <h3 className="font-semibold mb-4 flex items-center"><Calendar className="mr-2 h-4 w-4" /> Appointment Details</h3>
+                            <h2 className="font-semibold mb-4 flex items-center"><Calendar className="mr-2 h-4 w-4" /> Appointment Details</h2>
 
                             <div className="space-y-2">
-                                <Label>Select Doctor</Label>
+                                <Label htmlFor="f-select-doctor">Select Doctor</Label>
                                 <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                                    <SelectTrigger><SelectValue placeholder="Choose Doctor" /></SelectTrigger>
+                                    <SelectTrigger id="f-select-doctor"><SelectValue placeholder="Choose Doctor" /></SelectTrigger>
                                     <SelectContent>
                                         {doctors.map(d => (
                                             <SelectItem key={d.id} value={d.id.toString()}>{d.name} ({d.specialization})</SelectItem>
@@ -173,8 +173,8 @@ export default function ReceptionistBookAppointment() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Date</Label>
-                                <Input type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
+                                <Label htmlFor="f-date">Date</Label>
+                                <Input id="f-date" type="date" value={date} onChange={e => setDate(e.target.value)} min={new Date().toISOString().split('T')[0]} />
                             </div>
 
                             {selectedDoctor && date && (

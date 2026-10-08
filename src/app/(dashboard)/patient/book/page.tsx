@@ -212,7 +212,7 @@ export default function BookAppointmentPage() {
                                                 DR
                                             </div>
                                             <div>
-                                                <h3 className="font-semibold">{doc.name}</h3>
+                                                <h2 className="font-semibold">{doc.name}</h2>
                                                 <p className="text-sm text-neutral-500">{doc.specialization}</p>
                                                 <div className="mt-2 text-xs font-mono bg-white inline-block px-1 rounded border">
                                                     Fee: {formatLKR(doc.consultationFee)}
@@ -249,8 +249,8 @@ export default function BookAppointmentPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-2">
-                                <Label>Date</Label>
-                                <Input
+                                <Label htmlFor="f-date">Date</Label>
+                                <Input id="f-date"
                                     type="date"
                                     min={new Date().toISOString().split('T')[0]}
                                     value={selectedDate}

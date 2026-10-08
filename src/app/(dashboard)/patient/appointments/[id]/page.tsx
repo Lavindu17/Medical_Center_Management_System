@@ -58,8 +58,8 @@ export default function AppointmentDetailPage() {
         <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-5xl mx-auto pb-20">
             {/* Header Navigation */}
             <div className="flex items-center gap-4 mb-2">
-                <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 shrink-0">
-                    <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 shrink-0" aria-label="Back">
+                    <ArrowLeft className="h-5 w-5" aria-hidden />
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">

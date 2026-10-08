@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronRight, Play, Eye, Clock, CalendarDays, User } from 'lucide-react';
@@ -208,43 +209,5 @@ export default function DoctorAppointmentsPage() {
 }
 
 function StatusPill({ status }: { status: string }) {
-    // Dot + Text strategy
-    let color = 'bg-gray-100 text-gray-500';
-    let dot = 'bg-gray-400';
-    let label = status;
-
-    switch (status) {
-        case 'PENDING':
-            color = 'bg-yellow-50 text-yellow-700 border border-yellow-100';
-            dot = 'bg-yellow-500';
-            label = 'Pending';
-            break;
-        case 'CHECKED_IN':
-            color = 'bg-green-50 text-green-700 border border-green-100';
-            dot = 'bg-green-500 animate-pulse';
-            label = 'Checked In';
-            break;
-        case 'ONGOING':
-            color = 'bg-amber-50 text-amber-700 border border-amber-100';
-            dot = 'bg-amber-500';
-            label = 'Ongoing';
-            break;
-        case 'COMPLETED':
-            color = 'bg-emerald-50 text-emerald-700 border border-emerald-100';
-            dot = 'bg-emerald-500';
-            label = 'Completed';
-            break;
-        case 'CANCELLED':
-            color = 'bg-red-50 text-red-700 border border-red-100';
-            dot = 'bg-red-400';
-            label = 'Cancelled';
-            break;
-    }
-
-    return (
-        <div className={`flex items-center gap-2 px-3 py-1 rounded-full w-fit ${color}`}>
-            <span className={`h-2 w-2 rounded-full ${dot}`}></span>
-            <span className="text-xs font-semibold">{label}</span>
-        </div>
-    )
+    return <StatusBadge status={status} size="sm" />;
 }

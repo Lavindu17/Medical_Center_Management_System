@@ -83,7 +83,7 @@ export default function PrescriptionsPage() {
                     <div className="relative flex items-center">
                         <CalendarIcon className="absolute left-3 top-2.5 h-4 w-4 text-neutral-400" />
                         <Input
-                            type="date"
+                            type="date" aria-label="Filter by date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
                             className="pl-9 h-10 w-[150px] bg-neutral-50 [&::-webkit-calendar-picker-indicator]:opacity-0"
@@ -92,8 +92,8 @@ export default function PrescriptionsPage() {
                             <button 
                                 onClick={() => setSelectedDate('')}
                                 className="absolute right-2 top-2.5 text-neutral-400 hover:text-neutral-600 bg-neutral-50 px-1"
-                            >
-                                <X className="h-4 w-4" />
+                             aria-label="Close">
+                                <X className="h-4 w-4" aria-hidden />
                             </button>
                         )}
                     </div>
@@ -107,16 +107,16 @@ export default function PrescriptionsPage() {
                     </div>
                 ) : loadFailed ? (
                     <div role="alert" className="text-center p-12 bg-red-50 rounded-xl border border-red-200">
-                        <h3 className="text-lg font-medium text-red-800">Could not load prescriptions</h3>
+                        <h2 className="text-lg font-medium text-red-800">Could not load prescriptions</h2>
                         <p className="text-red-600 mb-4">Check your connection and try again.</p>
                         <Button variant="outline" onClick={fetchQueue}>Try again</Button>
                     </div>
                 ) : filteredQueue.length === 0 ? (
                     <div className="text-center p-12 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
                         <Pill className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                        <h3 className="text-lg font-medium text-neutral-900">
+                        <h2 className="text-lg font-medium text-neutral-900">
                             {activeTab === 'active' ? 'No Pending Prescriptions' : 'No History Found'}
-                        </h3>
+                        </h2>
                         <p className="text-neutral-500">
                             {activeTab === 'active' ? 'Great job! The queue is empty.' : 'Try adjusting your search or date filter.'}
                         </p>
@@ -129,7 +129,7 @@ export default function PrescriptionsPage() {
                                     {(item.patient_name ?? '?').charAt(0)}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-semibold text-neutral-900">{item.patient_name}</h3>
+                                    <h2 className="text-lg font-semibold text-neutral-900">{item.patient_name}</h2>
                                     <div className="flex items-center gap-4 text-sm text-neutral-500 mt-1">
                                         <span className="flex items-center gap-1">
                                             <User className="h-3 w-3" /> {asDoctor(item.doctor_name)}

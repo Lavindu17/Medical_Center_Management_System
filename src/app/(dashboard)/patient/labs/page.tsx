@@ -47,7 +47,7 @@ export default function LabReportsPage() {
                                         <FileText className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-lg">{item.testName}</h3>
+                                        <h2 className="font-bold text-lg">{item.testName}</h2>
                                         <p className="text-sm text-neutral-500">{item.description}</p>
                                         <div className="text-xs text-neutral-400 mt-1">
                                             Ordered by {item.doctorName} • {new Date(item.requested_at).toLocaleDateString()}

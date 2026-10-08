@@ -261,7 +261,7 @@ export default function ExpiryAlertsPage() {
                                             <div key={batch.batch_id} className="p-4 hover:bg-red-50/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <h3 className="font-semibold text-neutral-900">{batch.medicine_name}</h3>
+                                                        <h2 className="font-semibold text-neutral-900">{batch.medicine_name}</h2>
                                                         <p className="text-xs text-neutral-500 font-mono mt-0.5">Batch: {batch.batch_number}</p>
                                                     </div>
                                                     <Badge variant="destructive" className="bg-red-500">Expired</Badge>
@@ -296,7 +296,7 @@ export default function ExpiryAlertsPage() {
                                             <div key={batch.batch_id} className="p-4 hover:bg-amber-50/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <h3 className="font-semibold text-neutral-900">{batch.medicine_name}</h3>
+                                                        <h2 className="font-semibold text-neutral-900">{batch.medicine_name}</h2>
                                                         <p className="text-xs text-neutral-500 font-mono mt-0.5">Batch: {batch.batch_number}</p>
                                                     </div>
                                                     <Badge className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200">Expiring Soon</Badge>
@@ -331,7 +331,7 @@ export default function ExpiryAlertsPage() {
                                             <div key={med.medicine_id} className="p-4 hover:bg-orange-50/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <h3 className="font-semibold text-neutral-900">{med.medicine_name}</h3>
+                                                        <h2 className="font-semibold text-neutral-900">{med.medicine_name}</h2>
                                                         <div className="flex gap-2 mt-1">
                                                             {med.generic_name && <span className="text-xs text-neutral-500">{med.generic_name}</span>}
                                                             {med.category && <span className="text-[10px] uppercase bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded">{med.category}</span>}
@@ -382,7 +382,7 @@ export default function ExpiryAlertsPage() {
                                             <div key={med.medicine_id} className="p-4 hover:bg-blue-50/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <h3 className="font-semibold text-neutral-900">{med.medicine_name}</h3>
+                                                        <h2 className="font-semibold text-neutral-900">{med.medicine_name}</h2>
                                                         <p className="text-xs text-neutral-600 mt-0.5">{med.batch_count} active batches</p>
                                                     </div>
                                                     <Badge className="bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200">
@@ -431,7 +431,7 @@ export default function ExpiryAlertsPage() {
                                             <div key={batch.batch_id} className="p-4 hover:bg-yellow-50/30 transition-colors">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <h3 className="font-semibold text-neutral-900">{batch.medicine_name}</h3>
+                                                        <h2 className="font-semibold text-neutral-900">{batch.medicine_name}</h2>
                                                         <p className="text-xs text-neutral-500 font-mono mt-0.5">Batch: {batch.batch_number}</p>
                                                     </div>
                                                     <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200">Monitor</Badge>

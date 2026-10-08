@@ -1,5 +1,7 @@
 'use client';
 import { toast } from 'sonner';
+import { friendlyDay } from '@/lib/dates';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +27,7 @@ import { ShieldCheck } from 'lucide-react';
 import { ChangePasswordCard } from '@/components/auth/ChangePasswordCard';
 
 export default function DoctorProfilePage() {
+    const confirm = useConfirm();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -131,7 +134,12 @@ export default function DoctorProfilePage() {
                     : format(new Date(b.date), 'yyyy-MM-dd');
                 return blockedDateStr === dateStr;
             });
-            if (leave && confirm(`Unblock ${dateStr}?`)) {
+            if (leave && await confirm({
+                title: `Remove your leave on ${friendlyDay(dateStr)}?`,
+                description: 'Patients will be able to book you on that day again.',
+                confirmLabel: 'Remove leave',
+                cancelLabel: 'Keep leave',
+            })) {
                 try {
                     const res = await fetch(`/api/doctor/profile/leaves?id=${leave.id}`, { method: 'DELETE' });
                     if (res.ok) {
@@ -223,16 +231,16 @@ export default function DoctorProfilePage() {
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Full Name</Label>
-                                    <Input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} />
+                                    <Label htmlFor="f-full-name">Full Name</Label>
+                                    <Input id="f-full-name" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Contact Phone</Label>
-                                    <Input value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} />
+                                    <Label htmlFor="f-contact-phone">Contact Phone</Label>
+                                    <Input id="f-contact-phone" value={profile.phone} onChange={e => setProfile({ ...profile, phone: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Specialization</Label>
-                                    <select
+                                    <Label htmlFor="f-specialization">Specialization</Label>
+                                    <select id="f-specialization"
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         value={profile.specialization}
                                         onChange={e => setProfile({ ...profile, specialization: e.target.value })}
@@ -244,12 +252,12 @@ export default function DoctorProfilePage() {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Consultation Fee (LKR)</Label>
-                                    <Input type="number" value={profile.consultation_fee} onChange={e => setProfile({ ...profile, consultation_fee: e.target.value })} />
+                                    <Label htmlFor="f-consultation-fee-lkr">Consultation Fee (LKR)</Label>
+                                    <Input id="f-consultation-fee-lkr" type="number" value={profile.consultation_fee} onChange={e => setProfile({ ...profile, consultation_fee: e.target.value })} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>License Number</Label>
-                                    <Input value={profile.license_number} onChange={e => setProfile({ ...profile, license_number: e.target.value })} />
+                                    <Label htmlFor="f-license-number">License Number</Label>
+                                    <Input id="f-license-number" value={profile.license_number} onChange={e => setProfile({ ...profile, license_number: e.target.value })} />
                                 </div>
                             </div>
                             <div className="pt-4">
@@ -270,8 +278,8 @@ export default function DoctorProfilePage() {
                         <CardContent className="space-y-6">
 
                             <div className="space-y-2">
-                                <Label>Slot Duration (Minutes)</Label>
-                                <select
+                                <Label htmlFor="f-slot-duration-minutes">Slot Duration (Minutes)</Label>
+                                <select id="f-slot-duration-minutes"
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm max-w-xs"
                                     value={slotDuration}
                                     onChange={e => setSlotDuration(e.target.value)}
@@ -293,23 +301,23 @@ export default function DoctorProfilePage() {
                                             size="icon" variant="ghost"
                                             className="absolute top-2 right-2 text-neutral-400 hover:text-red-500 h-8 w-8"
                                             onClick={() => removeScheduleBlock(idx)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
+                                         aria-label="Delete">
+                                            <Trash2 className="h-4 w-4" aria-hidden />
                                         </Button>
 
                                         <div className="grid grid-cols-2 gap-4 max-w-md">
                                             <div className="space-y-1">
-                                                <Label className="text-xs">Start Time</Label>
+                                                <Label htmlFor="f-start-time" className="text-xs">Start Time</Label>
                                                 <div className="relative">
                                                     <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
-                                                    <Input type="time" className="pl-8 h-9" value={block.start_time} onChange={e => updateScheduleTime(idx, 'start_time', e.target.value)} />
+                                                    <Input id="f-start-time" type="time" className="pl-8 h-9" value={block.start_time} onChange={e => updateScheduleTime(idx, 'start_time', e.target.value)} />
                                                 </div>
                                             </div>
                                             <div className="space-y-1">
-                                                <Label className="text-xs">End Time</Label>
+                                                <Label htmlFor="f-end-time" className="text-xs">End Time</Label>
                                                 <div className="relative">
                                                     <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
-                                                    <Input type="time" className="pl-8 h-9" value={block.end_time} onChange={e => updateScheduleTime(idx, 'end_time', e.target.value)} />
+                                                    <Input id="f-end-time" type="time" className="pl-8 h-9" value={block.end_time} onChange={e => updateScheduleTime(idx, 'end_time', e.target.value)} />
                                                 </div>
                                             </div>
                                         </div>
@@ -383,8 +391,8 @@ export default function DoctorProfilePage() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label>Reason (Optional)</Label>
-                            <Input
+                            <Label htmlFor="f-reason-optional">Reason (Optional)</Label>
+                            <Input id="f-reason-optional"
                                 placeholder="vacation, personal leave, conference..."
                                 value={blockReason}
                                 onChange={e => setBlockReason(e.target.value)}

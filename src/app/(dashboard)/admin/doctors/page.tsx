@@ -82,7 +82,7 @@ export default function DoctorManagementPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Doctor Management</h2>
+                <h1 className="text-3xl font-bold tracking-tight">Doctor Management</h1>
                 <p className="text-neutral-500">Set consultation fees and view earnings configuration.</p>
             </div>
 
@@ -133,8 +133,8 @@ export default function DoctorManagementPage() {
                                     <TableCell className="font-mono">LKR {Number(doc.consultationFee).toFixed(2)}</TableCell>
                                     <TableCell className="font-mono">{doc.commissionRate}%</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(doc)}>
-                                            <Edit className="h-4 w-4" />
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(doc)} aria-label="Edit">
+                                            <Edit className="h-4 w-4" aria-hidden />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -159,10 +159,10 @@ export default function DoctorManagementPage() {
                     <form onSubmit={handleSave} className="space-y-4 py-2">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Consultation Fee (LKR)</Label>
+                                <Label htmlFor="f-consultation-fee-lkr">Consultation Fee (LKR)</Label>
                                 <div className="relative">
                                     <span className="absolute left-2 top-2.5 text-xs font-bold text-neutral-500">LKR</span>
-                                    <Input
+                                    <Input id="f-consultation-fee-lkr"
                                         className="pl-10"
                                         type="number"
                                         step="0.01"
@@ -173,10 +173,10 @@ export default function DoctorManagementPage() {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Commission Rate (%)</Label>
+                                <Label htmlFor="f-commission-rate">Commission Rate (%)</Label>
                                 <div className="relative">
                                     <span className="absolute right-3 top-2.5 text-sm text-neutral-500">%</span>
-                                    <Input
+                                    <Input id="f-commission-rate"
                                         type="number"
                                         step="0.01"
                                         min="0"

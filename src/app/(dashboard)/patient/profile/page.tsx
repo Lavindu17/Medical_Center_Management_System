@@ -201,24 +201,24 @@ export default function PatientProfilePage() {
                         <CardContent className="space-y-4">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Full Name</Label>
-                                    <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="h-11 md:h-10" />
+                                    <Label htmlFor="f-full-name">Full Name</Label>
+                                    <Input id="f-full-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Phone Number</Label>
-                                    <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="h-11 md:h-10" />
+                                    <Label htmlFor="f-phone-number">Phone Number</Label>
+                                    <Input id="f-phone-number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Email</Label>
-                                    <Input value={form.email} disabled className="bg-neutral-50 h-11 md:h-10" />
+                                    <Label htmlFor="f-email">Email</Label>
+                                    <Input id="f-email" value={form.email} disabled className="bg-neutral-50 h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Date of Birth</Label>
-                                    <Input type="date" value={form.date_of_birth} disabled className="bg-neutral-50 h-11 md:h-10" />
+                                    <Label htmlFor="f-date-of-birth">Date of Birth</Label>
+                                    <Input id="f-date-of-birth" type="date" value={form.date_of_birth} disabled className="bg-neutral-50 h-11 md:h-10" />
                                 </div>
                                 <div className="md:col-span-2 space-y-2">
-                                    <Label>Address</Label>
-                                    <Textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="min-h-[80px]" />
+                                    <Label htmlFor="f-address">Address</Label>
+                                    <Textarea id="f-address" value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="min-h-[80px]" />
                                 </div>
                             </div>
                         </CardContent>
@@ -238,9 +238,9 @@ export default function PatientProfilePage() {
                         <CardContent className="space-y-6">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Blood Group</Label>
+                                    <Label htmlFor="f-blood-group">Blood Group</Label>
                                     <Select value={form.blood_group} onValueChange={(val) => setForm({ ...form, blood_group: val })}>
-                                        <SelectTrigger className="h-11 md:h-10">
+                                        <SelectTrigger id="f-blood-group" className="h-11 md:h-10">
                                             <SelectValue placeholder="Select Blood Group" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -285,7 +285,7 @@ export default function PatientProfilePage() {
                                         <Badge key={idx} variant="outline" className={`flex items-center gap-2 pl-3 pr-1 py-1 h-8 ${getSeverityColor(allergy.severity)}`}>
                                             <span className="font-semibold">{allergy.name}</span>
                                             <span className="text-[10px] opacity-75 uppercase tracking-wider">{allergy.severity}</span>
-                                            <button onClick={() => removeAllergy(idx)} className="hover:bg-black/10 rounded-full p-1 ml-1 min-h-[24px] min-w-[24px] flex items-center justify-center"><X className="h-3 w-3" /></button>
+                                            <button onClick={() => removeAllergy(idx)} className="hover:bg-black/10 rounded-full p-1 ml-1 min-h-[24px] min-w-[24px] flex items-center justify-center" aria-label="Close"><X className="h-3 w-3" aria-hidden /></button>
                                         </Badge>
                                     ))}
                                 </div>
@@ -308,12 +308,12 @@ export default function PatientProfilePage() {
                         <CardContent className="space-y-4">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Contact Name</Label>
-                                    <Input value={form.emergency_contact_name} onChange={e => setForm({ ...form, emergency_contact_name: e.target.value })} placeholder="e.g. Spouse, Parent" className="h-11 md:h-10" />
+                                    <Label htmlFor="f-contact-name">Contact Name</Label>
+                                    <Input id="f-contact-name" value={form.emergency_contact_name} onChange={e => setForm({ ...form, emergency_contact_name: e.target.value })} placeholder="e.g. Spouse, Parent" className="h-11 md:h-10" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Contact Phone</Label>
-                                    <Input value={form.emergency_contact_phone} onChange={e => setForm({ ...form, emergency_contact_phone: e.target.value })} placeholder="+94..." className="h-11 md:h-10" />
+                                    <Label htmlFor="f-contact-phone">Contact Phone</Label>
+                                    <Input id="f-contact-phone" value={form.emergency_contact_phone} onChange={e => setForm({ ...form, emergency_contact_phone: e.target.value })} placeholder="+94..." className="h-11 md:h-10" />
                                 </div>
                             </div>
                         </CardContent>
@@ -367,13 +367,13 @@ export default function PatientProfilePage() {
                                 <div className="grid gap-4 p-4 bg-neutral-50 rounded-lg border border-dashed">
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs">Member ID or Email</Label>
-                                            <Input placeholder="e.g. PT-2024-XXX or email@example.com" className="bg-white" />
+                                            <Label htmlFor="f-member-id-or-email" className="text-xs">Member ID or Email</Label>
+                                            <Input id="f-member-id-or-email" placeholder="e.g. PT-2024-XXX or email@example.com" className="bg-white" />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs">Relationship</Label>
+                                            <Label htmlFor="f-relationship" className="text-xs">Relationship</Label>
                                             <Select>
-                                                <SelectTrigger className="bg-white">
+                                                <SelectTrigger id="f-relationship" className="bg-white">
                                                     <SelectValue placeholder="Select Relationship" />
                                                 </SelectTrigger>
                                                 <SelectContent>

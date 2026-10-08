@@ -452,9 +452,9 @@ export default function BillingPage() {
 
                             {/* Payment Method */}
                             <div className="space-y-2">
-                                <Label className="text-sm font-semibold">Payment Method</Label>
+                                <Label htmlFor="f-payment-method" className="text-sm font-semibold">Payment Method</Label>
                                 <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                                    <SelectTrigger className="h-11">
+                                    <SelectTrigger id="f-payment-method" className="h-11">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>

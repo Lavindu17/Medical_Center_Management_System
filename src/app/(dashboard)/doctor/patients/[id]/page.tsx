@@ -44,8 +44,8 @@ export default function PatientHistoryPage() {
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                    <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
+                    <ArrowLeft className="h-5 w-5" aria-hidden />
                 </Button>
                 <div>
                     <h1 className="text-3xl font-bold text-neutral-900">{patient.name}</h1>

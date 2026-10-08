@@ -78,7 +78,7 @@ export default function PrescriptionsPage() {
                                         <Pill className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-lg">Prescription #{prescription.id}</h3>
+                                        <h2 className="font-bold text-lg">Prescription #{prescription.id}</h2>
                                         <div className="text-sm text-neutral-500 mt-1">
                                             {asDoctor(prescription.doctorName)} <span className="mx-1">•</span> {prescription.specialization}
                                         </div>
@@ -103,7 +103,7 @@ export default function PrescriptionsPage() {
                             {/* Prescription Items (Collapsible) */}
                             {expandedPrescriptions[prescription.id] && (
                                 <div className="border-t bg-neutral-50/50 p-6">
-                                    <h4 className="font-semibold text-sm text-neutral-500 mb-4 uppercase tracking-wider">Prescribed Medications</h4>
+                                    <h3 className="font-semibold text-sm text-neutral-500 mb-4 uppercase tracking-wider">Prescribed Medications</h3>
                                     <div className="space-y-4">
                                         {prescription.items.map((item: any, idx: number) => (
                                             <div key={idx} className="flex justify-between items-start bg-white p-4 border rounded-lg shadow-sm">

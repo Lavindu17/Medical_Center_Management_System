@@ -77,7 +77,7 @@ export default async function ReceptionistDashboard() {
             </div>
 
             <div className="p-6 bg-white rounded-xl border border-neutral-200 shadow-none">
-                <h3 className="font-semibold mb-2 text-neutral-700">Queue Status</h3>
+                <h2 className="font-semibold mb-2 text-neutral-700">Queue Status</h2>
                 <p className="text-neutral-400 text-sm">Doctor queues will appear here once check-ins are processed.</p>
             </div>
         </div>

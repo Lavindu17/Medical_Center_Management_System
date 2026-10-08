@@ -1,13 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+    ArrowRight, CalendarCheck, CalendarClock, CalendarX, CheckCircle2, Clock, CreditCard, FileText, Pill, Plus, X,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { SkeletonCard } from '@/components/ui/skeleton';
-import { Calendar, Plus, Clock, User as UserIcon, CalendarX, ArrowRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { EmptyState, ErrorState } from '@/components/ui/state-views';
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
+import { useConfirm } from '@/components/ui/confirm-dialog';
+import { useAuth } from '@/context/AuthContext';
+import { asDoctor } from '@/lib/names';
+import { daysFromToday, firstName, friendlyDay, greeting, parseDay, shortTime } from '@/lib/dates';
 
 interface Appointment {
     id: number;
@@ -19,194 +28,270 @@ interface Appointment {
     specialization: string;
 }
 
-const fadeUp = {
-    hidden: { opacity: 0, y: 16 },
-    show: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.07, duration: 0.3 } }),
-};
+const CANCELLABLE = ['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED'];
+const IN_PROGRESS = ['CHECKED_IN', 'ARRIVED', 'ONGOING'];
 
-function StatusBadge({ status }: { status: string }) {
-    const map: Record<string, string> = {
-        PENDING: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        CONFIRMED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        ARRIVED: 'bg-teal-50 text-teal-700 border-teal-200',
-        ABSENT: 'bg-red-50 text-red-600 border-red-200',
-        NO_SHOW: 'bg-red-50 text-red-600 border-red-200',
-        COMPLETED: 'bg-neutral-100 text-neutral-600 border-neutral-200',
-        CANCELLED: 'bg-red-50 text-red-600 border-red-200',
-        CHECKED_IN: 'bg-teal-50 text-teal-700 border-teal-200',
-        ONGOING: 'bg-amber-50 text-amber-700 border-amber-200',
-    };
+const QUICK_ACTIONS = [
+    { href: '/patient/book', label: 'Book a visit', hint: 'Pick a doctor and time', icon: CalendarCheck },
+    { href: '/patient/prescriptions', label: 'Prescriptions', hint: 'Your medicines', icon: Pill },
+    { href: '/patient/labs', label: 'Lab reports', hint: 'Results and files', icon: FileText },
+    { href: '/patient/billing', label: 'Bills', hint: 'Charges and payments', icon: CreditCard },
+];
+
+/** The booking flow sends people back here with ?success=true&queue=N: confirm it, then let it be dismissed. */
+function BookingConfirmation() {
+    const router = useRouter();
+    const params = useSearchParams();
+    const queue = params.get('queue');
+    if (params.get('success') !== 'true') return null;
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${map[status] ?? 'bg-neutral-100 text-neutral-600 border-neutral-200'}`}>
-            {status}
-        </span>
+        <div role="status" className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-700" aria-hidden />
+            <div className="flex-1 text-sm">
+                <p className="font-semibold">Your appointment is booked.</p>
+                {queue && <p className="mt-0.5">Your queue number is <strong>#{queue}</strong>. Show it at the front desk when you arrive.</p>}
+            </div>
+            <button
+                type="button"
+                onClick={() => router.replace('/patient', { scroll: false })}
+                className="-m-1 flex h-9 w-9 items-center justify-center rounded-md text-emerald-800 hover:bg-emerald-100"
+                aria-label="Dismiss"
+            >
+                <X className="h-4 w-4" aria-hidden />
+            </button>
+        </div>
+    );
+}
+
+function NextVisit({ appointment, onCancel }: { appointment: Appointment; onCancel: (a: Appointment) => void }) {
+    const diff = daysFromToday(appointment.date);
+    const when = friendlyDay(appointment.date);
+    const active = IN_PROGRESS.includes(appointment.status);
+
+    return (
+        <section aria-labelledby="next-visit-heading" className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between gap-3 bg-emerald-800 px-5 py-3 text-white">
+                <h2 id="next-visit-heading" className="text-sm font-semibold uppercase tracking-wider text-emerald-100">
+                    {active ? 'Your visit is underway' : 'Your next visit'}
+                </h2>
+                <StatusBadge status={appointment.status} size="sm" className="border-transparent" />
+            </div>
+
+            <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-3">
+                    <div>
+                        <p className="text-xl font-bold text-neutral-900">{asDoctor(appointment.doctorName)}</p>
+                        <p className="text-sm text-neutral-500">{appointment.specialization}</p>
+                    </div>
+                    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-700">
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-neutral-900">
+                            <CalendarClock className="h-4 w-4 text-emerald-700" aria-hidden />
+                            {when}{diff > 1 && diff <= 14 ? <span className="font-normal text-neutral-500"> (in {diff} days)</span> : null}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                            <Clock className="h-4 w-4 text-emerald-700" aria-hidden />
+                            {shortTime(appointment.timeSlot)}
+                        </span>
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-5">
+                    <div className="rounded-xl bg-emerald-50 px-5 py-3 text-center" aria-label={`Queue number ${appointment.queueNumber}`}>
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-emerald-800">Queue</p>
+                        <p className="text-3xl font-bold leading-none text-emerald-800 tabular">#{appointment.queueNumber}</p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={`/patient/appointments/${appointment.id}`}>View details</Link>
+                        </Button>
+                        {CANCELLABLE.includes(appointment.status) && (
+                            <Button variant="ghost" size="sm" className="text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onCancel(appointment)}>
+                                Cancel visit
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function VisitRow({ appointment, onCancel }: { appointment: Appointment; onCancel?: (a: Appointment) => void }) {
+    return (
+        <li className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+            <Link href={`/patient/appointments/${appointment.id}`} className="min-w-0 flex-1 rounded-md hover:text-emerald-800">
+                <p className="truncate font-semibold text-neutral-900">{asDoctor(appointment.doctorName)}</p>
+                <p className="mt-0.5 text-sm text-neutral-500">
+                    {friendlyDay(appointment.date)} at {shortTime(appointment.timeSlot)}
+                    <span className="mx-1.5" aria-hidden>·</span>
+                    {appointment.specialization}
+                </p>
+            </Link>
+            <div className="flex items-center gap-3">
+                <StatusBadge status={appointment.status} size="sm" />
+                {onCancel && CANCELLABLE.includes(appointment.status) && (
+                    <Button variant="ghost" size="sm" className="text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => onCancel(appointment)}>
+                        Cancel
+                    </Button>
+                )}
+            </div>
+        </li>
     );
 }
 
 export default function PatientDashboard() {
+    const { user } = useAuth();
+    const confirm = useConfirm();
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+    const [failed, setFailed] = useState(false);
 
-    useEffect(() => {
-        fetch('/api/auth/session')
-            .then(res => { if (res.ok) return res.json(); throw new Error('Unauthorized'); })
-            .then(data => {
-                setUser(data.user);
-                fetchAppointments(data.user.id);
-            })
-            .catch(console.error);
-    }, []);
-
-    async function fetchAppointments(patientId: number) {
+    const load = useCallback(async () => {
         try {
-            const res = await fetch(`/api/appointments?patientId=${patientId}`);
-            if (res.ok) setAppointments(await res.json());
-        } catch (error) {
-            console.error(error);
+            const res = await fetch('/api/appointments', { cache: 'no-store' });
+            if (!res.ok) throw new Error('bad response');
+            setAppointments(await res.json());
+            setFailed(false);
+        } catch {
+            setFailed(true);
         } finally {
             setIsLoading(false);
         }
+    }, []);
+
+    useEffect(() => {
+        const timer = setTimeout(load, 0);
+        return () => clearTimeout(timer);
+    }, [load]);
+
+    const { upcoming, history, completedCount, cancelledCount } = useMemo(() => {
+        const live = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && a.status !== 'ABSENT' && a.status !== 'NO_SHOW' && daysFromToday(a.date) >= 0);
+        live.sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime() || a.timeSlot.localeCompare(b.timeSlot));
+        const rest = appointments.filter((a) => !live.includes(a));
+        rest.sort((a, b) => parseDay(b.date).getTime() - parseDay(a.date).getTime());
+        return {
+            upcoming: live,
+            history: rest,
+            completedCount: appointments.filter((a) => a.status === 'COMPLETED').length,
+            cancelledCount: appointments.filter((a) => a.status === 'CANCELLED').length,
+        };
+    }, [appointments]);
+
+    async function cancel(appointment: Appointment) {
+        const ok = await confirm({
+            title: 'Cancel this appointment?',
+            description: `${asDoctor(appointment.doctorName)}, ${friendlyDay(appointment.date)} at ${shortTime(appointment.timeSlot)}. The time slot will be offered to other patients.`,
+            confirmLabel: 'Cancel appointment',
+            cancelLabel: 'Keep appointment',
+            destructive: true,
+        });
+        if (!ok) return;
+
+        const res = await fetch('/api/appointments/cancel', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ appointmentId: appointment.id }),
+        });
+        if (res.ok) {
+            toast.success('Appointment cancelled');
+            load();
+        } else {
+            toast.error((await res.json().catch(() => null))?.message || 'Could not cancel this appointment.');
+        }
     }
 
-    const upcoming = appointments.filter(a =>
-        a.status !== 'CANCELLED' && new Date(a.date) >= new Date(new Date().setHours(0, 0, 0, 0))
-    );
-    const past = appointments.filter(a =>
-        a.status === 'CANCELLED' || new Date(a.date) < new Date(new Date().setHours(0, 0, 0, 0))
-    );
+    const next = upcoming[0];
+    const laterVisits = upcoming.slice(1);
+    const name = firstName(user?.name);
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-            >
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">
-                        Hi, <span className="text-emerald-600">{user?.name ?? '…'}</span>
-                    </h1>
-                    <p className="text-neutral-500 mt-0.5 text-sm">Here's your health dashboard.</p>
+        <div className="space-y-8">
+            <PageHeader
+                title={name ? `${greeting()}, ${name}` : greeting()}
+                description="Here is what is coming up and where to find your records."
+                actions={
+                    <Button asChild size="lg" className="gap-2">
+                        <Link href="/patient/book"><Plus className="h-4 w-4" aria-hidden /> Book appointment</Link>
+                    </Button>
+                }
+            />
+
+            <Suspense fallback={null}><BookingConfirmation /></Suspense>
+
+            {isLoading ? (
+                <div className="space-y-4" aria-busy="true" aria-label="Loading your appointments">
+                    <Skeleton className="h-44 w-full rounded-2xl" />
+                    <div className="grid grid-cols-3 gap-3">
+                        {[0, 1, 2].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+                    </div>
+                    <SkeletonCard lines={3} />
                 </div>
-                <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 gap-2 shadow-sm">
-                    <Link href="/patient/book">
-                        <Plus className="h-4 w-4" /> Book Appointment
-                    </Link>
-                </Button>
-            </motion.div>
+            ) : failed ? (
+                <ErrorState title="We couldn't load your appointments" onRetry={load} />
+            ) : (
+                <>
+                    {next ? (
+                        <NextVisit appointment={next} onCancel={cancel} />
+                    ) : (
+                        <EmptyState
+                            icon={CalendarX}
+                            title="No upcoming appointments"
+                            description="Book a visit with one of our doctors. You will get a queue number straight away."
+                            action={{ label: 'Book an appointment', href: '/patient/book' }}
+                        />
+                    )}
 
-            {/* KPI row */}
-            <div className="grid grid-cols-2 gap-3">
-                {[
-                    { label: 'Upcoming', value: isLoading ? '—' : upcoming.length, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'Past / Cancelled', value: isLoading ? '—' : past.length, color: 'text-neutral-500', bg: 'bg-neutral-100' },
-                ].map((kpi, i) => (
-                    <motion.div key={kpi.label} custom={i} variants={fadeUp} initial="hidden" animate="show">
-                        <Card className="border border-neutral-200 shadow-none">
-                            <CardContent className="p-4">
-                                <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide">{kpi.label}</p>
-                                <p className={`text-3xl font-bold mt-1 ${kpi.color}`}>{kpi.value}</p>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                ))}
-            </div>
+                    <section aria-label="Overview" className="grid grid-cols-3 gap-3">
+                        <StatCard label="Upcoming" value={upcoming.length} icon={CalendarClock} tone="brand" href="/patient/appointments" />
+                        <StatCard label="Completed" value={completedCount} icon={CheckCircle2} tone="info" />
+                        <StatCard label="Cancelled" value={cancelledCount} icon={CalendarX} tone="neutral" />
+                    </section>
 
-            {/* Upcoming Appointments */}
-            <div>
-                <h2 className="text-base font-semibold text-neutral-900 flex items-center gap-2 mb-3">
-                    <Calendar className="h-4 w-4 text-emerald-600" /> Upcoming Visits
-                </h2>
+                    <section aria-labelledby="quick-heading" className="space-y-3">
+                        <h2 id="quick-heading" className="text-base font-semibold text-neutral-900">Quick actions</h2>
+                        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            {QUICK_ACTIONS.map(({ href, label, hint, icon: Icon }) => (
+                                <li key={href}>
+                                    <Link
+                                        href={href}
+                                        className="group flex h-full min-h-[88px] items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-[var(--shadow-card)] transition-all hover:border-emerald-300 hover:shadow-[var(--shadow-raised)]"
+                                    >
+                                        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition-colors group-hover:bg-emerald-100">
+                                            <Icon className="h-5 w-5" aria-hidden />
+                                        </span>
+                                        <span className="min-w-0">
+                                            <span className="block font-semibold text-neutral-900">{label}</span>
+                                            <span className="block text-xs text-neutral-500">{hint}</span>
+                                        </span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
 
-                {isLoading ? (
-                    <div className="space-y-3">
-                        {[0, 1, 2].map(i => <SkeletonCard key={i} lines={3} />)}
-                    </div>
-                ) : upcoming.length === 0 ? (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-                        <Card className="border-dashed border-2 border-neutral-200 bg-white shadow-none">
-                            <CardContent className="py-14 flex flex-col items-center gap-3 text-center">
-                                <div className="h-12 w-12 rounded-full bg-neutral-100 flex items-center justify-center">
-                                    <CalendarX className="h-5 w-5 text-neutral-400" />
-                                </div>
-                                <p className="text-neutral-500 text-sm">No upcoming appointments</p>
-                                <Button asChild size="sm" variant="outline" className="gap-2 mt-1">
-                                    <Link href="/patient/book">Book one now <ArrowRight className="h-3 w-3" /></Link>
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                ) : (
-                    <div className="space-y-3">
-                        {upcoming.map((apt, i) => (
-                            <motion.div key={apt.id} custom={i} variants={fadeUp} initial="hidden" animate="show">
-                                <Card className="border border-neutral-200 shadow-none hover:shadow-sm transition-shadow duration-200 overflow-hidden">
-                                    <div className="flex">
-                                        {/* Left accent + queue */}
-                                        <div className="w-[72px] bg-emerald-600 flex flex-col items-center justify-center gap-1 py-4 flex-shrink-0">
-                                            <span className="text-[10px] text-emerald-100 uppercase font-semibold tracking-widest">Queue</span>
-                                            <span className="text-2xl font-bold text-white">{apt.queueNumber}</span>
-                                        </div>
-                                        {/* Content */}
-                                        <CardContent className="flex-1 py-4 px-4 flex flex-col sm:flex-row justify-between gap-3">
-                                            <div>
-                                                <h3 className="font-semibold text-neutral-900">{apt.doctorName}</h3>
-                                                <p className="text-xs text-neutral-400 mb-2">{apt.specialization}</p>
-                                                <div className="flex flex-wrap gap-3 text-xs text-neutral-600">
-                                                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-emerald-500" />{new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                                                    <span className="flex items-center gap-1"><Clock className="h-3 w-3 text-emerald-500" />{apt.timeSlot}</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2">
-                                                <StatusBadge status={apt.status} />
-                                                {['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED'].includes(apt.status) && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-7 text-xs text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
-                                                    onClick={async () => {
-                                                        if (!confirm('Cancel this appointment?')) return;
-                                                        const res = await fetch('/api/appointments/cancel', {
-                                                            method: 'PUT',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ appointmentId: apt.id })
-                                                        });
-                                                        if (!res.ok) alert((await res.json().catch(() => null))?.message || 'Could not cancel this appointment.');
-                                                        if (user?.id) fetchAppointments(user.id);
-                                                    }}
-                                                >
-                                                    Cancel
-                                                </Button>
-                                                )}
-                                            </div>
-                                        </CardContent>
-                                    </div>
-                                </Card>
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                    {laterVisits.length > 0 && (
+                        <section aria-labelledby="later-heading" className="space-y-3">
+                            <h2 id="later-heading" className="text-base font-semibold text-neutral-900">Also coming up</h2>
+                            <ul className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[var(--shadow-card)]">
+                                {laterVisits.map((a) => <VisitRow key={a.id} appointment={a} onCancel={cancel} />)}
+                            </ul>
+                        </section>
+                    )}
 
-            {/* Past History */}
-            {!isLoading && past.length > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-                    <h2 className="text-base font-semibold text-neutral-400 mb-3">Appointment History</h2>
-                    <div className="border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-none">
-                        {past.map((apt, i) => (
-                            <div key={apt.id} className={`flex items-center justify-between px-4 py-3 text-sm ${i < past.length - 1 ? 'border-b border-neutral-100' : ''} hover:bg-neutral-50 transition-colors`}>
-                                <div>
-                                    <span className="font-medium text-neutral-700">{apt.doctorName}</span>
-                                    <span className="text-neutral-400 ml-2 text-xs">{new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                </div>
-                                <StatusBadge status={apt.status} />
+                    {history.length > 0 && (
+                        <section aria-labelledby="history-heading" className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h2 id="history-heading" className="text-base font-semibold text-neutral-900">Recent history</h2>
+                                <Link href="/patient/appointments" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:underline">
+                                    View all <ArrowRight className="h-4 w-4" aria-hidden />
+                                </Link>
                             </div>
-                        ))}
-                    </div>
-                </motion.div>
+                            <ul className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[var(--shadow-card)]">
+                                {history.slice(0, 5).map((a) => <VisitRow key={a.id} appointment={a} />)}
+                            </ul>
+                        </section>
+                    )}
+                </>
             )}
         </div>
     );

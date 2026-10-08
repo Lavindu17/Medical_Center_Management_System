@@ -8,7 +8,11 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      // A scrolling area must be reachable by keyboard, otherwise people who cannot use a mouse cannot see wide tables
+      tabIndex={0}
+      role="region"
+      aria-label="Data table"
+      className="relative w-full overflow-x-auto rounded-md focus-visible:outline-2 focus-visible:outline-emerald-600"
     >
       <table
         data-slot="table"

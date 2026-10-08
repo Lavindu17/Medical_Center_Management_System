@@ -2,6 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
 
 export default function ReceptionistAppointments() {
+    const confirm = useConfirm();
     const [appointments, setAppointments] = useState<any[]>([]);
     const [doctors, setDoctors] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState(() => {
@@ -49,16 +52,29 @@ export default function ReceptionistAppointments() {
     };
 
     const updateStatus = async (id: number, status: string) => {
-        if (!confirm(`Mark appointment as ${status}?`)) return;
+        const wording: Record<string, { title: string; description: string; confirmLabel: string; destructive?: boolean }> = {
+            CHECKED_IN: { title: 'Check this patient in?', description: 'The doctor will be told the patient has arrived.', confirmLabel: 'Check in' },
+            CANCELLED: { title: 'Cancel this appointment?', description: 'The patient and the doctor will be told, and the time slot opens up again.', confirmLabel: 'Cancel appointment', destructive: true },
+            ABSENT: { title: 'Mark the patient as absent?', description: 'Use this when the patient did not attend.', confirmLabel: 'Mark absent', destructive: true },
+            NO_SHOW: { title: 'Mark as no-show?', description: 'Use this when the patient did not attend.', confirmLabel: 'Mark no-show', destructive: true },
+        };
+        const text = wording[status] ?? { title: 'Update this appointment?', description: '', confirmLabel: 'Update' };
+        if (!(await confirm({ ...text, cancelLabel: 'Go back' }))) return;
         try {
             const res = await fetch(`/api/receptionist/appointments/${id}/status`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status })
             });
-            if (res.ok) fetchAppointments();
+            if (res.ok) {
+                toast.success(status === 'CHECKED_IN' ? 'Patient checked in' : 'Appointment updated');
+                fetchAppointments();
+            } else {
+                toast.error((await res.json().catch(() => null))?.message || 'Could not update this appointment.');
+            }
         } catch (e) {
             console.error(e);
+            toast.error('Could not update this appointment.');
         }
     };
 
@@ -71,13 +87,13 @@ export default function ReceptionistAppointments() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
                     <div className="w-full sm:w-48">
-                        <Label className="text-xs mb-1 block">Date</Label>
-                        <Input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
+                        <Label htmlFor="f-date" className="text-xs mb-1 block">Date</Label>
+                        <Input id="f-date" type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
                     </div>
                     <div className="w-full sm:w-64">
-                        <Label className="text-xs mb-1 block">Doctor</Label>
+                        <Label htmlFor="f-doctor" className="text-xs mb-1 block">Doctor</Label>
                         <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                            <SelectTrigger>
+                            <SelectTrigger id="f-doctor">
                                 <SelectValue placeholder="All Doctors" />
                             </SelectTrigger>
                             <SelectContent>

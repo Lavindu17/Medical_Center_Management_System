@@ -13,6 +13,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // A second dev server (for example one pointed at a test database) must not share this folder's build output:
+  // two servers writing to one .next directory is what corrupted the dev cache before. NEXT_DIST_DIR=.next-test npm run dev
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   experimental: {
     // Turbopack keeps a ~1 GB on-disk cache under .next/dev between runs. When that cache goes stale (a dev server

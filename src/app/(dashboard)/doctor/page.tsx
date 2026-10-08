@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SkeletonKpiRow } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/ui/page-header';
+import { StatCard } from '@/components/ui/stat-card';
+import { asDoctor } from '@/lib/names';
+import { greeting } from '@/lib/dates';
 import { Calendar, Users, Banknote, Activity, Stethoscope, ArrowRight } from 'lucide-react';
 import { formatLKR } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -54,42 +58,24 @@ export default function DoctorDashboard() {
 
     return (
         <div className="space-y-6">
-            <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-            >
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">Dashboard</h1>
-                <p className="text-neutral-500 mt-0.5 text-sm">
-                    Welcome back, <span className="font-semibold text-emerald-600">{user?.name || 'Doctor'}</span>.
-                </p>
-            </motion.div>
+            <PageHeader
+                title={`${greeting()}, ${asDoctor(user?.name)}`}
+                description="Your day at a glance."
+                actions={
+                    <Button asChild size="lg" className="gap-2">
+                        <Link href="/doctor/appointments"><Calendar className="h-4 w-4" aria-hidden /> Today&apos;s appointments</Link>
+                    </Button>
+                }
+            />
 
             {/* KPI Grid */}
             {loading ? <SkeletonKpiRow count={4} /> : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {[
-                        { icon: Calendar,  label: "Today's Appointments", value: stats.todayAppointments,    sub: 'Scheduled for today',   color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                        { icon: Activity,  label: 'Upcoming',              value: stats.upcomingAppointments, sub: 'Future appointments',   color: 'text-teal-600',    bg: 'bg-teal-50' },
-                        { icon: Users,     label: 'Total Patients',         value: stats.totalPatients,        sub: 'Patients with a completed visit',  color: 'text-neutral-600', bg: 'bg-neutral-100' },
-                        { icon: Banknote,  label: 'Total Revenue',          value: formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), sub: 'From paid bills', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    ].map((kpi, i) => (
-                        <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07, duration: 0.3 }}>
-                            <Card className="border border-neutral-200 shadow-none">
-                                <CardContent className="p-4">
-                                    <div className="flex items-start justify-between mb-3">
-                                        <p className="text-xs text-neutral-500 font-medium uppercase tracking-wide leading-tight">{kpi.label}</p>
-                                        <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${kpi.bg}`}>
-                                            <kpi.icon className={`h-3.5 w-3.5 ${kpi.color}`} />
-                                        </div>
-                                    </div>
-                                    <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
-                                    <p className="text-xs text-neutral-400 mt-1">{kpi.sub}</p>
-                                </CardContent>
-                            </Card>
-                        </motion.div>
-                    ))}
-                </div>
+                <section aria-label="Overview" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <StatCard label="Today's appointments" value={stats.todayAppointments} hint="Scheduled for today" icon={Calendar} tone="brand" href="/doctor/appointments" />
+                    <StatCard label="Upcoming" value={stats.upcomingAppointments} hint="Future appointments" icon={Activity} tone="info" href="/doctor/appointments" />
+                    <StatCard label="Patients seen" value={stats.totalPatients} hint="Patients with a completed visit" icon={Users} tone="neutral" href="/doctor/patients" />
+                    <StatCard label="Revenue" value={formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} hint="From paid bills" icon={Banknote} tone="brand" href="/doctor/earnings" />
+                </section>
             )}
 
             {/* Charts Section */}

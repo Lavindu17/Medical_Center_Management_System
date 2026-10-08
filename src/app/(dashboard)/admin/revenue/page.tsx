@@ -200,7 +200,7 @@ export default function RevenuePage() {
                 <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2">
                     <Activity className="h-3.5 w-3.5 flex-shrink-0" style={{ color: THEME.primary }} />
                     <select
-                        id="select-month"
+                        id="select-month" aria-label="Month"
                         value={selectedMonth}
                         onChange={e => setSelectedMonth(Number(e.target.value))}
                         className="text-xs font-medium text-neutral-700 bg-transparent outline-none cursor-pointer"
@@ -208,14 +208,14 @@ export default function RevenuePage() {
                         {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
                     </select>
                     <select
-                        id="select-year"
+                        id="select-year" aria-label="Year"
                         value={selectedYear}
                         onChange={e => setSelectedYear(Number(e.target.value))}
                         className="text-xs font-medium text-neutral-700 bg-transparent outline-none cursor-pointer"
                     >
                         {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full border ml-1" style={{ backgroundColor: THEME.primary + '18', color: THEME.teal, borderColor: THEME.mint }}>
+                    <span className="text-xs px-1.5 py-0.5 rounded-full border ml-1" style={{ backgroundColor: THEME.primary + '18', color: THEME.teal, borderColor: THEME.mint }}>
                         Filtered
                     </span>
                 </div>
@@ -413,7 +413,7 @@ export default function RevenuePage() {
                                     <thead className="bg-neutral-50 border-b border-neutral-100">
                                         <tr>
                                             {['Doctor','Specialty','Appts','Rate','Gross Billed','Center Kept','Net Payout'].map(h => (
-                                                <th key={h} className="p-3 text-left text-[10px] font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
+                                                <th key={h} className="p-3 text-left text-xs font-semibold text-neutral-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>

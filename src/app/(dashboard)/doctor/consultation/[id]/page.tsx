@@ -1,5 +1,6 @@
 'use client';
 import { toast } from 'sonner';
+import { usePrompt } from '@/components/ui/confirm-dialog';
 import { medicineForm } from '@/lib/medicine-form';
 
 import { useState, useEffect } from 'react';
@@ -41,6 +42,7 @@ interface PrescriptionItem {
 }
 
 export default function ConsultationPage() {
+    const askText = usePrompt();
     const params = useParams();
     const router = useRouter();
     const appointmentId = params.id;
@@ -292,16 +294,16 @@ export default function ConsultationPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
-                                <Label className="text-xs">Weight (kg)</Label>
-                                <Input
+                                <Label htmlFor="f-weight-kg" className="text-xs">Weight (kg)</Label>
+                                <Input id="f-weight-kg"
                                     value={vitals.weight}
                                     onChange={e => setVitals({ ...vitals, weight: e.target.value })}
                                     placeholder="e.g. 70"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">Temp (°C)</Label>
-                                <Input
+                                <Label htmlFor="f-temp-c" className="text-xs">Temp (°C)</Label>
+                                <Input id="f-temp-c"
                                     value={vitals.temperature}
                                     onChange={e => setVitals({ ...vitals, temperature: e.target.value })}
                                     placeholder="e.g. 36.6"
@@ -310,16 +312,16 @@ export default function ConsultationPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-1">
-                                <Label className="text-xs">BP (mmHg)</Label>
-                                <Input
+                                <Label htmlFor="f-bp-mmhg" className="text-xs">BP (mmHg)</Label>
+                                <Input id="f-bp-mmhg"
                                     value={vitals.blood_pressure}
                                     onChange={e => setVitals({ ...vitals, blood_pressure: e.target.value })}
                                     placeholder="e.g. 120/80"
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs">Pulse (bpm)</Label>
-                                <Input
+                                <Label htmlFor="f-pulse-bpm" className="text-xs">Pulse (bpm)</Label>
+                                <Input id="f-pulse-bpm"
                                     value={vitals.pulse}
                                     onChange={e => setVitals({ ...vitals, pulse: e.target.value })}
                                     placeholder="e.g. 72"
@@ -406,8 +408,8 @@ export default function ConsultationPage() {
                                                     <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                                                     <span className="text-sm font-bold text-amber-800 uppercase tracking-tight">Editing Item #{editingIndex + 1}</span>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-7 w-7 p-0 hover:bg-amber-200/50 text-amber-700">
-                                                    <X className="h-4 w-4" />
+                                                <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="h-7 w-7 p-0 hover:bg-amber-200/50 text-amber-700" aria-label="Close">
+                                                    <X className="h-4 w-4" aria-hidden />
                                                 </Button>
                                             </div>
                                         )}
@@ -532,12 +534,12 @@ export default function ConsultationPage() {
                                                             {selectedMedForm === 'Cream' && ['Apply', 'Thin Layer'].map(d => (
                                                                 <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setSelectedDose(d)}>{d}</Badge>
                                                             ))}
-                                                            <Badge variant="outline" className="cursor-pointer hover:bg-emerald-50 text-emerald-600 border-emerald-200" onClick={() => setSelectedDose(prompt('Enter custom dose:', selectedDose) || selectedDose)}>Custom</Badge>
+                                                            <Badge variant="outline" className="cursor-pointer hover:bg-emerald-50 text-emerald-600 border-emerald-200" role="button" tabIndex={0} onClick={async () => { const dose = await askText({ title: 'Custom dose', label: 'Dose', defaultValue: selectedDose, placeholder: 'For example 1.5 or 7.5ml', confirmLabel: 'Use this dose' }); if (dose) setSelectedDose(dose); }}>Custom</Badge>
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <Label className="text-xs">Duration</Label>
-                                                        <select
+                                                        <Label htmlFor="f-duration" className="text-xs">Duration</Label>
+                                                        <select id="f-duration"
                                                             className="w-full h-8 mt-1 rounded-md border border-input bg-background px-3 text-xs"
                                                             value={selectedDuration}
                                                             onChange={e => setSelectedDuration(e.target.value)}

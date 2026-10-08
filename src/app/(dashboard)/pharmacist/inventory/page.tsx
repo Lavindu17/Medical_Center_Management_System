@@ -1,5 +1,6 @@
 'use client';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/confirm-dialog';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,7 @@ const SHELF_OPTIONS = [
 ];
 
 export default function InventoryPage() {
+    const confirm = useConfirm();
     const [medicines, setMedicines] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -123,7 +125,14 @@ export default function InventoryPage() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm('Are you sure you want to delete this medicine?')) return;
+        const ok = await confirm({
+            title: 'Delete this medicine?',
+            description: 'A medicine that still has stock, or appears on a prescription, cannot be deleted.',
+            confirmLabel: 'Delete medicine',
+            cancelLabel: 'Keep medicine',
+            destructive: true,
+        });
+        if (!ok) return;
         try {
             const res = await fetch(`/api/pharmacist/inventory/${id}`, { method: 'DELETE' });
             if (!res.ok) toast.error('Could not delete: medicine is used by prescriptions or batches');
@@ -224,15 +233,15 @@ export default function InventoryPage() {
                     <DialogContent>
                         <DialogHeader><DialogTitle>Add New Medicine</DialogTitle></DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                            <div className="space-y-2"><Label>Name</Label><Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
+                            <div className="space-y-2"><Label htmlFor="f-name">Name</Label><Input id="f-name" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label>Generic Name</Label><Input value={formData.generic_name} onChange={e => setFormData({ ...formData, generic_name: e.target.value })} /></div>
-                                <div className="space-y-2"><Label>Manufacturer</Label><Input value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} /></div>
+                                <div className="space-y-2"><Label htmlFor="f-generic-name">Generic Name</Label><Input id="f-generic-name" value={formData.generic_name} onChange={e => setFormData({ ...formData, generic_name: e.target.value })} /></div>
+                                <div className="space-y-2"><Label htmlFor="f-manufacturer">Manufacturer</Label><Input id="f-manufacturer" value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Category</Label>
-                                    <select
+                                    <Label htmlFor="f-category">Category</Label>
+                                    <select id="f-category"
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         value={formData.category}
                                         onChange={e => setFormData({ ...formData, category: e.target.value })}
@@ -244,8 +253,8 @@ export default function InventoryPage() {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Location</Label>
-                                    <select
+                                    <Label htmlFor="f-location">Location</Label>
+                                    <select id="f-location"
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         value={formData.location}
                                         onChange={e => setFormData({ ...formData, location: e.target.value })}
@@ -258,13 +267,13 @@ export default function InventoryPage() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2"><Label>Unit</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. tablets" /></div>
-                                <div className="space-y-2"><Label>Min Stock Level</Label><Input type="number" value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} /></div>
+                                <div className="space-y-2"><Label htmlFor="f-unit">Unit</Label><Input id="f-unit" required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="e.g. tablets" /></div>
+                                <div className="space-y-2"><Label htmlFor="f-min-stock-level">Min Stock Level</Label><Input id="f-min-stock-level" type="number" value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Dosage Form</Label>
-                                    <select
+                                    <Label htmlFor="f-dosage-form">Dosage Form</Label>
+                                    <select id="f-dosage-form"
                                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                         value={formData.dosage_form}
                                         onChange={e => setFormData({ ...formData, dosage_form: e.target.value })}
@@ -278,12 +287,12 @@ export default function InventoryPage() {
                                         <option value="OTHER">Other</option>
                                     </select>
                                 </div>
-                                <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="e.g. 500mg" /></div>
+                                <div className="space-y-2"><Label htmlFor="f-strength">Strength</Label><Input id="f-strength" value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="e.g. 500mg" /></div>
                             </div>
                             {/* Standard Selling Price is optional but good for default. Buying Price and Stock are batch specific. */}
                             <div className="space-y-2">
-                                <Label>Standard Selling Price per Unit (LKR) *</Label>
-                                <Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} placeholder="e.g., 15.50" />
+                                <Label htmlFor="f-standard-selling-price-per-unit-lkr">Standard Selling Price per Unit (LKR) *</Label>
+                                <Input id="f-standard-selling-price-per-unit-lkr" type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} placeholder="e.g., 15.50" />
                                 <p className="text-xs text-neutral-500">Price per single {formData.unit || 'unit'} (not per batch)</p>
                             </div>
 
@@ -309,6 +318,7 @@ export default function InventoryPage() {
                     <select
                         className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[160px]"
                         value={categoryFilter}
+                        aria-label="Filter by category"
                         onChange={e => setCategoryFilter(e.target.value)}
                     >
                         {categories.map(cat => (
@@ -319,6 +329,7 @@ export default function InventoryPage() {
                     <select
                         className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 min-w-[160px]"
                         value={stockFilter}
+                        aria-label="Filter by stock level"
                         onChange={e => setStockFilter(e.target.value)}
                     >
                         <option value="ALL">All Stock Levels</option>
@@ -440,11 +451,11 @@ export default function InventoryPage() {
                                 <Button size="sm" onClick={() => openRestock(med)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-bold">
                                     Restock
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => openEdit(med)} className="hover:bg-neutral-100">
-                                    <Edit2 className="h-4 w-4" />
+                                <Button size="sm" variant="ghost" onClick={() => openEdit(med)} className="hover:bg-neutral-100" aria-label={`Edit ${med.name}`}>
+                                    <Edit2 className="h-4 w-4" aria-hidden />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(med.id)}>
-                                    <Trash2 className="h-4 w-4" />
+                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(med.id)} aria-label={`Delete ${med.name}`}>
+                                    <Trash2 className="h-4 w-4" aria-hidden />
                                 </Button>
                             </div>
                         </div>
@@ -516,15 +527,15 @@ export default function InventoryPage() {
                     <DialogHeader><DialogTitle>Edit Medicine Details</DialogTitle></DialogHeader>
                     <p className="text-sm text-neutral-500">Note: Stock and prices are managed through batches.</p>
                     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                        <div className="space-y-2"><Label>Brand Name *</Label><Input required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
+                        <div className="space-y-2"><Label htmlFor="f-brand-name">Brand Name *</Label><Input id="f-brand-name" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} /></div>
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Generic Name</Label><Input value={formData.generic_name} onChange={e => setFormData({ ...formData, generic_name: e.target.value })} placeholder="e.g., Paracetamol" /></div>
-                            <div className="space-y-2"><Label>Manufacturer</Label><Input value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} placeholder="e.g., GSK" /></div>
+                            <div className="space-y-2"><Label htmlFor="f-generic-name-2">Generic Name</Label><Input id="f-generic-name-2" value={formData.generic_name} onChange={e => setFormData({ ...formData, generic_name: e.target.value })} placeholder="e.g., Paracetamol" /></div>
+                            <div className="space-y-2"><Label htmlFor="f-manufacturer-2">Manufacturer</Label><Input id="f-manufacturer-2" value={formData.manufacturer} onChange={e => setFormData({ ...formData, manufacturer: e.target.value })} placeholder="e.g., GSK" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Category</Label>
-                                <select
+                                <Label htmlFor="f-category-2">Category</Label>
+                                <select id="f-category-2"
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     value={formData.category}
                                     onChange={e => setFormData({ ...formData, category: e.target.value })}
@@ -536,8 +547,8 @@ export default function InventoryPage() {
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Location</Label>
-                                <select
+                                <Label htmlFor="f-location-2">Location</Label>
+                                <select id="f-location-2"
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     value={formData.location}
                                     onChange={e => setFormData({ ...formData, location: e.target.value })}
@@ -550,10 +561,10 @@ export default function InventoryPage() {
                             </div>
                         </div>
                         <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2"><Label>Unit *</Label><Input required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="tablets" /></div>
+                            <div className="space-y-2"><Label htmlFor="f-unit-2">Unit *</Label><Input id="f-unit-2" required value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} placeholder="tablets" /></div>
                             <div className="space-y-2">
-                                <Label>Dosage Form</Label>
-                                <select
+                                <Label htmlFor="f-dosage-form-2">Dosage Form</Label>
+                                <select id="f-dosage-form-2"
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                     value={formData.dosage_form}
                                     onChange={e => setFormData({ ...formData, dosage_form: e.target.value })}
@@ -567,17 +578,17 @@ export default function InventoryPage() {
                                     <option value="OTHER">Other</option>
                                 </select>
                             </div>
-                            <div className="space-y-2"><Label>Strength</Label><Input value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="500mg" /></div>
+                            <div className="space-y-2"><Label htmlFor="f-strength-2">Strength</Label><Input id="f-strength-2" value={formData.strength} onChange={e => setFormData({ ...formData, strength: e.target.value })} placeholder="500mg" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Selling Price per Unit (LKR) *</Label>
-                                <Input type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} placeholder="e.g., 15.50" />
+                                <Label htmlFor="f-selling-price-per-unit-lkr">Selling Price per Unit (LKR) *</Label>
+                                <Input id="f-selling-price-per-unit-lkr" type="number" step="0.01" required value={formData.price_per_unit} onChange={e => setFormData({ ...formData, price_per_unit: e.target.value })} placeholder="e.g., 15.50" />
                                 <p className="text-xs text-neutral-500">Standard price per unit</p>
                             </div>
                             <div className="space-y-2">
-                                <Label>Min Stock Level *</Label>
-                                <Input type="number" required value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} />
+                                <Label htmlFor="f-min-stock-level-2">Min Stock Level *</Label>
+                                <Input id="f-min-stock-level-2" type="number" required value={formData.min_stock_level} onChange={e => setFormData({ ...formData, min_stock_level: e.target.value })} />
                             </div>
                         </div>
                         <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 font-bold h-11 transition-all">Update Medicine</Button>
@@ -598,24 +609,24 @@ export default function InventoryPage() {
                     <form onSubmit={handleRestockSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Quantity *</Label>
-                                <Input type="number" required value={restockForm.quantity} onChange={e => setRestockForm({ ...restockForm, quantity: e.target.value })} placeholder="100" />
+                                <Label htmlFor="f-quantity">Quantity *</Label>
+                                <Input id="f-quantity" type="number" required value={restockForm.quantity} onChange={e => setRestockForm({ ...restockForm, quantity: e.target.value })} placeholder="100" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Expiry Date *</Label>
-                                <Input type="date" required value={restockForm.expiry_date} onChange={e => setRestockForm({ ...restockForm, expiry_date: e.target.value })} />
+                                <Label htmlFor="f-expiry-date">Expiry Date *</Label>
+                                <Input id="f-expiry-date" type="date" required value={restockForm.expiry_date} onChange={e => setRestockForm({ ...restockForm, expiry_date: e.target.value })} />
                                 <p className="text-xs text-neutral-500">Must be a future date</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label>Buying Price per Unit (LKR)</Label>
-                                <Input type="number" step="0.01" value={restockForm.buying_price} onChange={e => setRestockForm({ ...restockForm, buying_price: e.target.value })} placeholder="e.g., 10.00" />
+                                <Label htmlFor="f-buying-price-per-unit-lkr">Buying Price per Unit (LKR)</Label>
+                                <Input id="f-buying-price-per-unit-lkr" type="number" step="0.01" value={restockForm.buying_price} onChange={e => setRestockForm({ ...restockForm, buying_price: e.target.value })} placeholder="e.g., 10.00" />
                                 <p className="text-xs text-neutral-500">Cost price per single unit</p>
                             </div>
                             <div className="space-y-2">
-                                <Label>Selling Price per Unit (LKR) *</Label>
-                                <Input type="number" step="0.01" required value={restockForm.selling_price} onChange={e => setRestockForm({ ...restockForm, selling_price: e.target.value })} placeholder={currentMed?.price_per_unit || '0.00'} />
+                                <Label htmlFor="f-selling-price-per-unit-lkr-2">Selling Price per Unit (LKR) *</Label>
+                                <Input id="f-selling-price-per-unit-lkr-2" type="number" step="0.01" required value={restockForm.selling_price} onChange={e => setRestockForm({ ...restockForm, selling_price: e.target.value })} placeholder={currentMed?.price_per_unit || '0.00'} />
                                 <p className="text-xs text-neutral-500">Selling price per single unit</p>
                             </div>
                         </div>

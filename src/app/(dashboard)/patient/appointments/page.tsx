@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { StatusBadge } from '@/components/ui/status-badge';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,22 +20,7 @@ interface Appointment {
 }
 
 function StatusPill({ status }: { status: string }) {
-    const map: Record<string, string> = {
-        PENDING:    'bg-emerald-50 text-emerald-700 border-emerald-200',
-        CONFIRMED:    'bg-emerald-50 text-emerald-700 border-emerald-200',
-        ARRIVED:    'bg-teal-50 text-teal-700 border-teal-200',
-        ABSENT:    'bg-red-50 text-red-600 border-red-200',
-        NO_SHOW:    'bg-red-50 text-red-600 border-red-200',
-        COMPLETED:    'bg-neutral-100 text-neutral-500 border-neutral-200',
-        CANCELLED:    'bg-red-50 text-red-600 border-red-200',
-        ONGOING:  'bg-amber-50 text-amber-700 border-amber-200',
-        CHECKED_IN:   'bg-teal-50 text-teal-700 border-teal-200',
-    };
-    return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${map[status] ?? 'bg-neutral-100 text-neutral-500 border-neutral-200'}`}>
-            {status.replace('_', ' ')}
-        </span>
-    );
+    return <StatusBadge status={status} size="sm" />;
 }
 
 const fadeUp = {
@@ -54,7 +40,7 @@ function AppointmentCard({ apt, isPast = false, index = 0 }: { apt: Appointment;
                         <CardContent className="flex-1 p-4 flex flex-col sm:flex-row justify-between items-start gap-3">
                             <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <h3 className="font-semibold text-neutral-900 text-base">{apt.doctorName}</h3>
+                                    <h2 className="font-semibold text-neutral-900 text-base">{apt.doctorName}</h2>
                                     <StatusPill status={apt.status} />
                                 </div>
                                 <p className="text-xs text-neutral-400 mb-2">{apt.specialization}</p>

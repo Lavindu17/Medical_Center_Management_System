@@ -1,24 +1,24 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { KeyRound } from 'lucide-react';
-import Link from 'next/link';
+import { FormAlert, TextField } from '@/components/ui/text-field';
+import { AuthShell } from '@/components/auth/AuthShell';
 
 export default function ForgotPasswordPage() {
-    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setIsLoading(true);
+        setError(null);
 
-        const formData = new FormData(event.currentTarget);
-        const email = formData.get('email');
+        const email = String(new FormData(event.currentTarget).get('email') ?? '').trim();
 
         try {
             const response = await fetch('/api/auth/forgot', {
@@ -27,53 +27,40 @@ export default function ForgotPasswordPage() {
                 body: JSON.stringify({ email }),
             });
 
-            // Always say success to prevent email enumeration
-            const data = await response.json();
-            alert(data.message);
-            router.push(`/reset-password?email=${encodeURIComponent(email as string)}`);
+            if (response.status === 429) {
+                const data = await response.json().catch(() => ({}));
+                throw new Error(data.message || 'Too many requests. Please wait a while and try again.');
+            }
+            if (!response.ok) throw new Error('Please enter a valid email address.');
 
-        } catch (error: any) {
-            alert('Something went wrong. Please try again.');
-        } finally {
+            // The server answers the same whether or not the address has an account, so we do too.
+            router.push(`/reset-password?email=${encodeURIComponent(email)}&sent=1`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
             setIsLoading(false);
         }
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-900 p-4">
-            <Card className="w-full max-w-md shadow-lg border-neutral-200 dark:border-neutral-800">
-                <CardHeader className="space-y-1 items-center text-center">
-                    <div className="h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-4">
-                        <KeyRound className="h-7 w-7" />
-                    </div>
-                    <CardTitle className="text-2xl font-bold">Forgot Password</CardTitle>
-                    <CardDescription>
-                        Enter your email to receive a reset code
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="name@example.com"
-                                required
-                            />
-                        </div>
-                        <Button disabled={isLoading} className="w-full bg-blue-600 hover:bg-blue-700">
-                            {isLoading ? 'Sending Code...' : 'Send Reset Code'}
-                        </Button>
-                        <div className="text-center text-sm">
-                            <Link href="/login" className="text-blue-600 hover:underline">
-                                Back to Login
-                            </Link>
-                        </div>
-                    </form>
-                </CardContent>
-            </Card>
-        </div>
+        <AuthShell
+            title="Forgot your password?"
+            subtitle="Enter your email and we'll send a 6-character code to reset it."
+            footer={
+                <Link href="/login" className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:underline">
+                    <ArrowLeft className="h-4 w-4" aria-hidden /> Back to sign in
+                </Link>
+            }
+        >
+            <form onSubmit={handleSubmit} className="space-y-5" aria-busy={isLoading}>
+                {error && <FormAlert>{error}</FormAlert>}
+                <TextField
+                    label="Email" name="email" type="email" inputMode="email" autoComplete="email"
+                    placeholder="you@example.com" autoFocus required
+                />
+                <Button type="submit" size="lg" disabled={isLoading} className="h-11 w-full text-base">
+                    {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Sending code...</>) : 'Send reset code'}
+                </Button>
+            </form>
+        </AuthShell>
     );
 }

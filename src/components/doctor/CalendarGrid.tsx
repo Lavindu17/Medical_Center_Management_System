@@ -56,11 +56,11 @@ export function CalendarGrid({ currentMonth, onMonthChange, schedules, blockedDa
                     {format(currentMonth, 'MMMM yyyy')}
                 </h2>
                 <div className="flex gap-1">
-                    <Button variant="outline" size="icon" onClick={() => onMonthChange(subMonths(currentMonth, 1))}>
-                        <ChevronLeft className="h-4 w-4" />
+                    <Button variant="outline" size="icon" onClick={() => onMonthChange(subMonths(currentMonth, 1))} aria-label="Previous">
+                        <ChevronLeft className="h-4 w-4" aria-hidden />
                     </Button>
-                    <Button variant="outline" size="icon" onClick={() => onMonthChange(addMonths(currentMonth, 1))}>
-                        <ChevronRight className="h-4 w-4" />
+                    <Button variant="outline" size="icon" onClick={() => onMonthChange(addMonths(currentMonth, 1))} aria-label="Next">
+                        <ChevronRight className="h-4 w-4" aria-hidden />
                     </Button>
                 </div>
             </div>
