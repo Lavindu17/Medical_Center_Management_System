@@ -134,6 +134,14 @@ export async function PUT(req: Request) {
 
         const { id, name, email, phone, role } = validation.data;
 
+        const existingUser = await query<any[]>('SELECT role FROM users WHERE id = ?', [id]);
+        if (existingUser.length === 0) {
+            return NextResponse.json({ message: 'User not found' }, { status: 404 });
+        }
+        // Doctors and patients have a profile row; changing to or from those roles would orphan or invent it
+        if (existingUser[0].role !== role && [existingUser[0].role, role].some((r) => r === 'DOCTOR' || r === 'PATIENT')) {
+            return NextResponse.json({ message: 'Roles cannot be changed to or from Doctor or Patient. Create a new account instead.' }, { status: 400 });
+        }
         if (id === admin.id && role !== 'ADMIN') {
             return NextResponse.json({ message: 'You cannot change your own role' }, { status: 400 });
         }
@@ -173,12 +181,25 @@ export async function DELETE(req: Request) {
         if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ message: 'A valid ID is required' }, { status: 400 });
         if (id === admin.id) return NextResponse.json({ message: 'You cannot delete your own account' }, { status: 400 });
 
+        const target = await query<any[]>('SELECT role FROM users WHERE id = ?', [id]);
+        if (target.length === 0) return NextResponse.json({ message: 'User not found' }, { status: 404 });
+        if (target[0].role === 'ADMIN') {
+            const admins = await query<any[]>("SELECT COUNT(*) AS n FROM users WHERE role = 'ADMIN'");
+            if (Number(admins[0].n) <= 1) {
+                return NextResponse.json({ message: 'The last administrator cannot be deleted' }, { status: 409 });
+            }
+        }
+
         // Delete user from database; related records handled by CASCADE
         await query('DELETE FROM users WHERE id = ?', [id]);
 
         return NextResponse.json({ message: 'User deleted successfully' });
 
-    } catch (error) {
+    } catch (error: any) {
+        // Appointments, prescriptions and bills keep a reference to the people involved
+        if (error?.errno === 1451) {
+            return NextResponse.json({ message: 'This user has appointments or medical records and cannot be deleted.' }, { status: 409 });
+        }
         console.error('Delete User Error:', error);
         return NextResponse.json({ message: 'Failed to delete user' }, { status: 500 });
     }

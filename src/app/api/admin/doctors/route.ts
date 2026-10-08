@@ -35,8 +35,8 @@ export async function GET(req: Request) {
 }
 
 const updateDoctorSchema = z.object({
-    id: z.number(),
-    consultationFee: z.number().min(0),
+    id: z.number().int().positive(),
+    consultationFee: z.number().min(0).max(10_000_000),
     commissionRate: z.number().min(0).max(100),
 });
 
@@ -55,10 +55,15 @@ export async function PUT(req: Request) {
 
         const { id, consultationFee, commissionRate } = validation.data;
 
-        await query(
+        const result: any = await query(
             'UPDATE doctors SET consultation_fee = ?, commission_rate = ? WHERE user_id = ?',
             [consultationFee, commissionRate, id]
         );
+        if (result.affectedRows === 0) {
+            // affectedRows is 0 both for "no such doctor" and "values unchanged"
+            const exists = await query<any[]>('SELECT user_id FROM doctors WHERE user_id = ?', [id]);
+            if (exists.length === 0) return NextResponse.json({ message: 'Doctor not found' }, { status: 404 });
+        }
 
         return NextResponse.json({ message: 'Doctor updated successfully' });
 

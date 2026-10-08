@@ -13,8 +13,11 @@ export async function GET(req: Request) {
         // ── Parse + validate month/year filters ─────────────────────────────────
         const { searchParams } = new URL(req.url);
         const now = new Date();
-        const month = Math.min(12, Math.max(1, parseInt(searchParams.get('month') || String(now.getMonth() + 1), 10)));
-        const year  = Math.min(2100, Math.max(2000, parseInt(searchParams.get('year')  || String(now.getFullYear()), 10)));
+        const month = parseInt(searchParams.get('month') || String(now.getMonth() + 1), 10);
+        const year  = parseInt(searchParams.get('year')  || String(now.getFullYear()), 10);
+        if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < 2000 || year > 2100) {
+            return NextResponse.json({ message: 'month must be 1-12 and year 2000-2100' }, { status: 400 });
+        }
 
         // Shared date filter clause for bills (used in revenue, doctor queries)
         // MONTH()/YEAR() are safe — values are sanitised integers above, not raw strings
