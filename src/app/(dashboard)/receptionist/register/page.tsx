@@ -53,13 +53,13 @@ export default function RegisterPatient() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8">
+        <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Link href="/receptionist">
                     <Button variant="ghost" size="icon" aria-label="Back"><ArrowLeft className="h-5 w-5" aria-hidden /></Button>
                 </Link>
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900">Register New Patient</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Register New Patient</h1>
                     <p className="text-neutral-500">Create a new patient account for walk-ins.</p>
                 </div>
             </div>

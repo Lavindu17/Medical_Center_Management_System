@@ -1,7 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/app-shell';
-import { LayoutDashboard, Calendar, Banknote, Settings, Users, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Calendar, Banknote, UserCog, Users, UserPlus } from 'lucide-react';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard',         href: '/receptionist' },
@@ -9,7 +9,7 @@ const navItems = [
     { icon: UserPlus,        label: 'Register Patient',  href: '/receptionist/register' },
     { icon: Users,           label: 'Patient Directory', href: '/receptionist/patients' },
     { icon: Banknote,        label: 'Billing',           href: '/receptionist/billing' },
-    { icon: Settings,        label: 'Settings',          href: '/receptionist/settings' },
+    { icon: UserCog,        label: 'Account',  href: '/receptionist/account' },
 ];
 
 export default function ReceptionistLayout({ children }: { children: React.ReactNode }) {

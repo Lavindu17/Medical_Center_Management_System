@@ -1,5 +1,6 @@
 'use client';
 import { toast } from 'sonner';
+import { formatLKR } from '@/lib/utils';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,7 @@ export default function DoctorManagementPage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Doctor Management</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Doctor Management</h1>
                 <p className="text-neutral-500">Set consultation fees and view earnings configuration.</p>
             </div>
 
@@ -130,7 +131,7 @@ export default function DoctorManagementPage() {
                                     <TableCell>
                                         <Badge variant="outline">{doc.specialization}</Badge>
                                     </TableCell>
-                                    <TableCell className="font-mono">LKR {Number(doc.consultationFee).toFixed(2)}</TableCell>
+                                    <TableCell className="font-mono">{formatLKR(doc.consultationFee)}</TableCell>
                                     <TableCell className="font-mono">{doc.commissionRate}%</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(doc)} aria-label="Edit">

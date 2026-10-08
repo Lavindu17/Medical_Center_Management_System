@@ -1,7 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/app-shell';
-import { LayoutDashboard, Users, FileText, Settings, HeartPulse, Banknote } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, UserCog, HeartPulse, Banknote } from 'lucide-react';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Overview',        href: '/admin' },
@@ -9,7 +9,7 @@ const navItems = [
     { icon: Users,           label: 'User Management', href: '/admin/users' },
     { icon: HeartPulse,      label: 'Doctor Fees',     href: '/admin/doctors' },
     { icon: FileText,        label: 'System Logs',     href: '/admin/logs' },
-    { icon: Settings,        label: 'Settings',        href: '/admin/settings' },
+    { icon: UserCog,        label: 'Account',         href: '/admin/account' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

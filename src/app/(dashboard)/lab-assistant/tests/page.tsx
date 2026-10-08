@@ -1,5 +1,5 @@
-
 'use client';
+import { formatLKR } from '@/lib/utils';
 import { toast } from 'sonner';
 
 import { useEffect, useState } from 'react';
@@ -86,7 +86,7 @@ export default function LabTestsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Lab Tests</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Lab Tests</h1>
                     <p className="text-muted-foreground mt-1">Manage the catalog of available lab tests.</p>
                 </div>
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -171,7 +171,7 @@ export default function LabTestsPage() {
                 <CardContent>
                     <div className="rounded-md border bg-white overflow-hidden">
                         <Table>
-                            <TableHeader className="bg-gray-50">
+                            <TableHeader className="bg-neutral-50">
                                 <TableRow>
                                     <TableHead>Test Name</TableHead>
                                     <TableHead>Description</TableHead>
@@ -192,14 +192,14 @@ export default function LabTestsPage() {
                                     </TableRow>
                                 ) : (
                                     filteredTests.map((test) => (
-                                        <TableRow key={test.id} className="hover:bg-gray-50/50">
+                                        <TableRow key={test.id} className="hover:bg-neutral-50/50">
                                             <TableCell className="font-medium">{test.name}</TableCell>
                                             <TableCell className="text-muted-foreground">{test.description || '-'}</TableCell>
                                             <TableCell className="text-right font-mono">
-                                                LKR {parseFloat(test.price).toFixed(2)}
+                                                {formatLKR(test.price)}
                                             </TableCell>
                                             <TableCell className="text-right font-mono text-orange-700">
-                                                LKR {parseFloat(test.cost_price || '0').toFixed(2)}
+                                                {formatLKR(test.cost_price || '0')}
                                             </TableCell>
                                         </TableRow>
                                     ))

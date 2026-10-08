@@ -1,4 +1,6 @@
 'use client';
+import { formatDate } from '@/lib/dates';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { toast } from 'sonner';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -7,15 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { formatLKR } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     Banknote, Search, FlaskConical, Pill, Stethoscope,
     Receipt, CheckCircle2, Clock, CreditCard, User, Phone, ChevronDown, ChevronUp
 } from 'lucide-react';
-
-function formatLKR(val: any) {
-    return `LKR ${Number(val || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
 type StatusFilter = 'PENDING' | 'PAID';
 
@@ -90,11 +89,11 @@ export default function BillingPage() {
     const toggle = (id: number) => setExpandedId(prev => prev === id ? null : id);
 
     return (
-        <div className="space-y-5 p-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Billing & Payments</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Billing</h1>
                     <p className="text-sm text-neutral-500 mt-1">Process patient payments and view billing history.</p>
                 </div>
                 <div className="flex gap-1 bg-neutral-100/80 p-1.5 rounded-xl border border-neutral-200">
@@ -201,7 +200,7 @@ export default function BillingPage() {
                                             <div className="text-[11px] text-neutral-400 font-medium uppercase tracking-tighter">{bill.specialization}</div>
                                         </div>
                                         <div className="col-span-2">
-                                            <div className="text-xs font-bold text-neutral-600">{new Date(bill.appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                            <div className="text-xs font-bold text-neutral-600">{formatDate(bill.appointment_date)}</div>
                                             {bill.time_slot && <div className="text-[10px] text-neutral-400 font-medium">{bill.time_slot}</div>}
                                         </div>
                                         <div className="col-span-2 text-right pr-8">
@@ -285,9 +284,7 @@ export default function BillingPage() {
                                                                         <div key={i} className="flex justify-between px-3 py-2 text-xs">
                                                                             <span className="text-neutral-600 font-medium">{lt.name}</span>
                                                                             <div className="flex items-center gap-3">
-                                                                                <Badge className={`text-[9px] px-1.5 py-0 border-0 ${lt.lab_status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-                                                                                    {lt.lab_status}
-                                                                                </Badge>
+                                                                                <StatusBadge status={lt.lab_status} kind="lab" size="sm" />
                                                                                 <span className="font-bold text-neutral-800 min-w-[80px] text-right">{formatLKR(lt.price)}</span>
                                                                             </div>
                                                                         </div>
@@ -353,10 +350,7 @@ export default function BillingPage() {
                                                             <div className="space-y-2 pt-2 border-t border-neutral-50">
                                                                 <div className="flex justify-between items-center text-xs">
                                                                     <span className="text-neutral-400 font-medium">Payment Status</span>
-                                                                    <Badge className={`px-2 py-0.5 border-0 font-bold tracking-tight ${bill.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                                        {bill.status === 'PAID' ? <CheckCircle2 className="h-3 w-3 mr-1 inline" /> : <Clock className="h-3 w-3 mr-1 inline" />}
-                                                                        {bill.status}
-                                                                    </Badge>
+                                                                    <StatusBadge status={bill.status} kind="bill" size="sm" />
                                                                 </div>
                                                                 {bill.payment_method && (
                                                                     <div className="flex justify-between items-center text-xs">
@@ -416,7 +410,7 @@ export default function BillingPage() {
                                 </div>
                                 <div>
                                     <div className="font-semibold text-sm">{selectedBill.patient_name}</div>
-                                    <div className="text-xs text-neutral-400">Bill #{selectedBill.id} · {new Date(selectedBill.appointment_date).toLocaleDateString()}</div>
+                                    <div className="text-xs text-neutral-400">Bill #{selectedBill.id} · {formatDate(selectedBill.appointment_date)}</div>
                                 </div>
                             </div>
 

@@ -24,7 +24,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { ShieldCheck } from 'lucide-react';
-import { ChangePasswordCard } from '@/components/auth/ChangePasswordCard';
 
 export default function DoctorProfilePage() {
     const confirm = useConfirm();
@@ -205,13 +204,13 @@ export default function DoctorProfilePage() {
         setSchedules(newSched);
     };
 
-    if (loading) return <div className="p-8">Loading Profile...</div>;
+    if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Profile…</div>;
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <div className="max-w-5xl mx-auto space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-neutral-900">Profile & Settings</h1>
-                <p className="text-neutral-500">Manage your personal details and availability.</p>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Practice Profile</h1>
+                <p className="text-neutral-500">Your fee, working schedule and days off. Name, phone and password are on the Account page.</p>
             </div>
 
             <Tabs defaultValue="general" className="w-full">
@@ -219,7 +218,6 @@ export default function DoctorProfilePage() {
                     <TabsTrigger value="general">General Info</TabsTrigger>
                     <TabsTrigger value="schedule">Schedule & Availability</TabsTrigger>
                     <TabsTrigger value="leaves">Blocked Dates (Calendar)</TabsTrigger>
-                    <TabsTrigger value="security">Security Settings</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general">
@@ -376,9 +374,6 @@ export default function DoctorProfilePage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="security">
-                    <ChangePasswordCard />
-                </TabsContent>
             </Tabs>
 
             <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>

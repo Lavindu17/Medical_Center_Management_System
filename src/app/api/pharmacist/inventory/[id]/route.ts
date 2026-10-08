@@ -14,14 +14,14 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
 
     try {
         const id = await parseId(props);
-        if (id === null) return NextResponse.json({ error: 'Invalid medicine id' }, { status: 400 });
+        if (id === null) return NextResponse.json({ message: 'Invalid medicine id' }, { status: 400 });
 
         const result = await query<any[]>('SELECT * FROM medicines WHERE id = ?', [id]);
-        if (result.length === 0) return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+        if (result.length === 0) return NextResponse.json({ message: 'Medicine not found' }, { status: 404 });
         return NextResponse.json(result[0]);
     } catch (error) {
         console.error('Error fetching medicine:', error);
-        return NextResponse.json({ error: 'Failed to fetch medicine' }, { status: 500 });
+        return NextResponse.json({ message: 'Failed to fetch medicine' }, { status: 500 });
     }
 }
 
@@ -32,11 +32,11 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
     try {
         const id = await parseId(props);
-        if (id === null) return NextResponse.json({ error: 'Invalid medicine id' }, { status: 400 });
+        if (id === null) return NextResponse.json({ message: 'Invalid medicine id' }, { status: 400 });
 
         const parsed = medicineSchema.safeParse(await request.json().catch(() => null));
         if (!parsed.success) {
-            return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 });
+            return NextResponse.json({ message: parsed.error.issues[0]?.message || 'Invalid input' }, { status: 400 });
         }
         const m = parsed.data;
 
@@ -44,7 +44,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
             `SELECT id FROM medicines WHERE LOWER(name) = LOWER(?) AND COALESCE(strength, '') = COALESCE(?, '') AND id <> ?`,
             [m.name, m.strength ?? null, id]);
         if (duplicate.length > 0) {
-            return NextResponse.json({ error: 'A medicine with this name and strength already exists' }, { status: 409 });
+            return NextResponse.json({ message: 'A medicine with this name and strength already exists' }, { status: 409 });
         }
 
         const result: any = await query(
@@ -54,12 +54,12 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
              WHERE id = ?`,
             [m.name, m.generic_name ?? null, m.manufacturer ?? null, m.category ?? null, m.dosage_form ?? null, m.strength ?? null,
              m.price_per_unit, m.min_stock_level, m.unit, m.location ?? null, id]);
-        if (result.affectedRows === 0) return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+        if (result.affectedRows === 0) return NextResponse.json({ message: 'Medicine not found' }, { status: 404 });
 
         return NextResponse.json({ message: 'Medicine updated successfully' });
     } catch (error) {
         console.error('Error updating medicine:', error);
-        return NextResponse.json({ error: 'Failed to update medicine' }, { status: 500 });
+        return NextResponse.json({ message: 'Failed to update medicine' }, { status: 500 });
     }
 }
 
@@ -69,14 +69,14 @@ export async function DELETE(_req: Request, props: { params: Promise<{ id: strin
 
     try {
         const id = await parseId(props);
-        if (id === null) return NextResponse.json({ error: 'Invalid medicine id' }, { status: 400 });
+        if (id === null) return NextResponse.json({ message: 'Invalid medicine id' }, { status: 400 });
 
         const found = await query<any[]>(
             `SELECT m.id, COALESCE(SUM(b.quantity_current), 0) AS on_hand
              FROM medicines m LEFT JOIN inventory_batches b ON b.medicine_id = m.id WHERE m.id = ? GROUP BY m.id`, [id]);
-        if (found.length === 0) return NextResponse.json({ error: 'Medicine not found' }, { status: 404 });
+        if (found.length === 0) return NextResponse.json({ message: 'Medicine not found' }, { status: 404 });
         if (Number(found[0].on_hand) > 0) {
-            return NextResponse.json({ error: 'This medicine still has stock. Dispense or write it off first.' }, { status: 409 });
+            return NextResponse.json({ message: 'This medicine still has stock. Dispense or write it off first.' }, { status: 409 });
         }
 
         await query('DELETE FROM medicines WHERE id = ?', [id]);
@@ -84,9 +84,9 @@ export async function DELETE(_req: Request, props: { params: Promise<{ id: strin
     } catch (error: any) {
         // Prescriptions keep a reference to the medicine for the patient's record
         if (error?.errno === 1451) {
-            return NextResponse.json({ error: 'This medicine appears on prescriptions and cannot be deleted.' }, { status: 409 });
+            return NextResponse.json({ message: 'This medicine appears on prescriptions and cannot be deleted.' }, { status: 409 });
         }
         console.error('Error deleting medicine:', error);
-        return NextResponse.json({ error: 'Failed to delete medicine' }, { status: 500 });
+        return NextResponse.json({ message: 'Failed to delete medicine' }, { status: 500 });
     }
 }

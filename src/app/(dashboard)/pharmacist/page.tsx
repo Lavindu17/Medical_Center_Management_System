@@ -57,18 +57,23 @@ export default function PharmacistDashboard() {
     } | null>(null);
 
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
-        Promise.all([
-            fetch('/api/pharmacist/stats').then(res => res.json()),
-            fetch('/api/pharmacist/chart-data').then(res => res.json())
-        ])
-        .then(([statsData, chartsData]) => {
-            setStats(statsData);
-            setChartData(chartsData);
-        })
-        .catch(console.error)
-        .finally(() => setLoading(false));
+        // Each call is handled on its own so one failing endpoint cannot take the whole dashboard down.
+        const load = async (url: string) => {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`${url} responded ${res.status}`);
+            return res.json();
+        };
+        Promise.allSettled([load('/api/pharmacist/stats'), load('/api/pharmacist/chart-data')])
+            .then(([statsRes, chartsRes]) => {
+                if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+                else { console.error(statsRes.reason); setLoadError(true); }
+                if (chartsRes.status === 'fulfilled') setChartData(chartsRes.value);
+                else { console.error(chartsRes.reason); setLoadError(true); }
+            })
+            .finally(() => setLoading(false));
     }, []);
 
     const cards = [
@@ -101,21 +106,27 @@ export default function PharmacistDashboard() {
         }
     ];
 
-    const inventoryData = chartData ? [
+    const inventoryData = chartData?.inventory ? [
         { name: 'Active Asset Value', value: chartData.inventory.assetValue, fill: THEME.primary },
         { name: 'Expired Write-offs', value: chartData.inventory.writeOffValue, fill: THEME.red }
     ] : [];
 
     return (
-        <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="space-y-6">
             <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
             >
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">Pharmacist Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Pharmacist Dashboard</h1>
                 <p className="text-neutral-500 mt-0.5 text-sm">Overview of pharmacy operations and inventory.</p>
             </motion.div>
+
+            {loadError && !loading && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    Some dashboard figures could not be loaded. Reload the page; if it keeps happening, the database may be missing the latest schema updates.
+                </div>
+            )}
 
             {loading ? <SkeletonKpiRow count={3} /> : (
                 <div className="grid md:grid-cols-3 gap-4">

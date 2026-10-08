@@ -9,6 +9,8 @@ interface AuthContextType {
     loading: boolean;
     login: (user: User) => void;
     logout: () => void;
+    /** Re-reads the signed-in user (after the person edits their own name, for example) */
+    refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, refresh: checkSession }}>
             {children}
         </AuthContext.Provider>
     );

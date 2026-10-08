@@ -1,5 +1,6 @@
-import { SettingsPageLayout } from '@/components/auth/SettingsPageLayout';
+import { redirect } from 'next/navigation';
 
-export default function PharmacistSettingsPage() {
-    return <SettingsPageLayout title="Pharmacist Settings" />;
+// Settings moved to the Account page, which is the same for every role.
+export default function SettingsRedirect() {
+    redirect('/pharmacist/account');
 }

@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -47,7 +48,7 @@ function AppointmentCard({ apt, isPast = false, index = 0 }: { apt: Appointment;
                                 <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600">
                                     <span className="flex items-center gap-1">
                                         <Calendar className="h-3 w-3 text-emerald-500" />
-                                        {new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                                        {formatDate(apt.date)}
                                     </span>
                                     <span className="flex items-center gap-1">
                                         <Clock className="h-3 w-3 text-emerald-500" />
@@ -116,7 +117,7 @@ export default function AppointmentsListPage() {
                 className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
             >
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">My Appointments</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">My Appointments</h1>
                     <p className="text-neutral-500 mt-0.5 text-sm">View and manage your upcoming and past visits.</p>
                 </div>
                 <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 gap-2 shadow-sm">

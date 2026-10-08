@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,12 +23,12 @@ export default function BillingPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <div className="p-8 text-neutral-500">Loading billing history...</div>;
+    if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading billing history…</div>;
 
     return (
-        <div className="p-6 md:p-8 space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto">
             <div>
-                <h1 className="text-2xl font-bold text-neutral-900">Billing History</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Billing</h1>
                 <p className="text-sm text-neutral-500 mt-1">Itemized invoices for all your appointments.</p>
             </div>
 
@@ -61,7 +62,7 @@ export default function BillingPage() {
                                                 }>{bill.status}</Badge>
                                             </div>
                                             <p className="text-sm text-neutral-500 mt-0.5">
-                                                {new Date(bill.appointmentDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                                {formatDate(bill.appointmentDate)}
                                                 &nbsp;·&nbsp; {asDoctor(bill.doctorName)}
                                                 {bill.specialization && <span className="text-neutral-400"> ({bill.specialization})</span>}
                                             </p>
@@ -70,7 +71,7 @@ export default function BillingPage() {
                                     <div className="flex items-center gap-4">
                                         <div className="text-right">
                                             <div className="font-bold text-xl text-neutral-900">{formatLKR(bill.total_amount)}</div>
-                                            {bill.paid_at && <p className="text-xs text-neutral-400">Paid {new Date(bill.paid_at).toLocaleDateString()}</p>}
+                                            {bill.paid_at && <p className="text-xs text-neutral-400">Paid {formatDate(bill.paid_at)}</p>}
                                         </div>
                                         {isExpanded ? <ChevronUp className="h-4 w-4 text-neutral-400" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
                                     </div>

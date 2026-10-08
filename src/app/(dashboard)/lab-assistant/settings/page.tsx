@@ -1,5 +1,6 @@
-import { SettingsPageLayout } from '@/components/auth/SettingsPageLayout';
+import { redirect } from 'next/navigation';
 
-export default function LabAssistantSettingsPage() {
-    return <SettingsPageLayout title="Lab Assistant Settings" />;
+// Settings moved to the Account page, which is the same for every role.
+export default function SettingsRedirect() {
+    redirect('/lab-assistant/account');
 }

@@ -1,14 +1,15 @@
 'use client';
 
 import { AppShell } from '@/components/app-shell';
-import { LayoutDashboard, Calendar, Users, Banknote, User } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Banknote, User, UserCog } from 'lucide-react';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard',       href: '/doctor' },
     { icon: Calendar,        label: 'Appointments',    href: '/doctor/appointments' },
     { icon: Users,           label: 'Patients',        href: '/doctor/patients' },
     { icon: Banknote,        label: 'Earnings',        href: '/doctor/earnings' },
-    { icon: User,            label: 'Profile & Schedule', href: '/doctor/profile' },
+    { icon: User,            label: 'Practice Profile', href: '/doctor/profile' },
+    { icon: UserCog,        label: 'Account',          href: '/doctor/account' },
 ];
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {

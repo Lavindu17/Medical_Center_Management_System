@@ -38,7 +38,7 @@ export default async function ReceptionistDashboard() {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">Reception Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Reception Dashboard</h1>
                 <p className="text-neutral-500 mt-0.5 text-sm">Today's overview at a glance.</p>
             </div>
 

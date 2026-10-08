@@ -42,7 +42,7 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
     return (
         <div className="rounded-md border bg-white overflow-hidden">
             <Table>
-                <TableHeader className="bg-gray-50">
+                <TableHeader className="bg-neutral-50">
                     <TableRow>
                         <TableHead className="w-[180px]">Patient</TableHead>
                         <TableHead>Test Required</TableHead>
@@ -61,15 +61,15 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
                         </TableRow>
                     ) : (
                         data.map((req) => (
-                            <TableRow key={req.request_id} className="hover:bg-gray-50/50 transition-colors">
+                            <TableRow key={req.request_id} className="hover:bg-neutral-50/50 transition-colors">
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
                                         <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
                                             {(req.patient_name ?? '?').charAt(0)}
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-gray-900">{req.patient_name ?? 'Unknown patient'}</div>
-                                            <div className="text-xs text-gray-500">ID: #{req.request_id}</div>
+                                            <div className="font-semibold text-neutral-900">{req.patient_name ?? 'Unknown patient'}</div>
+                                            <div className="text-xs text-neutral-500">ID: #{req.request_id}</div>
                                         </div>
                                     </div>
                                 </TableCell>
@@ -79,13 +79,13 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex items-center gap-1.5 text-gray-600">
+                                    <div className="flex items-center gap-1.5 text-neutral-600">
                                         <UserCheck className="h-3.5 w-3.5" />
                                         {req.doctor_name ?? '—'}
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                                    <div className="flex items-center gap-1.5 text-neutral-500 text-sm">
                                         <Calendar className="h-3.5 w-3.5" />
                                         {formatDate(req.appointment_date)}
                                     </div>
@@ -116,7 +116,7 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
                                             <FileText className="h-3.5 w-3.5" /> View report
                                         </a>
                                     ) : (
-                                        <span className="text-xs text-gray-400 font-medium">Completed</span>
+                                        <span className="text-xs text-neutral-400 font-medium">Completed</span>
                                     )}
                                 </TableCell>
                             </TableRow>
@@ -178,7 +178,7 @@ export default function LabAssistantDashboard() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Lab Dashboard</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Lab Requests</h1>
                     <p className="text-muted-foreground mt-1">Manage pending test requests and view history.</p>
                 </div>
                 <div className="flex w-full sm:w-auto items-center gap-2">
@@ -223,7 +223,7 @@ export default function LabAssistantDashboard() {
                         <CardContent>
                             {errorNotice}
                             {loading ? (
-                                <div className="text-center py-10 text-gray-500 animate-pulse">Loading requests...</div>
+                                <div className="text-center py-10 text-neutral-500 animate-pulse">Loading requests...</div>
                             ) : (
                                 <RequestTable data={pendingRequests} onUploaded={fetchRequests} />
                             )}
@@ -235,7 +235,7 @@ export default function LabAssistantDashboard() {
                     <Card className="border-none shadow-md bg-white/50 backdrop-blur-sm">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <History className="h-5 w-5 text-gray-600" />
+                                <History className="h-5 w-5 text-neutral-600" />
                                 Request History
                             </CardTitle>
                             <CardDescription>
@@ -245,7 +245,7 @@ export default function LabAssistantDashboard() {
                         <CardContent>
                             {errorNotice}
                             {loading ? (
-                                <div className="text-center py-10 text-gray-500 animate-pulse">Loading history...</div>
+                                <div className="text-center py-10 text-neutral-500 animate-pulse">Loading history...</div>
                             ) : (
                                 <RequestTable data={historyRequests} onUploaded={fetchRequests} />
                             )}

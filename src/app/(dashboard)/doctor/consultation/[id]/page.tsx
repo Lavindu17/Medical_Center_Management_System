@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { usePrompt } from '@/components/ui/confirm-dialog';
 import { medicineForm } from '@/lib/medicine-form';
@@ -256,11 +257,11 @@ export default function ConsultationPage() {
         }
     };
 
-    if (loading) return <div className="p-8">Loading Consultation...</div>;
-    if (!appointment) return <div className="p-8">Appointment not found</div>;
+    if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Consultation…</div>;
+    if (!appointment) return <div role="alert" className="py-16 text-center text-neutral-600">Appointment not found</div>;
 
     return (
-        <div className="p-6 max-w-[1600px] mx-auto grid grid-cols-12 gap-6 h-[calc(100vh-64px)] overflow-hidden">
+        <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-6 lg:h-[calc(100vh-8rem)] overflow-hidden">
             {/* LEFT COLUMN: Patient & Vitals */}
             <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-4 overflow-y-auto pr-2">
                 {/* Patient Card */}
@@ -268,7 +269,7 @@ export default function ConsultationPage() {
                     <CardHeader className="bg-emerald-50 pb-4">
                         <CardTitle className="text-lg text-emerald-800">{patient?.name}</CardTitle>
                         <div className="text-sm text-neutral-600">
-                            {patient?.age ? `${patient.age} yrs` : 'DOB: ' + new Date(patient?.dob).toLocaleDateString()} • {patient?.gender}
+                            {patient?.age ? `${patient.age} yrs` : 'DOB: ' + formatDate(patient?.dob)} • {patient?.gender}
                         </div>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-4">
@@ -344,7 +345,7 @@ export default function ConsultationPage() {
                         ) : (
                             history.appointments.slice(0, 5).map((h, i) => (
                                 <div key={i} className="text-sm border-l-2 border-neutral-300 pl-3 py-1">
-                                    <div className="font-semibold">{new Date(h.date).toLocaleDateString()}</div>
+                                    <div className="font-semibold">{formatDate(h.date)}</div>
                                     <div className="text-neutral-600 truncate">{h.diagnosis || "No notes"}</div>
                                 </div>
                             ))
@@ -739,7 +740,7 @@ export default function ConsultationPage() {
                                                 <CardHeader className="py-3 bg-neutral-50">
                                                     <div className="flex justify-between items-center">
                                                         <CardTitle className="text-base flex items-center gap-2">
-                                                            <History className="h-4 w-4" /> {new Date(appt.date).toLocaleDateString()}
+                                                            <History className="h-4 w-4" /> {formatDate(appt.date)}
                                                         </CardTitle>
                                                         {appt.reason && <Badge variant="outline">{appt.reason}</Badge>}
                                                     </div>
@@ -807,7 +808,7 @@ export default function ConsultationPage() {
                                                 <div key={lab.id} className="p-4 flex justify-between items-center hover:bg-neutral-50 transition-colors">
                                                     <div>
                                                         <div className="font-semibold text-teal-900">{lab.testName}</div>
-                                                        <div className="text-xs text-neutral-500">Requested: {new Date(lab.requested_at).toLocaleDateString()}</div>
+                                                        <div className="text-xs text-neutral-500">Requested: {formatDate(lab.requested_at)}</div>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <Badge variant={lab.status === 'COMPLETED' ? 'default' : 'secondary'}>
@@ -841,7 +842,7 @@ export default function ConsultationPage() {
                                                             <Pill className="h-4 w-4" /> {med.medicineName}
                                                         </div>
                                                         <div className="text-xs text-neutral-500 mt-1">
-                                                            Issued: {new Date(med.issued_at).toLocaleDateString()}
+                                                            Issued: {formatDate(med.issued_at)}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">

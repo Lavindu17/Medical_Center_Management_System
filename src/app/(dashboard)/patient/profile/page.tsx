@@ -19,7 +19,6 @@ interface Allergy {
     severity: 'MILD' | 'MODERATE' | 'SEVERE';
 }
 
-import { ChangePasswordCard } from '@/components/auth/ChangePasswordCard';
 
 export default function PatientProfilePage() {
 // ... existing states
@@ -163,13 +162,13 @@ export default function PatientProfilePage() {
         }
     };
 
-    if (loading) return <div className="p-8">Loading Profile...</div>;
+    if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Profile…</div>;
 
     return (
-        <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
             <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Profile</h1>
-                <p className="text-sm md:text-base text-neutral-500">Manage your personal and medical information.</p>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Health Profile</h1>
+                <p className="text-sm md:text-base text-neutral-500">Your medical details, allergies and emergency contact. Name, phone and password are on the Account page.</p>
             </div>
 
             <Tabs defaultValue="personal" className="w-full">
@@ -185,9 +184,6 @@ export default function PatientProfilePage() {
                     </TabsTrigger>
                     <TabsTrigger value="family" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
                         <Users className="h-4 w-4 mr-2" /> Family Accounts
-                    </TabsTrigger>
-                    <TabsTrigger value="security" className="data-[state=active]:bg-white data-[state=active]:shadow-sm border sm:border-none py-3">
-                        <ShieldAlert className="h-4 w-4 mr-2" /> Security Settings
                     </TabsTrigger>
                 </TabsList>
 
@@ -400,10 +396,6 @@ export default function PatientProfilePage() {
                     </Card>
                 </TabsContent>
 
-                {/* SECURITY SETTINGS */}
-                <TabsContent value="security">
-                    <ChangePasswordCard />
-                </TabsContent>
             </Tabs>
 
         </div>

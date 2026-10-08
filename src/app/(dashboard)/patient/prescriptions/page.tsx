@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
@@ -56,9 +57,9 @@ export default function PrescriptionsPage() {
     };
 
     return (
-        <div className="p-8 space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto">
             <div>
-                <h1 className="text-3xl font-bold">My Prescriptions</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">My Prescriptions</h1>
                 <p className="text-neutral-500">History of medication issued by doctors.</p>
             </div>
 
@@ -91,7 +92,7 @@ export default function PrescriptionsPage() {
                                         </Badge>
                                         <div className="text-sm text-neutral-500 mt-1 flex items-center justify-end gap-1">
                                             <Calendar className="h-3 w-3" />
-                                            {new Date(prescription.issued_at).toLocaleDateString()}
+                                            {formatDate(prescription.issued_at)}
                                         </div>
                                     </div>
                                     <div className="text-neutral-400">

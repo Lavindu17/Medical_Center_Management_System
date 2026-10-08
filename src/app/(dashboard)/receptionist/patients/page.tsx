@@ -1,5 +1,8 @@
-
 'use client';
+
+import { formatDate } from '@/lib/dates';
+
+
 import { toast } from 'sonner';
 
 import { useState, useEffect } from 'react';
@@ -92,7 +95,7 @@ export default function PatientDirectory() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900">Patient Directory</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Patient Directory</h1>
                     <p className="text-neutral-500">Manage patient records and accounts.</p>
                 </div>
                 <Link href="/receptionist/register">
@@ -130,7 +133,7 @@ export default function PatientDirectory() {
                                 <div className="text-sm text-neutral-900">{patient.email}</div>
                                 <div className="text-xs text-neutral-500">{patient.phone}</div>
                             </div>
-                            <div className="col-span-2 text-sm text-neutral-600">{new Date(patient.date_of_birth).toLocaleDateString()}</div>
+                            <div className="col-span-2 text-sm text-neutral-600">{formatDate(patient.date_of_birth)}</div>
                             <div className="col-span-2 text-sm text-neutral-600">{patient.gender}</div>
                             <div className="col-span-2 flex justify-end gap-2">
                                 <Button size="sm" variant="ghost" className="text-emerald-600" onClick={() => openLinkDialog(patient)} title="Link Family">

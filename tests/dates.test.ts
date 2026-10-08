@@ -60,3 +60,24 @@ describe('firstName', () => {
             expect(firstName(input)).toBe(expected);
         });
 });
+
+import { formatDate, formatDateTime } from '@/lib/dates';
+
+describe('formatDate / formatDateTime', () => {
+    it('formats the same way regardless of locale', () => {
+        expect(formatDate('2026-10-08')).toBe('8 Oct 2026');
+        expect(formatDate(new Date(2026, 9, 8))).toBe('8 Oct 2026');
+    });
+    it('keeps a bare calendar day on that day', () => {
+        expect(formatDate('2026-01-01')).toBe('1 Jan 2026');
+    });
+    it('shows a dash for missing or invalid dates', () => {
+        expect(formatDate(null)).toBe('-');
+        expect(formatDate('')).toBe('-');
+        expect(formatDate('not a date')).toBe('-');
+        expect(formatDateTime(undefined)).toBe('-');
+    });
+    it('adds a 24 hour time', () => {
+        expect(formatDateTime(new Date(2026, 9, 8, 14, 5))).toBe('8 Oct 2026, 14:05');
+    });
+});

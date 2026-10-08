@@ -44,7 +44,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
             </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600" aria-label="Main">
+          <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-neutral-600" aria-label="Main">
             {NAV_LINKS.map((l) => (
               <Link key={l.href} href={l.href} className="hover:text-emerald-600 transition-colors">{l.label}</Link>
             ))}
@@ -59,7 +59,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
               </Link>
             ) : (
               <>
-                <Link href="/login" className="hidden sm:block text-slate-600 hover:text-emerald-700 font-semibold transition-colors">
+                <Link href="/login" className="hidden sm:block text-neutral-600 hover:text-emerald-700 font-semibold transition-colors">
                   Sign In
                 </Link>
                 <Link href="/register">
@@ -71,7 +71,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
             )}
             <button
               type="button"
-              className="md:hidden h-10 w-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-slate-100"
+              className="md:hidden h-10 w-10 rounded-full flex items-center justify-center text-neutral-600 hover:bg-neutral-100"
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={menuOpen}
               aria-controls="mobile-menu"
@@ -83,7 +83,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
         </div>
 
         {menuOpen && (
-          <nav id="mobile-menu" aria-label="Mobile" className="md:hidden border-t border-slate-100 bg-white px-6 py-4 flex flex-col gap-1 text-slate-700 font-semibold">
+          <nav id="mobile-menu" aria-label="Mobile" className="md:hidden border-t border-neutral-100 bg-white px-6 py-4 flex flex-col gap-1 text-neutral-700 font-semibold">
             {NAV_LINKS.map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className="py-2.5 hover:text-emerald-600">{l.label}</Link>
             ))}
@@ -117,7 +117,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                   Accepting New Patients
                 </div>
 
-                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.1]">
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-neutral-900 leading-[1.1]">
                   Future of <br />
                   <span className="text-emerald-600 relative inline-block mt-2">
                     Healthcare
@@ -127,7 +127,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                   </span>
                 </h1>
 
-                <p className="text-xl text-slate-600 max-w-lg leading-relaxed font-medium">
+                <p className="text-xl text-neutral-600 max-w-lg leading-relaxed font-medium">
                   Book appointments, follow your queue, and keep your prescriptions and lab results together. One platform for patients, doctors, the lab and the pharmacy.
                 </p>
 
@@ -139,13 +139,13 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                     </Button>
                   </Link>
                   <Link href={dashboardHref ?? '/login'} className="w-full sm:w-auto">
-                    <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-2xl w-full transition-all duration-300 bg-white shadow-sm">
+                    <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-neutral-200 text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 rounded-2xl w-full transition-all duration-300 bg-white shadow-sm">
                       {dashboardHref ? 'Go to Dashboard' : 'Sign In'}
                     </Button>
                   </Link>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-6 text-sm text-slate-500 font-semibold">
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-4 pt-6 text-sm text-neutral-500 font-semibold">
                   {['Online booking', 'Qualified doctors', 'Private, secure records'].map((feature, i) => (
                     <motion.div 
                       key={feature}
@@ -181,7 +181,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                   />
                   
                   {/* Subtle overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
 
                 </div>
@@ -191,7 +191,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
         </section>
 
         {/* Bento Box Services Section */}
-        <section id="services" className="py-24 bg-slate-50 relative scroll-mt-20">
+        <section id="services" className="py-24 bg-neutral-50 relative scroll-mt-20">
           <div className="container mx-auto px-6">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -200,8 +200,8 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
               className="text-center max-w-2xl mx-auto mb-16"
             >
               <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-wider mb-2">Our Capabilities</h2>
-              <h3 className="text-4xl font-extrabold text-slate-900 mb-4">Comprehensive Care</h3>
-              <p className="text-slate-600 text-lg">Integrated healthcare solutions designed for your complete wellbeing.</p>
+              <h3 className="text-4xl font-extrabold text-neutral-900 mb-4">Comprehensive Care</h3>
+              <p className="text-neutral-600 text-lg">Integrated healthcare solutions designed for your complete wellbeing.</p>
             </motion.div>
 
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -233,7 +233,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                 icon={Activity}
                 title="Integrated Pharmacy"
                 description="Direct prescription routing and medication management."
-                className="md:col-span-2 bg-slate-900 text-white"
+                className="md:col-span-2 bg-neutral-900 text-white"
                 color="dark"
                 delay={0.3}
               />
@@ -255,8 +255,8 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
             >
               <div className="max-w-2xl">
                 <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-wider mb-2">Medical Team</h2>
-                <h3 className="text-4xl font-extrabold text-slate-900 mb-4">Meet Our Specialists</h3>
-                <p className="text-slate-600 text-lg">Experienced healthcare professionals dedicated to providing exceptional patient care.</p>
+                <h3 className="text-4xl font-extrabold text-neutral-900 mb-4">Meet Our Specialists</h3>
+                <p className="text-neutral-600 text-lg">Experienced healthcare professionals dedicated to providing exceptional patient care.</p>
               </div>
               <Link href="/patient/book">
                 <Button variant="ghost" className="text-emerald-600 font-semibold hover:text-emerald-700 hover:bg-emerald-50">
@@ -271,8 +271,8 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                   <DoctorCard key={index} doctor={doctor} index={index} />
                 ))
               ) : (
-                <div className="md:col-span-3 text-center py-12 bg-slate-50 rounded-3xl border border-slate-100">
-                  <p className="text-slate-500 font-medium">
+                <div className="md:col-span-3 text-center py-12 bg-neutral-50 rounded-3xl border border-neutral-100">
+                  <p className="text-neutral-500 font-medium">
                     {doctorsUnavailable
                       ? 'Our list of specialists is temporarily unavailable. Please check back shortly.'
                       : 'Our specialists will be listed here soon.'}
@@ -284,7 +284,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
         </section>
 
         {/* Feature Grid Section (the "About Us" anchor) */}
-        <section id="about" className="py-24 bg-slate-50 relative scroll-mt-20">
+        <section id="about" className="py-24 bg-neutral-50 relative scroll-mt-20">
           <div className="container mx-auto px-6">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
               <motion.div 
@@ -294,10 +294,10 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                 className="space-y-6"
               >
                 <h2 className="text-sm font-bold text-emerald-600 uppercase tracking-wider mb-2">Ecosystem</h2>
-                <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 leading-tight">
+                <h3 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 leading-tight">
                   A seamless experience for patients and providers.
                 </h3>
-                <p className="text-slate-600 text-lg leading-relaxed">
+                <p className="text-neutral-600 text-lg leading-relaxed">
                   Our unified platform breaks down healthcare silos, connecting you directly with your doctors, lab results, and pharmacy in one secure place.
                 </p>
                 <ul className="space-y-4 pt-4">
@@ -310,7 +310,7 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
                       <div className="mt-1 h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <span className="text-slate-700 font-medium">{item}</span>
+                      <span className="text-neutral-700 font-medium">{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -365,19 +365,19 @@ export function HomePageUI({ doctors, doctorsUnavailable = false, dashboardHref 
         </section>
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-12">
+      <footer className="bg-white border-t border-neutral-200 py-12">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2.5 font-bold text-xl text-slate-900">
+            <div className="flex items-center gap-2.5 font-bold text-xl text-neutral-900">
               <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <HeartPulse className="h-5 w-5 text-emerald-600" />
               </div>
               Sethro Medical
             </div>
-            <p className="text-slate-500 text-sm font-medium">
+            <p className="text-neutral-500 text-sm font-medium">
               © {new Date().getFullYear()} Sethro Medical Center. All rights reserved.
             </p>
-            <div className="flex gap-6 text-sm font-medium text-slate-500">
+            <div className="flex gap-6 text-sm font-medium text-neutral-500">
               <Link href="#services" className="hover:text-emerald-600 transition-colors">Services</Link>
               <Link href="/login" className="hover:text-emerald-600 transition-colors">Sign In</Link>
               <Link href="/register" className="hover:text-emerald-600 transition-colors">Create Account</Link>
@@ -400,15 +400,15 @@ function BentoCard({ icon: Icon, title, description, className, color, delay }: 
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ delay, duration: 0.5 }}
-      className={`p-8 rounded-3xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden relative group ${isDark ? 'border-slate-800' : 'border-slate-200'} ${className}`}
+      className={`p-8 rounded-3xl border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden relative group ${isDark ? 'border-neutral-800' : 'border-neutral-200'} ${className}`}
     >
       <div className={`h-14 w-14 rounded-2xl flex items-center justify-center mb-6 shadow-sm transition-transform duration-300 group-hover:scale-110 
         ${isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-50 text-emerald-600'}`}
       >
         <Icon className="h-7 w-7" />
       </div>
-      <h3 className={`text-2xl font-bold mb-3 ${isDark ? 'text-white' : 'text-slate-900'}`}>{title}</h3>
-      <p className={`leading-relaxed font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{description}</p>
+      <h3 className={`text-2xl font-bold mb-3 ${isDark ? 'text-white' : 'text-neutral-900'}`}>{title}</h3>
+      <p className={`leading-relaxed font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>{description}</p>
       
       {/* Decorative gradient corner */}
       {!isDark && (
@@ -425,13 +425,13 @@ function DoctorCard({ doctor, index }: { doctor: Doctor, index: number }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
-      className="bg-white p-8 rounded-3xl border border-slate-200 hover:shadow-2xl hover:shadow-emerald-900/5 transition-all duration-500 group"
+      className="bg-white p-8 rounded-3xl border border-neutral-200 hover:shadow-2xl hover:shadow-emerald-900/5 transition-all duration-500 group"
     >
       <div className="w-24 h-24 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-full mb-6 mx-auto flex items-center justify-center text-emerald-800 text-3xl font-extrabold shadow-inner relative overflow-hidden group-hover:scale-105 transition-transform duration-500">
         <div className="absolute inset-0 bg-gradient-to-tr from-emerald-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
         {initialOf(doctor.name)}
       </div>
-      <h3 className="text-xl font-bold text-slate-900 text-center mb-1">{asDoctor(doctor.name)}</h3>
+      <h3 className="text-xl font-bold text-neutral-900 text-center mb-1">{asDoctor(doctor.name)}</h3>
       <p className="text-emerald-600 text-center font-semibold text-sm uppercase tracking-wider">{doctor.specialization}</p>
     </motion.div>
   );
@@ -449,7 +449,7 @@ function FeatureMiniCard({ icon: Icon, title, className, delay }: any) {
       <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center mb-4 border border-emerald-100/50">
         <Icon className="h-6 w-6 text-emerald-600" />
       </div>
-      <h4 className="text-lg font-bold text-slate-900">{title}</h4>
+      <h4 className="text-lg font-bold text-neutral-900">{title}</h4>
     </motion.div>
   );
 }

@@ -236,7 +236,7 @@ describe('dispensing rules', () => {
         const { prescriptionId, itemId } = await prescriptionWith(med, 5);
         const res = await dispense(prescriptionId, { action: 'DISPENSE', quantity_to_dispense: 5, item_id: itemId });
         expect(res.status).toBe(409);
-        expect((await res.json()).error).toMatch(/insufficient/i);
+        expect((await res.json()).message).toMatch(/insufficient/i);
         expect((await one(`SELECT quantity_current FROM inventory_batches WHERE medicine_id = ?`, [med])).quantity_current).toBe(50);
     });
 

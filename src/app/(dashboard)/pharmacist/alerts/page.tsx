@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -60,17 +61,9 @@ export default function ExpiryAlertsPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
     if (loading) return (
-        <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-6">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">Expiry Alerts</h1>
+        <div className="space-y-6">
+            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Expiry & Stock Alerts</h1>
             <SkeletonKpiRow count={4} />
         </div>
     );
@@ -92,9 +85,9 @@ export default function ExpiryAlertsPage() {
     }));
 
     return (
-        <div className="p-5 md:p-8 max-w-7xl mx-auto space-y-8">
+        <div className="space-y-6">
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-neutral-900">Expiry & Stock Alerts</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Expiry & Stock Alerts</h1>
                 <p className="text-neutral-500 mt-0.5 text-sm">Monitor batch expiries and inventory shortages.</p>
             </motion.div>
 

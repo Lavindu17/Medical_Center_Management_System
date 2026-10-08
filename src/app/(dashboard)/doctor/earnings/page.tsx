@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,11 +33,11 @@ export default function DoctorEarningsPage() {
     const s = data?.summary;
 
     return (
-        <div className="p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-neutral-900">Earnings</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Earnings</h1>
                     <p className="text-sm text-neutral-500 mt-1">
                         Your net earnings after the medical centre commission.
                     </p>
@@ -159,7 +160,7 @@ export default function DoctorEarningsPage() {
                                             {data.appointments.map((appt: any, i: number) => (
                                                 <tr key={i} className="hover:bg-neutral-50 transition-colors">
                                                     <td className="p-3 text-neutral-500">
-                                                        {new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        {formatDate(appt.date)}
                                                     </td>
                                                     <td className="p-3 font-medium text-neutral-800">{appt.patient_name}</td>
                                                     <td className="p-3 text-right text-neutral-600">{formatLKR(appt.doctor_fee)}</td>

@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
@@ -143,7 +144,7 @@ export default function UserManagementPage() {
         <div className="space-y-8">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">User Management</h1>
                     <p className="text-neutral-500">Manage staff access and patient accounts.</p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -281,12 +282,12 @@ export default function UserManagementPage() {
                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                       ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800' :
                                                 user.role === 'DOCTOR' ? 'bg-emerald-100 text-emerald-800' :
-                                                    user.role === 'PATIENT' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                                    user.role === 'PATIENT' ? 'bg-green-100 text-green-800' : 'bg-neutral-100 text-neutral-800'}`}>
                                             {user.role}
                                         </span>
                                     </TableCell>
                                     <TableCell>{user.phone || '-'}</TableCell>
-                                    <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>{formatDate(user.createdAt)}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(user)} aria-label="Edit">
                                             <Edit className="h-4 w-4 text-neutral-500" aria-hidden />

@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -38,17 +39,17 @@ export default function PatientHistoryPage() {
         load();
     }, [patientId]);
 
-    if (loading) return <div className="p-8">Loading Record...</div>;
-    if (!patient) return <div className="p-8">Patient not found</div>;
+    if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Record…</div>;
+    if (!patient) return <div role="alert" className="py-16 text-center text-neutral-600">Patient not found</div>;
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8">
+        <div className="max-w-5xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
                     <ArrowLeft className="h-5 w-5" aria-hidden />
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900">{patient.name}</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">{patient.name}</h1>
                     <p className="text-neutral-500">Medical Record</p>
                 </div>
             </div>
@@ -106,7 +107,7 @@ export default function PatientHistoryPage() {
                                     {history.map((visit) => (
                                         <div key={visit.id} className="p-4 hover:bg-neutral-50 transition-colors">
                                             <div className="flex justify-between mb-2">
-                                                <span className="font-bold text-neutral-800">{new Date(visit.date).toLocaleDateString()}</span>
+                                                <span className="font-bold text-neutral-800">{formatDate(visit.date)}</span>
                                                 <span className="text-sm text-neutral-500">{visit.time_slot}</span>
                                             </div>
 
@@ -117,7 +118,7 @@ export default function PatientHistoryPage() {
                                                 </div>
 
                                                 {visit.prescriptions && visit.prescriptions.length > 0 && (
-                                                    <div className="bg-gray-50 p-3 rounded text-sm mt-3 border">
+                                                    <div className="bg-neutral-50 p-3 rounded text-sm mt-3 border">
                                                         <span className="font-semibold text-neutral-600 flex items-center gap-2 mb-2">
                                                             <FileText className="h-3 w-3" /> Prescribed Medicines:
                                                         </span>

@@ -16,12 +16,12 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 
 
 
-/** 500 -> Rs.500, 2500 -> Rs.2.5k, 1,200,000 -> Rs.1.2M */
+/** 500 -> LKR 500, 2500 -> LKR 2.5k, 1,200,000 -> LKR 1.2M */
 function compactLKR(value: number) {
     if (!Number.isFinite(value)) return '';
-    if (Math.abs(value) >= 1_000_000) return `Rs.${+(value / 1_000_000).toFixed(1)}M`;
-    if (Math.abs(value) >= 1_000) return `Rs.${+(value / 1_000).toFixed(1)}k`;
-    return `Rs.${value}`;
+    if (Math.abs(value) >= 1_000_000) return `LKR ${+(value / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(value) >= 1_000) return `LKR ${+(value / 1_000).toFixed(1)}k`;
+    return `LKR ${value}`;
 }
 
 export default function DoctorDashboard() {

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     try {
         const user = await getPharmacist();
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
 
         const url = new URL(request.url);
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     } catch (error) {
         console.error('Error fetching prescriptions:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch prescriptions' },
+            { message: 'Failed to fetch prescriptions' },
             { status: 500 }
         );
     }

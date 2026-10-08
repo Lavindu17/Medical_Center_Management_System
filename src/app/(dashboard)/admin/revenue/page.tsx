@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -161,7 +162,7 @@ export default function RevenuePage() {
         </div>
     );
     if (!data?.revenue) return (
-        <div className="p-8 text-red-500 text-sm">Failed to load financial data.</div>
+        <div role="alert" className="py-16 text-center text-sm text-red-700">Failed to load financial data.</div>
     );
 
     const { revenue, cogs, inventory, profit, doctor_payouts, daily } = data;
@@ -186,12 +187,12 @@ export default function RevenuePage() {
     ];
 
     return (
-        <div className="p-5 md:p-7 space-y-6 max-w-7xl mx-auto">
+        <div className="space-y-6">
 
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-xl font-bold text-neutral-900 tracking-tight">Revenue Analytics</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Revenue Analytics</h1>
                     <p className="text-xs text-neutral-400 mt-0.5">
                         {MONTHS[selectedMonth]} {selectedYear} · Sethro Medical Center
                     </p>

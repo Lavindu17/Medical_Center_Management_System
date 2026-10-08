@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { asDoctor } from '@/lib/names';
 
@@ -147,7 +148,7 @@ function BatchModal({ item, onClose, onConfirm, prescriptionId, isProcessing }: 
                                         <td className="p-3">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className={`font-medium text-xs ${isExpired ? 'text-red-700' : batch.days_until_expiry <= 30 ? 'text-amber-700' : 'text-neutral-700'}`}>
-                                                    {new Date(batch.expiry_date).toLocaleDateString()}
+                                                    {formatDate(batch.expiry_date)}
                                                 </span>
                                                 {isExpired ? (
                                                     <Badge className="bg-red-100 text-red-700 border-0 text-[10px] h-4 w-fit px-1.5">EXPIRED</Badge>
@@ -308,8 +309,8 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
         fetch(`/api/pharmacist/dispense/${params.id}`)
             .then(res => res.json())
             .then(resData => {
-                if (resData.error) {
-                    toast.error(resData.error);
+                if (!resData.prescription) {
+                    toast.error(resData.message || "Could not load this prescription");
                     router.push('/pharmacist/prescriptions');
                     return;
                 }
@@ -339,7 +340,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                 fetchData();
             } else {
                 const err = await res.json();
-                toast.error('Error: ' + err.error);
+                toast.error(err.message || 'Could not process this item');
             }
         } catch (e) {
             toast.error('Failed to process');
@@ -365,7 +366,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                 fetchData();
             } else {
                 const err = await res.json();
-                toast.error('Error: ' + err.error);
+                toast.error(err.message || 'Could not process this item');
             }
         } catch (e) {
             toast.error('Failed to process');
@@ -425,7 +426,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
         </div>
     );
 
-    if (!data) return <div className="p-8">Prescription not found</div>;
+    if (!data) return <div role="alert" className="py-16 text-center text-neutral-600">Prescription not found</div>;
 
     const { prescription, items } = data;
     const completedCount = items.filter((i: any) => i.status === 'DISPENSED' || i.status === 'REJECTED').length;
@@ -435,7 +436,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
     const allDone = completedCount === totalCount;
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-20">
+        <div className="min-h-screen bg-neutral-50/50 pb-20">
             {/* Modals */}
             {batchModal && (
                 <BatchModal
@@ -464,7 +465,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                                 <ArrowLeft className="h-4 w-4 mr-1" /> Queue
                             </Button>
                             <div className="h-4 w-px bg-neutral-200 hidden md:block"></div>
-                            <h1 className="font-bold text-lg text-neutral-900">Dispensing Room</h1>
+                            <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Dispensing Room</h1>
                         </div>
                         <div className="flex items-center gap-6 flex-1 justify-end">
                             <div className="flex items-center gap-3 flex-1 max-w-xs">
@@ -513,7 +514,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                             </div>
                             <div className="flex items-center gap-2 text-neutral-500">
                                 <Calendar className="h-4 w-4 text-neutral-400" />
-                                <span>{new Date(prescription.created_at).toLocaleDateString()}</span>
+                                <span>{formatDate(prescription.created_at)}</span>
                             </div>
                         </div>
                         <div className="flex-1 max-w-sm border-l pl-6 border-neutral-100">

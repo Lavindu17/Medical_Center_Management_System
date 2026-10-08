@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,7 @@ export default function ReceptionistAppointments() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900">Appointments</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Appointments</h1>
                     <p className="text-neutral-500">Manage daily check-ins and schedules.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
@@ -132,14 +133,7 @@ export default function ReceptionistAppointments() {
                                 <Badge variant="outline" className="text-xs font-normal bg-emerald-50 text-emerald-700 border-emerald-200">{appt.specialization}</Badge>
                             </div>
                             <div className="col-span-2">
-                                <Badge className={`
-                                    ${appt.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : ''}
-                                    ${appt.status === 'CHECKED_IN' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''}
-                                    ${appt.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''}
-                                    ${appt.status === 'CANCELLED' ? 'bg-red-100 text-red-800 hover:bg-red-100' : ''}
-                                `}>
-                                    {appt.status.replace('_', ' ')}
-                                </Badge>
+                                <StatusBadge status={appt.status} size="sm" />
                             </div>
                             <div className="col-span-2 flex justify-end gap-2">
                                 {appt.status === 'PENDING' && (

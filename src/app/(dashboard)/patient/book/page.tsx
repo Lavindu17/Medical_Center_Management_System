@@ -140,14 +140,14 @@ export default function BookAppointmentPage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-8 px-4">
+        <div className="space-y-6 max-w-4xl mx-auto">
             <motion.div
                 className="mb-8"
                 initial={{ opacity: 0, y: -12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35 }}
             >
-                <h1 className="text-3xl font-bold">Book Appointment</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Book Appointment</h1>
                 <p className="text-neutral-500">Scheduled for: <span className="font-semibold text-emerald-600">{user?.name || 'Guest'}</span></p>
             </motion.div>
 

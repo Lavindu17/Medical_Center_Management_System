@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,9 +30,9 @@ export default function LabReportsPage() {
     }, []);
 
     return (
-        <div className="p-8 space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto">
             <div>
-                <h1 className="text-3xl font-bold">Lab Reports</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Lab Reports</h1>
                 <p className="text-neutral-500">View and download your test results.</p>
             </div>
 
@@ -50,7 +51,7 @@ export default function LabReportsPage() {
                                         <h2 className="font-bold text-lg">{item.testName}</h2>
                                         <p className="text-sm text-neutral-500">{item.description}</p>
                                         <div className="text-xs text-neutral-400 mt-1">
-                                            Ordered by {item.doctorName} • {new Date(item.requested_at).toLocaleDateString()}
+                                            Ordered by {item.doctorName} • {formatDate(item.requested_at)}
                                         </div>
                                     </div>
                                 </div>

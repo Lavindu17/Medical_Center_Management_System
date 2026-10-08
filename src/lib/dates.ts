@@ -46,3 +46,24 @@ export function firstName(name?: string | null): string {
     const words = (name ?? '').trim().replace(/^(dr|mr|mrs|ms|miss|prof)\.?\s+/i, '').split(/\s+/);
     return words[0] ?? '';
 }
+
+function toDate(value: Date | string | number | null | undefined): Date | null {
+    if (value === null || value === undefined || value === '') return null;
+    // A bare "YYYY-MM-DD" is a calendar day, not an instant: keep it on that day in every time zone
+    const d = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? parseDay(value) : new Date(value);
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** "8 Oct 2026". The same everywhere, independent of the browser's language setting. "-" when there is no date. */
+export function formatDate(value: Date | string | number | null | undefined): string {
+    const d = toDate(value);
+    return d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+}
+
+/** "8 Oct 2026, 14:30" */
+export function formatDateTime(value: Date | string | number | null | undefined): string {
+    const d = toDate(value);
+    if (!d) return '-';
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${formatDate(d)}, ${time}`;
+}

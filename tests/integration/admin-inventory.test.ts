@@ -110,7 +110,7 @@ describe('medicine edit and delete', () => {
         await consult(appt, { status: 'ONGOING', prescription: rx(id, 2) });
         const res = await del(id);
         expect(res.status).toBe(409);
-        expect((await res.json()).error).toMatch(/prescriptions/i);
+        expect((await res.json()).message).toMatch(/prescriptions/i);
     });
 });
 

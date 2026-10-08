@@ -109,12 +109,12 @@ export default function FamilyDashboard() {
         }
     };
 
-    if (loading) return <div className="p-8">Loading family portal...</div>;
+    if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading family portal…</div>;
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto p-4 md:p-6">
+        <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-neutral-900 flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl flex items-center gap-3">
                     <Users className="h-8 w-8 text-blue-600" /> Family Network
                 </h1>
                 <p className="text-neutral-500">Manage linked medical accounts. Authorized family members can view and manage each other's medical records.</p>

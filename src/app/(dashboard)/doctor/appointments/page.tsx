@@ -66,11 +66,11 @@ export default function DoctorAppointmentsPage() {
     const filteredData = getFilteredAppointments();
 
     return (
-        <div className="p-8 max-w-7xl mx-auto font-sans text-neutral-800 bg-gray-50/50 min-h-screen">
+        <div className="space-y-6 text-neutral-800">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-neutral-900">Appointments</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Appointments</h1>
                     <p className="text-neutral-500 mt-1">Manage patient queue and consultations.</p>
                 </div>
                 <div className="flex bg-white p-1 rounded-lg border shadow-sm">
@@ -80,7 +80,7 @@ export default function DoctorAppointmentsPage() {
                             onClick={() => setFilter(f)}
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${filter === f
                                 ? 'bg-emerald-600 text-white shadow-sm'
-                                : 'text-neutral-500 hover:text-neutral-900 hover:bg-gray-50'
+                                : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50'
                                 }`}
                         >
                             {f.charAt(0).toUpperCase() + f.slice(1)}

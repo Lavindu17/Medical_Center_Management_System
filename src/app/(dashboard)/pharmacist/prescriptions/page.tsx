@@ -1,4 +1,6 @@
 'use client';
+import { formatDate } from '@/lib/dates';
+import { StatusBadge } from '@/components/ui/status-badge';
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
@@ -53,10 +55,10 @@ export default function PrescriptionsPage() {
     );
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <div className="space-y-6">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900">Prescriptions</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Prescriptions</h1>
                     <p className="text-neutral-500">Manage dispensing and view history.</p>
                 </div>
             </div>
@@ -135,7 +137,7 @@ export default function PrescriptionsPage() {
                                             <User className="h-3 w-3" /> {asDoctor(item.doctor_name)}
                                         </span>
                                         <span className="flex items-center gap-1">
-                                            <Clock className="h-3 w-3" /> {new Date(item.created_at).toLocaleDateString()} {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            <Clock className="h-3 w-3" /> {formatDate(item.created_at)} {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 </div>
@@ -143,13 +145,7 @@ export default function PrescriptionsPage() {
 
                             <div className="flex items-center gap-6">
                                 <div className="text-right">
-                                    <Badge variant="outline" className={`mb-1 ${
-                                        item.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                        item.status === 'CANCELLED' ? 'bg-red-50 text-red-700 border-red-200' :
-                                        'bg-amber-50 text-amber-700 border-amber-200'
-                                    }`}>
-                                        {item.status}
-                                    </Badge>
+                                    <StatusBadge status={item.status} kind="prescription" size="sm" className="mb-1" />
                                     <p className="text-xs text-neutral-500">{item.item_count} Items</p>
                                 </div>
                                 <Link href={`/pharmacist/dispense/${item.id}`}>

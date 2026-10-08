@@ -3,7 +3,7 @@
 import { AppShell } from '@/components/app-shell';
 import {
     LayoutDashboard, Pill, FileText, CreditCard,
-    CalendarCheck, CalendarClock, User, Users
+    CalendarCheck, CalendarClock, User, UserCog, Users
 } from 'lucide-react';
 
 const navItems = [
@@ -14,7 +14,8 @@ const navItems = [
     { icon: FileText,        label: 'Lab Reports',      href: '/patient/labs' },
     { icon: CreditCard,      label: 'Billing',          href: '/patient/billing' },
     { icon: Users,           label: 'Family',           href: '/patient/family' },
-    { icon: User,            label: 'Edit Profile',     href: '/patient/profile' },
+    { icon: User,            label: 'Health Profile',   href: '/patient/profile' },
+    { icon: UserCog,        label: 'Account',          href: '/patient/account' },
 ];
 
 export default function PatientLayout({ children }: { children: React.ReactNode }) {

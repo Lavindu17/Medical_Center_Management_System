@@ -23,7 +23,7 @@ export async function GET(
     const params = await props.params;
     try {
         const user = await getPharmacist();
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         const { id } = params;
 
@@ -45,7 +45,7 @@ export async function GET(
         );
 
         if (presRows.length === 0) {
-            return NextResponse.json({ error: 'Prescription not found' }, { status: 404 });
+            return NextResponse.json({ message: 'Prescription not found' }, { status: 404 });
         }
 
         const prescription = presRows[0];
@@ -96,7 +96,7 @@ export async function GET(
 
     } catch (error) {
         console.error('Error fetching dispense details:', error);
-        return NextResponse.json({ error: 'Failed' }, { status: 500 });
+        return NextResponse.json({ message: 'Failed' }, { status: 500 });
     }
 }
 
@@ -112,7 +112,7 @@ export async function POST(
     const params = await props.params;
     try {
         const user = await getPharmacist();
-        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
         const prescriptionId = Number(params.id);
         const body = await request.json().catch(() => ({}));
@@ -120,22 +120,22 @@ export async function POST(
         const itemId = Number(body.item_id);
 
         if (!Number.isInteger(prescriptionId) || prescriptionId <= 0) {
-            return NextResponse.json({ error: 'Invalid prescription id' }, { status: 400 });
+            return NextResponse.json({ message: 'Invalid prescription id' }, { status: 400 });
         }
         if (!Number.isInteger(itemId) || itemId <= 0) {
-            return NextResponse.json({ error: 'item_id is required' }, { status: 400 });
+            return NextResponse.json({ message: 'item_id is required' }, { status: 400 });
         }
         if (!['DISPENSE', 'REJECT'].includes(action)) {
-            return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+            return NextResponse.json({ message: 'Unknown action' }, { status: 400 });
         }
         let quantityNeeded = 0;
         if (action === 'DISPENSE') {
             quantityNeeded = Number(quantity_to_dispense);
             if (!Number.isInteger(quantityNeeded) || quantityNeeded <= 0) {
-                return NextResponse.json({ error: 'quantity_to_dispense must be a positive whole number' }, { status: 400 });
+                return NextResponse.json({ message: 'quantity_to_dispense must be a positive whole number' }, { status: 400 });
             }
         } else if (!['OUT_OF_STOCK', 'PATIENT_REJECTED'].includes(reason)) {
-            return NextResponse.json({ error: 'Invalid rejection reason.' }, { status: 400 });
+            return NextResponse.json({ message: 'Invalid rejection reason.' }, { status: 400 });
         }
 
         const connection = await pool.getConnection();
@@ -264,15 +264,15 @@ export async function POST(
         } catch (err: any) {
             await connection.rollback().catch(() => {});
             if (err instanceof HttpError) {
-                return NextResponse.json({ error: err.message }, { status: err.status });
+                return NextResponse.json({ message: err.message }, { status: err.status });
             }
             console.error('Dispense Error:', err);
-            return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
+            return NextResponse.json({ message: 'Failed to process' }, { status: 500 });
         } finally {
             connection.release();
         }
     } catch (error) {
         console.error('Dispense Error:', error);
-        return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
+        return NextResponse.json({ message: 'Failed to process' }, { status: 500 });
     }
 }

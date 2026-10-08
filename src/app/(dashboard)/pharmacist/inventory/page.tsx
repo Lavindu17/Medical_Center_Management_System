@@ -1,4 +1,5 @@
 'use client';
+import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 
@@ -218,10 +219,10 @@ export default function InventoryPage() {
     };
 
     return (
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
+        <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-neutral-900">Inventory</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-neutral-900 md:text-3xl">Inventory</h1>
                     <p className="text-neutral-500">Manage medicine stocks and pricing.</p>
                 </div>
                 <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
@@ -429,7 +430,7 @@ export default function InventoryPage() {
                                                         isExpiringLater ? 'text-amber-600' :
                                                             'text-neutral-700'
                                                     }`}>
-                                                    {expiryDate.toLocaleDateString()}
+                                                    {formatDate(expiryDate)}
                                                 </div>
                                                 <div className={`text-xs font-semibold mt-0.5 ${isExpired ? 'text-red-600' :
                                                     isExpiringSoon ? 'text-amber-600' :
@@ -494,7 +495,7 @@ export default function InventoryPage() {
                                         <tr key={b.id} className={`hover:bg-neutral-50 ${isExpired ? 'bg-red-50' : isExpiringSoon ? 'bg-amber-50' : ''}`}>
                                             <td className="p-3 font-medium">{b.batch_number}</td>
                                             <td className={`p-3 ${isExpired ? 'text-red-700 font-bold' : isExpiringSoon ? 'text-amber-700' : ''}`}>
-                                                {expiryDate.toLocaleDateString()}
+                                                {formatDate(expiryDate)}
                                             </td>
                                             <td className={`p-3 font-mono ${isExpired ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-neutral-600'}`}>
                                                 {isExpired ? `EXPIRED (${Math.abs(daysUntil)}d ago)` : `${daysUntil} days`}
