@@ -6,8 +6,12 @@ import crypto from 'crypto';
 import { EmailService } from './email.service';
 
 const SALT_ROUNDS = 10;
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-me';
-const SECRET_KEY = new TextEncoder().encode(JWT_SECRET);
+// No fallback: an unset secret must fail closed rather than allow forgeable tokens
+function getSecretKey(): Uint8Array {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET is not configured');
+    return new TextEncoder().encode(secret);
+}
 
 export class AuthService {
     static async hashPassword(password: string): Promise<string> {
@@ -28,12 +32,12 @@ export class AuthService {
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
             .setExpirationTime('1d')
-            .sign(SECRET_KEY);
+            .sign(getSecretKey());
     }
 
     static async verifyToken(token: string) {
         try {
-            const { payload } = await jwtVerify(token, SECRET_KEY);
+            const { payload } = await jwtVerify(token, getSecretKey());
             return payload;
         } catch (error) {
             return null;

@@ -6,28 +6,19 @@ import { User } from '@/types';
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
-        const { currentPassword, newPassword } = body;
+        const token = (await cookies()).get('token')?.value;
+        const payload = token ? await AuthService.verifyToken(token) : null;
+        if (!payload) {
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { currentPassword, newPassword } = await req.json();
 
         if (!currentPassword || !newPassword) {
             return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
         }
-
         if (typeof newPassword !== 'string' || newPassword.length < 6) {
             return NextResponse.json({ message: 'New password must be at least 6 characters' }, { status: 400 });
-        }
-
-        // Get session
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token');
-
-        if (!token) {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-        }
-
-        const payload = await AuthService.verifyToken(token.value);
-        if (!payload) {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
 
         // Get user from DB to get the actual hash

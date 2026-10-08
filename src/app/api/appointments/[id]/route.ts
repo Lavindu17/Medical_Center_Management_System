@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { requireRole } from '@/lib/api-auth';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireRole('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const { id } = await params;
         const appointmentId = Number(id);
@@ -30,6 +35,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
         
         const appointment = appointments[0];
+        if ((user.role === 'PATIENT' && appointment.patient_id !== user.id) || (user.role === 'DOCTOR' && appointment.doctor_id !== user.id)) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
+        appointment.timeSlot = appointment.time_slot;
+        // Clinical notes are the doctor's private working notes
+        if (user.role !== 'DOCTOR') delete appointment.notes;
 
         // 2. Billing Info — enriched with itemized line items
         const bills = await query<any[]>(`

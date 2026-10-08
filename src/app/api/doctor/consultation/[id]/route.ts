@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { requireRole } from '@/lib/api-auth';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+    const auth = await requireRole('DOCTOR');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const id = (await params).id;
 
@@ -28,6 +33,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
 
         const appt = rows[0];
+        if (appt.doctor_id !== user.id) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
 
         // Calc Age
         const dob = new Date(appt.date_of_birth);

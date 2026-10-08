@@ -1,15 +1,20 @@
 
 import { NextResponse } from 'next/server';
 import { query, pool } from '@/lib/db';
+import { requireRole } from '@/lib/api-auth';
 
 export async function GET(req: Request) {
+    const auth = await requireRole('PATIENT');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const { searchParams } = new URL(req.url);
-        const userId = searchParams.get('userId');
-
-        if (!userId) {
-            return NextResponse.json({ message: 'User ID required' }, { status: 400 });
+        const requested = searchParams.get('userId');
+        if (requested && Number(requested) !== user.id) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
+        const userId = String(user.id);
 
         // 1. Fetch Basic Profile
         const patients: any = await query(`
@@ -47,6 +52,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+    const auth = await requireRole('PATIENT');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const body = await req.json();
         const {
@@ -56,6 +65,7 @@ export async function POST(req: Request) {
         } = body;
 
         if (!id) return NextResponse.json({ message: 'ID required' }, { status: 400 });
+        if (Number(id) !== user.id) return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
 
         const connection = await pool.getConnection();
         await connection.beginTransaction();

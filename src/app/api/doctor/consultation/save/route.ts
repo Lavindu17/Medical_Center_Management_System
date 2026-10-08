@@ -1,10 +1,31 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { requireRole } from '@/lib/api-auth';
 
 export async function POST(req: Request) {
+    const auth = await requireRole('DOCTOR');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const body = await req.json();
-        const { appointmentId, vitals, notes, prescription, labRequestIds, status } = body;
+        const { appointmentId, notes, prescription, labRequestIds, status } = body;
+        const vitals = body.vitals ?? {};
+
+        if (!Number.isInteger(appointmentId)) {
+            return NextResponse.json({ message: 'appointmentId is required' }, { status: 400 });
+        }
+        if (!['ONGOING', 'COMPLETED'].includes(status)) {
+            return NextResponse.json({ message: 'status must be ONGOING or COMPLETED' }, { status: 400 });
+        }
+
+        const [owned]: any = await pool.execute('SELECT doctor_id FROM appointments WHERE id = ?', [appointmentId]);
+        if (owned.length === 0) {
+            return NextResponse.json({ message: 'Appointment not found' }, { status: 404 });
+        }
+        if (owned[0].doctor_id !== user.id) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
 
         const connection = await pool.getConnection();
         await connection.beginTransaction();

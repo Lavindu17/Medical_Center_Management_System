@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { z } from 'zod';
+import { requireRole } from '@/lib/api-auth';
 
 /**
  * API route for managing users in the Sethro Medical Center system.
@@ -10,6 +11,9 @@ import { z } from 'zod';
 
 // Fetch all users
 export async function GET(req: Request) {
+    const auth = await requireRole('ADMIN');
+    if ('error' in auth) return auth.error;
+
     try {
         // Query to retrieve all users with basic information, ordered by creation date
         const users = await query<any[]>('SELECT id, name, email, role, phone, created_at as createdAt FROM users ORDER BY created_at DESC');
@@ -35,6 +39,9 @@ const createUserSchema = z.object({
  * Validates input, checks for existing user, and handles doctor-specific fields.
  */
 export async function POST(req: Request) {
+    const auth = await requireRole('ADMIN');
+    if ('error' in auth) return auth.error;
+
     try {
         const body = await req.json();
         const validation = createUserSchema.safeParse(body);
@@ -48,6 +55,10 @@ export async function POST(req: Request) {
         const existingUser = await AuthService.findUserByEmail(email);
         if (existingUser) {
             return NextResponse.json({ message: 'User already exists' }, { status: 409 });
+        }
+
+        if (role === 'DOCTOR' && (!specialization || !licenseNumber)) {
+            return NextResponse.json({ message: 'Specialization and License Number are required for Doctors' }, { status: 400 });
         }
 
         // Start database transaction for atomicity
@@ -83,7 +94,8 @@ export async function POST(req: Request) {
         } catch (err: any) {
             // Rollback transaction on error
             await connection.rollback();
-            return NextResponse.json({ message: err.message || 'Database error' }, { status: 500 });
+            console.error('Create User Error:', err);
+            return NextResponse.json({ message: 'Failed to create user' }, { status: 500 });
         } finally {
             // Always release the connection
             connection.release();
@@ -108,6 +120,10 @@ const updateUserSchema = z.object({
  * Validates input and updates the user record in the database.
  */
 export async function PUT(req: Request) {
+    const auth = await requireRole('ADMIN');
+    if ('error' in auth) return auth.error;
+    const { user: admin } = auth;
+
     try {
         const body = await req.json();
         const validation = updateUserSchema.safeParse(body);
@@ -117,6 +133,14 @@ export async function PUT(req: Request) {
         }
 
         const { id, name, email, phone, role } = validation.data;
+
+        if (id === admin.id && role !== 'ADMIN') {
+            return NextResponse.json({ message: 'You cannot change your own role' }, { status: 400 });
+        }
+        const clash = await query<any[]>('SELECT id FROM users WHERE email = ? AND id <> ?', [email, id]);
+        if (clash.length > 0) {
+            return NextResponse.json({ message: 'Email already in use' }, { status: 409 });
+        }
 
         // Update user information in the database
         await query(
@@ -138,11 +162,16 @@ export async function PUT(req: Request) {
  * Uses DELETE CASCADE in schema to handle related records.
  */
 export async function DELETE(req: Request) {
+    const auth = await requireRole('ADMIN');
+    if ('error' in auth) return auth.error;
+    const { user: admin } = auth;
+
     try {
         const { searchParams } = new URL(req.url);
-        const id = searchParams.get('id');
+        const id = Number(searchParams.get('id'));
 
-        if (!id) return NextResponse.json({ message: 'ID required' }, { status: 400 });
+        if (!Number.isInteger(id) || id <= 0) return NextResponse.json({ message: 'A valid ID is required' }, { status: 400 });
+        if (id === admin.id) return NextResponse.json({ message: 'You cannot delete your own account' }, { status: 400 });
 
         // Delete user from database; related records handled by CASCADE
         await query('DELETE FROM users WHERE id = ?', [id]);

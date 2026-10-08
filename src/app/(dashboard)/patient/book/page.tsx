@@ -56,7 +56,7 @@ export default function BookAppointmentPage() {
 
         // 2. Fetch Doctors
         async function fetchDoctors() {
-            const res = await fetch('/api/admin/doctors');
+            const res = await fetch('/api/doctors');
             if (res.ok) {
                 const data = await res.json();
                 setDoctors(data);

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-change-me';
-const SECRET_KEY = new TextEncoder().encode(JWT_SECRET);
+function getSecretKey(): Uint8Array {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET is not configured');
+    return new TextEncoder().encode(secret);
+}
 
 import { jwtVerify } from 'jose';
 
@@ -25,7 +28,7 @@ export async function middleware(request: NextRequest) {
 
     try {
         // 2. Verify Token
-        const { payload } = await jwtVerify(token, SECRET_KEY);
+        const { payload } = await jwtVerify(token, getSecretKey());
         const role = payload.role as string;
 
         // 3. Role-Based Access Control

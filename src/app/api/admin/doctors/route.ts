@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { query, pool } from '@/lib/db';
 import { z } from 'zod';
+import { requireRole } from '@/lib/api-auth';
 
 // GET all doctors with their financial settings
 export async function GET(req: Request) {
+    const auth = await requireRole('ADMIN');
+    if ('error' in auth) return auth.error;
+
     try {
         const doctors = await query<any[]>(`
       SELECT 
@@ -38,6 +42,9 @@ const updateDoctorSchema = z.object({
 
 // Update Doctor Fees
 export async function PUT(req: Request) {
+    const auth = await requireRole('ADMIN');
+    if ('error' in auth) return auth.error;
+
     try {
         const body = await req.json();
         const validation = updateDoctorSchema.safeParse(body);

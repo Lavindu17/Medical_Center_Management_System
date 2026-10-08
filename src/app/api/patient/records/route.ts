@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { requireRole } from '@/lib/api-auth';
 
 export async function GET(req: Request) {
+    const auth = await requireRole('PATIENT');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const { searchParams } = new URL(req.url);
-        const patientId = searchParams.get('patientId');
+        const requested = searchParams.get('patientId');
+        if (requested && Number(requested) !== user.id) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
+        const patientId = String(user.id);
         const type = searchParams.get('type'); // 'prescriptions' | 'labs' | 'bills'
 
         if (!patientId) return NextResponse.json({ message: 'Patient ID required' }, { status: 400 });

@@ -9,7 +9,8 @@ export async function GET() {
                 d.user_id as id, 
                 u.name, 
                 d.specialization, 
-                d.consultation_fee 
+                d.consultation_fee,
+                d.consultation_fee as consultationFee
             FROM doctors d 
             JOIN users u ON d.user_id = u.id 
             WHERE u.role = 'doctor' OR u.role = 'DOCTOR'

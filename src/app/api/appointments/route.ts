@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query, pool } from '@/lib/db';
 import { z } from 'zod';
+import { requireRole } from '@/lib/api-auth';
 
 const appointmentSchema = z.object({
     patientId: z.number(),
@@ -11,6 +12,10 @@ const appointmentSchema = z.object({
 });
 
 export async function POST(req: Request) {
+    const auth = await requireRole('PATIENT', 'RECEPTIONIST', 'ADMIN');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const body = await req.json();
         const validation = appointmentSchema.safeParse(body);
@@ -20,6 +25,11 @@ export async function POST(req: Request) {
         }
 
         const { patientId, doctorId, date, timeSlot, reason } = validation.data;
+
+        // Patients can only book for themselves; staff may book on behalf of a patient
+        if (user.role === 'PATIENT' && patientId !== user.id) {
+            return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+        }
 
         // Same-Day Time Validation
         const now = new Date();
@@ -83,10 +93,27 @@ export async function POST(req: Request) {
 
 // Fetch Appointments (for Patient or Doctor)
 export async function GET(req: Request) {
+    const auth = await requireRole('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN');
+    if ('error' in auth) return auth.error;
+    const { user } = auth;
+
     try {
         const { searchParams } = new URL(req.url);
-        const patientId = searchParams.get('patientId');
-        const doctorId = searchParams.get('doctorId');
+        let patientId = searchParams.get('patientId');
+        let doctorId = searchParams.get('doctorId');
+
+        // Scope self-service roles to their own appointments
+        if (user.role === 'PATIENT') {
+            if (doctorId || (patientId && Number(patientId) !== user.id)) {
+                return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+            }
+            patientId = String(user.id);
+        } else if (user.role === 'DOCTOR') {
+            if (patientId || (doctorId && Number(doctorId) !== user.id)) {
+                return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+            }
+            doctorId = String(user.id);
+        }
 
         let sql = `
       SELECT 
