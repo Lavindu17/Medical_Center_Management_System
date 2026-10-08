@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
+import { query } from '@/lib/db';
 
 export async function GET() {
     try {
@@ -17,7 +18,9 @@ export async function GET() {
             return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
         }
 
-        return NextResponse.json({ user: payload });
+        // The token carries the name from sign-in time; show the current one after a profile edit
+        const rows = await query<any[]>('SELECT name, email FROM users WHERE id = ?', [payload.id]);
+        return NextResponse.json({ user: { ...payload, ...(rows[0] ?? {}) } });
 
     } catch (error) {
         console.error('Session Error:', error);
