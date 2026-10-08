@@ -12,7 +12,7 @@ const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
 // Intentionally reachable without a session (confirm each in review).
 const PUBLIC = [
     'auth/login', 'auth/register', 'auth/forgot', 'auth/reset', 'auth/verify',
-    'auth/verify-reset-code', 'auth/logout',
+    'auth/verify-reset-code', 'auth/logout', 'auth/resend-verification',
     'doctors', 'doctors/availability', 'appointments/availability',
 ];
 

@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
+import { limiterKey, rateLimited } from '@/lib/rate-limit';
 import { z } from 'zod';
 
 const verifyCodeSchema = z.object({
     email: z.string().email(),
-    code: z.string().min(1),
+    code: z.string().trim().min(1).max(32),
 });
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const body = await req.json().catch(() => null);
 
         const validation = verifyCodeSchema.safeParse(body);
         if (!validation.success) {
@@ -17,6 +18,10 @@ export async function POST(req: Request) {
         }
 
         const { email, code } = validation.data;
+
+        if (await rateLimited(limiterKey('reset-code', email), 30, 60 * 60)) {
+            return NextResponse.json({ message: 'Too many attempts. Please try again later.' }, { status: 429 });
+        }
 
         const result = await AuthService.validateResetCode(email, code);
 

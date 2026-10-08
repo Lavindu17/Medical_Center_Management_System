@@ -56,6 +56,26 @@ SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `lab_requests` ADD COLUMN `uplo
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lab_requests' AND COLUMN_NAME = 'uploaded_by');
 PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- Authentication hardening
+-- Wrong-code counter per emailed code (the code is invalidated after too many attempts)
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `auth_codes` ADD COLUMN `attempts` INT NOT NULL DEFAULT 0', 'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'auth_codes' AND COLUMN_NAME = 'attempts');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Sessions issued before this moment are rejected (set on password change / reset)
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `users` ADD COLUMN `password_changed_at` TIMESTAMP NULL DEFAULT NULL', 'SELECT 1')
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'password_changed_at');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Fixed-window counters for login / OTP / reset throttling
+CREATE TABLE IF NOT EXISTS `rate_limits` (
+  `k` VARCHAR(100) NOT NULL PRIMARY KEY,
+  `window_start` DATETIME NOT NULL,
+  `hits` INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Status values the pharmacist flow writes
 ALTER TABLE prescription_items
     MODIFY COLUMN status ENUM('PENDING','PARTIALLY_COMPLETED','DISPENSED','REJECTED') NOT NULL DEFAULT 'PENDING';

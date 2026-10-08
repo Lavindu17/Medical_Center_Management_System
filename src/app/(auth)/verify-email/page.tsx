@@ -10,6 +10,7 @@ import { ShieldCheck } from 'lucide-react';
 
 function VerifyEmailContent() {
     const [isLoading, setIsLoading] = useState(false);
+    const [resendNote, setResendNote] = useState('');
     const router = useRouter();
     const searchParams = useSearchParams();
     const emailFromQuery = searchParams.get('email') || '';
@@ -42,6 +43,23 @@ function VerifyEmailContent() {
             alert(error.message);
         } finally {
             setIsLoading(false);
+        }
+    }
+
+    async function handleResend(event: React.MouseEvent<HTMLButtonElement>) {
+        const form = event.currentTarget.form;
+        const email = (form?.elements.namedItem('email') as HTMLInputElement | null)?.value;
+        if (!email) { setResendNote('Enter your email first.'); return; }
+        try {
+            const response = await fetch('/api/auth/resend-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            });
+            const data = await response.json();
+            setResendNote(data.message || 'Request sent.');
+        } catch {
+            setResendNote('Could not send a new code. Please try again.');
         }
     }
 
@@ -83,6 +101,10 @@ function VerifyEmailContent() {
                     <Button disabled={isLoading} className="w-full bg-green-600 hover:bg-green-700">
                         {isLoading ? 'Verifying...' : 'Verify Email'}
                     </Button>
+                    <Button type="button" variant="ghost" className="w-full" onClick={handleResend}>
+                        Resend code
+                    </Button>
+                    {resendNote && <p className="text-center text-sm text-neutral-500" role="status">{resendNote}</p>}
                 </form>
             </CardContent>
         </Card>

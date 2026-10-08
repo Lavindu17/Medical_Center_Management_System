@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { currentToken } from '../helpers/state';
+import { currentToken, setCookies } from '../helpers/state';
 
 // Hard stop: never let an integration test reach the application database.
 if (!/_test$/.test(process.env.MYSQL_DATABASE ?? '')) {
@@ -9,7 +9,10 @@ if (!/_test$/.test(process.env.MYSQL_DATABASE ?? '')) {
 vi.mock('next/headers', () => ({
     cookies: async () => ({
         get: (name: string) => (name === 'token' && currentToken() ? { name, value: currentToken()! } : undefined),
-        set: () => {},
+        set: (arg: any, value?: string, options?: Record<string, unknown>) => {
+            const { name, value: v, ...rest } = typeof arg === 'string' ? { name: arg, value, ...options } : arg;
+            setCookies.push({ name, value: v, options: rest });
+        },
         delete: () => {},
     }),
 }));

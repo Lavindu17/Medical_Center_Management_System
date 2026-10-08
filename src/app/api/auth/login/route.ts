@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
 import { handleError } from '@/lib/errors';
+import { clearLimit, limiterKey, rateLimited } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 
 const loginSchema = z.object({
     email: z.string().email(),
-    password: z.string().min(1),
+    password: z.string().min(1).max(200),
 });
+
+const MAX_ATTEMPTS = 10;
+const WINDOW_SECONDS = 15 * 60;
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const body = await req.json().catch(() => null);
 
         // 1. Validation
         const validation = loginSchema.safeParse(body);
@@ -21,44 +25,49 @@ export async function POST(req: Request) {
 
         const { email, password } = validation.data;
 
-        // 2. Fetch User
-        const user = await AuthService.getUserByEmailWithPassword(email);
+        // 2. Throttle guessing per account (counted whether or not the account exists)
+        const key = limiterKey('login', email);
+        if (await rateLimited(key, MAX_ATTEMPTS, WINDOW_SECONDS)) {
+            return NextResponse.json({ message: 'Too many sign-in attempts. Please try again in a few minutes.' }, { status: 429 });
+        }
 
+        // 3. Verify credentials. Unknown email, wrong password and unverified-but-wrong-password all look the same.
+        const user = await AuthService.getUserByEmailWithPassword(email);
         if (!user) {
+            await AuthService.fakeCompare(password);
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
         }
 
-        // Check verification status
-        if (!user.is_verified) {
-            return NextResponse.json({ message: 'Email not verified. Please verify your email to log in.' }, { status: 403 });
-        }
-
-        // 3. Verify Password
         const isValid = await AuthService.comparePassword(password, user.password_hash);
         if (!isValid) {
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
         }
 
-        // 4. Generate Token (JWT)
-        const token = await AuthService.generateToken(user);
+        // Only someone who knows the password learns the account is unverified
+        if (!user.is_verified) {
+            return NextResponse.json({ message: 'Email not verified. Please verify your email to log in.' }, { status: 403 });
+        }
 
-        // 5. Set Cookie
+        await clearLimit(key);
+
+        // 4. Generate Token (JWT) and set it as an httpOnly cookie. It is deliberately not returned in the body.
+        const token = await AuthService.generateToken(user);
         (await cookies()).set({
             name: 'token',
             value: token,
             httpOnly: true,
+            sameSite: 'lax',
             path: '/',
             secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60 * 24, // 1 day
         });
 
-        // 6. Return standard user object (without password)
+        // 5. Return standard user object (without secrets)
         const { password_hash, ...userWithoutPassword } = user;
 
         return NextResponse.json({
             message: 'Login successful',
             user: userWithoutPassword,
-            token // Return token in body too for flexibility
         });
 
     } catch (error: any) {

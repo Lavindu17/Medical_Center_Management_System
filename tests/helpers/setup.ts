@@ -19,6 +19,8 @@ vi.mock('@/lib/db', () => {
     };
 });
 
+vi.mock('@/lib/session-check', () => ({ isSessionCurrent: vi.fn(async () => true) }));
+
 vi.mock('next/headers', () => ({
     cookies: async () => ({
         get: (name: string) => (name === 'token' && state.token ? { name, value: state.token } : undefined),

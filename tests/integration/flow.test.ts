@@ -33,7 +33,7 @@ describe('schema (full_setup.sql + 18_schema_sync.sql)', () => {
     });
 
     it('seeded demo accounts are verified so they can log in', async () => {
-        const unverified = await rows(`SELECT email FROM users WHERE is_verified = 0`);
+        const unverified = await rows(`SELECT email FROM users WHERE is_verified = 0 AND id <= 8`);
         expect(unverified).toEqual([]);
     });
 });

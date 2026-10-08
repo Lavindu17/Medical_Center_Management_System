@@ -1,17 +1,29 @@
-import { User, Role } from '@/types';
+import { User } from '@/types';
 import { pool, query } from '@/lib/db';
 import bcrypt from 'bcrypt';
 import { SignJWT, jwtVerify } from 'jose';
 import crypto from 'crypto';
 import { EmailService } from './email.service';
+import { isSessionCurrent } from '@/lib/session-check';
 
 const SALT_ROUNDS = 10;
+const CODE_TTL_MS = 15 * 60 * 1000;
+/** Wrong guesses allowed per emailed code before it is destroyed. */
+export const MAX_CODE_ATTEMPTS = 5;
+
 // No fallback: an unset secret must fail closed rather than allow forgeable tokens
 function getSecretKey(): Uint8Array {
     const secret = process.env.JWT_SECRET;
     if (!secret) throw new Error('JWT_SECRET is not configured');
     return new TextEncoder().encode(secret);
 }
+
+type CodeType = 'EMAIL_VERIFICATION' | 'PASSWORD_RESET';
+type CodeResult = { success: boolean; message: string };
+
+// The same text for "no such user", "no code", "expired" and "wrong" so responses cannot be used to probe accounts.
+const INVALID_CODE = 'Invalid or expired code';
+const TOO_MANY = 'Too many incorrect attempts. Please request a new code.';
 
 export class AuthService {
     static async hashPassword(password: string): Promise<string> {
@@ -20,6 +32,11 @@ export class AuthService {
 
     static async comparePassword(password: string, hash: string): Promise<boolean> {
         return bcrypt.compare(password, hash);
+    }
+
+    /** Burns the same time as a real comparison so "unknown email" is not distinguishable by latency. */
+    static async fakeCompare(password: string): Promise<void> {
+        await bcrypt.compare(password, '$2b$10$xQtcNhKLC5JMmuvx0ail/uJDuUGU5UBKr5wMho7B/CCrGeN5ZVKU2');
     }
 
     static async generateToken(user: User): Promise<string> {
@@ -35,9 +52,11 @@ export class AuthService {
             .sign(getSecretKey());
     }
 
+    /** Verifies the signature and expiry, then that the account still exists with the same role and was not signed out by a password change. */
     static async verifyToken(token: string) {
         try {
             const { payload } = await jwtVerify(token, getSecretKey());
+            if (!(await isSessionCurrent(payload))) return null;
             return payload;
         } catch (error) {
             return null;
@@ -62,7 +81,7 @@ export class AuthService {
     // --- OTP Utilities ---
 
     private static generateOTP(): string {
-        // Generate 6 character hex OTP (3 bytes)
+        // 6 uppercase hex characters (24 bits). Safe because each code survives only MAX_CODE_ATTEMPTS wrong guesses.
         return crypto.randomBytes(3).toString('hex').toUpperCase();
     }
 
@@ -70,56 +89,89 @@ export class AuthService {
         return crypto.createHash('sha256').update(otp).digest('hex');
     }
 
+    private static normalizeCode(code: string): string {
+        return String(code).trim().toUpperCase();
+    }
+
+    private static sameHash(a: string, b: string): boolean {
+        const x = Buffer.from(a);
+        const y = Buffer.from(b);
+        return x.length === y.length && crypto.timingSafeEqual(x, y);
+    }
+
+    private static async issueCode(userId: number, type: CodeType): Promise<string> {
+        const code = this.generateOTP();
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+            // Replace any earlier code for this purpose (also resets the attempt counter)
+            await connection.execute('DELETE FROM auth_codes WHERE user_id = ? AND type = ?', [userId, type]);
+            await connection.execute(
+                'INSERT INTO auth_codes (user_id, type, code_hash, expires_at, attempts) VALUES (?, ?, ?, ?, 0)',
+                [userId, type, this.hashOTP(code), new Date(Date.now() + CODE_TTL_MS)]
+            );
+            await connection.commit();
+        } catch (err) {
+            await connection.rollback().catch(() => {});
+            throw err;
+        } finally {
+            connection.release();
+        }
+        return code;
+    }
+
+    /**
+     * Checks a submitted code. A wrong guess counts against the stored code, which is destroyed once
+     * MAX_CODE_ATTEMPTS is reached; expired codes are destroyed on sight.
+     */
+    private static async checkCode(userId: number, type: CodeType, submitted: string): Promise<CodeResult & { codeId?: number }> {
+        const rows = await query<any[]>('SELECT * FROM auth_codes WHERE user_id = ? AND type = ? ORDER BY id DESC LIMIT 1', [userId, type]);
+        const record = rows[0];
+        if (!record) return { success: false, message: INVALID_CODE };
+
+        if (new Date() > new Date(record.expires_at)) {
+            await query('DELETE FROM auth_codes WHERE id = ?', [record.id]);
+            return { success: false, message: INVALID_CODE };
+        }
+        if (record.attempts >= MAX_CODE_ATTEMPTS) {
+            await query('DELETE FROM auth_codes WHERE id = ?', [record.id]);
+            return { success: false, message: TOO_MANY };
+        }
+
+        if (!this.sameHash(this.hashOTP(this.normalizeCode(submitted)), record.code_hash)) {
+            // Increment atomically so parallel guesses cannot dodge the counter
+            await query('UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ?', [record.id]);
+            if (record.attempts + 1 >= MAX_CODE_ATTEMPTS) {
+                await query('DELETE FROM auth_codes WHERE id = ?', [record.id]);
+                return { success: false, message: TOO_MANY };
+            }
+            return { success: false, message: INVALID_CODE };
+        }
+        return { success: true, message: 'Code is valid', codeId: record.id };
+    }
+
     // --- Verification Flow ---
 
     static async initiateEmailVerification(userId: number, email: string) {
-        const code = this.generateOTP();
-        const hashedCode = this.hashOTP(code);
-        const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-
-        // Clean up old codes for this user and type
-        await query('DELETE FROM auth_codes WHERE user_id = ? AND type = ?', [userId, 'EMAIL_VERIFICATION']);
-
-        // Insert new code
-        await query(
-            'INSERT INTO auth_codes (user_id, type, code_hash, expires_at) VALUES (?, ?, ?, ?)',
-            [userId, 'EMAIL_VERIFICATION', hashedCode, expires]
-        );
-
+        const code = await this.issueCode(userId, 'EMAIL_VERIFICATION');
         await EmailService.sendVerificationEmail(email, code); // Send PLAIN code
     }
 
-    static async verifyEmail(email: string, code: string): Promise<{ success: boolean; message: string }> {
+    static async verifyEmail(email: string, code: string): Promise<CodeResult> {
         const user: any = await this.findUserByEmail(email);
-        if (!user) return { success: false, message: 'User not found' };
+        if (!user || user.is_verified) return { success: false, message: INVALID_CODE };
 
-        if (user.is_verified) return { success: true, message: 'Email already verified' };
+        const check = await this.checkCode(user.id, 'EMAIL_VERIFICATION', code);
+        if (!check.success) return check;
 
-        // Find code in auth_codes
-        const codes = await query<any[]>('SELECT * FROM auth_codes WHERE user_id = ? AND type = ?', [user.id, 'EMAIL_VERIFICATION']);
-        const authCode = codes.length > 0 ? codes[0] : null;
-
-        if (!authCode) return { success: false, message: 'Invalid or expired code' };
-
-        if (new Date() > new Date(authCode.expires_at)) {
-            return { success: false, message: 'Code expired' };
-        }
-
-        const hashedInput = this.hashOTP(code);
-        if (hashedInput !== authCode.code_hash) {
-            return { success: false, message: 'Invalid verification code' };
-        }
-
-        // Success: Update user and delete code
         const connection = await pool.getConnection();
-        await connection.beginTransaction();
-
         try {
+            await connection.beginTransaction();
             await connection.execute('UPDATE users SET is_verified = TRUE WHERE id = ?', [user.id]);
-            await connection.execute('DELETE FROM auth_codes WHERE id = ?', [authCode.id]);
+            await connection.execute('DELETE FROM auth_codes WHERE user_id = ? AND type = ?', [user.id, 'EMAIL_VERIFICATION']);
             await connection.commit();
         } catch (err) {
-            await connection.rollback();
+            await connection.rollback().catch(() => {});
             throw err;
         } finally {
             connection.release();
@@ -134,74 +186,39 @@ export class AuthService {
         const user: any = await this.findUserByEmail(email);
         if (!user) return;
 
-        const code = this.generateOTP();
-        const hashedCode = this.hashOTP(code);
-        const expires = new Date(Date.now() + 15 * 60 * 1000);
-
-        // Clean up old codes
-        await query('DELETE FROM auth_codes WHERE user_id = ? AND type = ?', [user.id, 'PASSWORD_RESET']);
-
-        // Insert new
-        await query(
-            'INSERT INTO auth_codes (user_id, type, code_hash, expires_at) VALUES (?, ?, ?, ?)',
-            [user.id, 'PASSWORD_RESET', hashedCode, expires]
-        );
-
+        const code = await this.issueCode(user.id, 'PASSWORD_RESET');
         await EmailService.sendPasswordResetEmail(email, code);
     }
 
-    static async validateResetCode(email: string, code: string): Promise<{ success: boolean; message: string }> {
+    static async validateResetCode(email: string, code: string): Promise<CodeResult> {
         const user: any = await this.findUserByEmail(email);
-        if (!user) return { success: false, message: 'Invalid request' };
+        if (!user) return { success: false, message: INVALID_CODE };
 
-        const codes = await query<any[]>('SELECT * FROM auth_codes WHERE user_id = ? AND type = ?', [user.id, 'PASSWORD_RESET']);
-        const authCode = codes.length > 0 ? codes[0] : null;
-
-        if (!authCode) return { success: false, message: 'Invalid reset code' };
-
-        if (new Date() > new Date(authCode.expires_at)) {
-            return { success: false, message: 'Code expired' };
-        }
-
-        const hashedInput = this.hashOTP(code);
-        if (hashedInput !== authCode.code_hash) {
-            return { success: false, message: 'Invalid reset code' };
-        }
-
-        return { success: true, message: 'Code is valid' };
+        const check = await this.checkCode(user.id, 'PASSWORD_RESET', code);
+        return { success: check.success, message: check.message };
     }
 
-    static async resetPassword(email: string, code: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    static async resetPassword(email: string, code: string, newPassword: string): Promise<CodeResult> {
         const user: any = await this.findUserByEmail(email);
-        if (!user) return { success: false, message: 'Invalid request' };
+        if (!user) return { success: false, message: INVALID_CODE };
 
-        // Find code
-        const codes = await query<any[]>('SELECT * FROM auth_codes WHERE user_id = ? AND type = ?', [user.id, 'PASSWORD_RESET']);
-        const authCode = codes.length > 0 ? codes[0] : null;
-
-        if (!authCode) return { success: false, message: 'Invalid reset code' };
-
-        if (new Date() > new Date(authCode.expires_at)) {
-            return { success: false, message: 'Code expired' };
-        }
-
-        const hashedInput = this.hashOTP(code);
-        if (hashedInput !== authCode.code_hash) {
-            return { success: false, message: 'Invalid reset code' };
-        }
+        const check = await this.checkCode(user.id, 'PASSWORD_RESET', code);
+        if (!check.success) return { success: check.success, message: check.message };
 
         const hashedPassword = await this.hashPassword(newPassword);
 
-        // Success: Update password and delete code
         const connection = await pool.getConnection();
-        await connection.beginTransaction();
-
         try {
-            await connection.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashedPassword, user.id]);
-            await connection.execute('DELETE FROM auth_codes WHERE id = ?', [authCode.id]);
+            await connection.beginTransaction();
+            // Receiving the emailed code proves control of the address, so the account is verified too.
+            // password_changed_at ends every session issued before this moment.
+            await connection.execute(
+                'UPDATE users SET password_hash = ?, is_verified = TRUE, password_changed_at = NOW() WHERE id = ?',
+                [hashedPassword, user.id]);
+            await connection.execute('DELETE FROM auth_codes WHERE user_id = ?', [user.id]);
             await connection.commit();
         } catch (err) {
-            await connection.rollback();
+            await connection.rollback().catch(() => {});
             throw err;
         } finally {
             connection.release();
