@@ -1,6 +1,8 @@
 
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
+import { parseBody } from '@/lib/validate';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
@@ -97,6 +99,22 @@ class HttpError extends Error {
     constructor(public status: number, message: string) { super(message); }
 }
 
+const dispenseSchema = z.object({
+    item_id: z.coerce.number({ message: 'item_id is required' }).int('item_id is required').positive('item_id is required'),
+    action: z.enum(['DISPENSE', 'REJECT'], { message: 'Unknown action' }).default('DISPENSE'),
+    medicine_id: z.coerce.number().optional(),
+    quantity_to_dispense: z.coerce.number().optional(),
+    reason: z.string().optional(),
+}).superRefine((v, ctx) => {
+    if (v.action === 'DISPENSE') {
+        if (!Number.isInteger(v.quantity_to_dispense) || (v.quantity_to_dispense as number) <= 0) {
+            ctx.addIssue({ code: 'custom', path: ['quantity_to_dispense'], message: 'quantity_to_dispense must be a positive whole number' });
+        }
+    } else if (!['OUT_OF_STOCK', 'PATIENT_REJECTED'].includes(v.reason ?? '')) {
+        ctx.addIssue({ code: 'custom', path: ['reason'], message: 'Invalid rejection reason.' });
+    }
+});
+
 export async function POST(
     request: Request,
     props: { params: Promise<{ id: string }> }
@@ -108,28 +126,13 @@ export async function POST(
         const user = auth.user;
 
         const prescriptionId = Number(params.id);
-        const body = await request.json().catch(() => ({}));
-        const { action = 'DISPENSE', quantity_to_dispense, reason } = body;
-        const itemId = Number(body.item_id);
-
         if (!Number.isInteger(prescriptionId) || prescriptionId <= 0) {
             return NextResponse.json({ message: 'Invalid prescription id' }, { status: 400 });
         }
-        if (!Number.isInteger(itemId) || itemId <= 0) {
-            return NextResponse.json({ message: 'item_id is required' }, { status: 400 });
-        }
-        if (!['DISPENSE', 'REJECT'].includes(action)) {
-            return NextResponse.json({ message: 'Unknown action' }, { status: 400 });
-        }
-        let quantityNeeded = 0;
-        if (action === 'DISPENSE') {
-            quantityNeeded = Number(quantity_to_dispense);
-            if (!Number.isInteger(quantityNeeded) || quantityNeeded <= 0) {
-                return NextResponse.json({ message: 'quantity_to_dispense must be a positive whole number' }, { status: 400 });
-            }
-        } else if (!['OUT_OF_STOCK', 'PATIENT_REJECTED'].includes(reason)) {
-            return NextResponse.json({ message: 'Invalid rejection reason.' }, { status: 400 });
-        }
+        const body = await parseBody(request, dispenseSchema);
+        if ('error' in body) return body.error;
+        const { action, quantity_to_dispense, reason, medicine_id, item_id: itemId } = body.data;
+        const quantityNeeded = action === 'DISPENSE' ? quantity_to_dispense! : 0;
 
         const connection = await pool.getConnection();
         try {
@@ -154,9 +157,9 @@ export async function POST(
             if (action === 'REJECT') {
                 await connection.execute(
                     'UPDATE prescription_items SET status = ?, rejection_reason = ? WHERE id = ?',
-                    ['REJECTED', reason, itemId]);
+                    ['REJECTED', reason ?? null, itemId]);
             } else {
-                if (body.medicine_id !== undefined && Number(body.medicine_id) !== item.medicine_id) {
+                if (medicine_id !== undefined && medicine_id !== item.medicine_id) {
                     throw new HttpError(400, 'medicine_id does not match the prescribed item');
                 }
                 const remainder = item.quantity - item.dispensed_quantity;

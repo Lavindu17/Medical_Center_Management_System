@@ -66,3 +66,56 @@ describe('wrong role gets 403, no session gets 401', () => {
         expect((await call()).status).toBe(403);
     });
 });
+
+describe('consultation save validation', () => {
+    const save = (body: unknown) => import('@/app/api/doctor/consultation/save/route').then((m) => m.POST(post('/x', body)));
+    const base = { appointmentId: 1, status: 'ONGOING' };
+    it.each([
+        [{ status: 'ONGOING' }, /appointmentId/],
+        [{ ...base, status: 'DONE' }, /status must be/],
+        [{ ...base, vitals: { weight: -3 } }, /weight must be a non-negative/],
+        [{ ...base, vitals: { pulse: 'fast' } }, /pulse must be a non-negative/],
+        [{ ...base, prescription: 'aspirin' }, /prescription must be an array/],
+        [{ ...base, prescription: [{ medicineId: 1, quantity: 2, dosage: '', frequency: 'daily', duration: '3d' }] }, /dosage is required/],
+        [{ ...base, prescription: [{ medicineId: 1, quantity: 0, dosage: '1', frequency: 'daily', duration: '3d' }] }, /quantity/],
+        [{ ...base, labRequestIds: ['x'] }, /labRequestIds/],
+    ])('rejects %j', async (body, message) => {
+        await as('DOCTOR', DOCTOR);
+        const res = await save(body);
+        expect(res.status).toBe(400);
+        expect((await res.json()).message).toMatch(message);
+    });
+});
+
+describe('dispense validation', () => {
+    const dispense = (body: unknown) => import('@/app/api/pharmacist/dispense/[id]/route')
+        .then((m) => m.POST(post('/x', body), { params: Promise.resolve({ id: '1' }) }));
+    it.each([
+        [{}, /item_id/],
+        [{ item_id: 1, action: 'STEAL' }, /Unknown action/],
+        [{ item_id: 1, quantity_to_dispense: 0 }, /positive whole number/],
+        [{ item_id: 1, quantity_to_dispense: 1.5 }, /positive whole number/],
+        [{ item_id: 1, action: 'REJECT', reason: 'because' }, /rejection reason/],
+    ])('rejects %j', async (body, message) => {
+        await as('PHARMACIST', PHARMACIST);
+        const res = await dispense(body);
+        expect(res.status).toBe(400);
+        expect((await res.json()).message).toMatch(message);
+    });
+});
+
+describe('change password validation', () => {
+    const change = (body: unknown) => import('@/app/api/auth/change-password/route').then((m) => m.POST(post('/x', body)));
+    it.each([
+        [{}, /Missing required fields/],
+        [{ currentPassword: 'old-pass' }, /Missing required fields/],
+        [{ currentPassword: 'old-pass', newPassword: 'abc' }, /at least 6/],
+        [{ currentPassword: 'same-pass', newPassword: 'same-pass' }, /different/],
+        [{ currentPassword: 'old-pass', newPassword: 'x'.repeat(80) }, /too long/],
+    ])('rejects %j', async (body, message) => {
+        await as('PATIENT', ALICE);
+        const res = await change(body);
+        expect(res.status).toBe(400);
+        expect((await res.json()).message).toMatch(message);
+    });
+});

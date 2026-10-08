@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
+import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
+import { parseBody } from '@/lib/validate';
 import { itemStatus, prescriptionStatus } from '@/lib/prescription';
 import { nameOf, notify, usersWithRole } from '@/lib/notify';
 
@@ -12,38 +14,42 @@ class HttpError extends Error {
     constructor(public status: number, message: string) { super(message); }
 }
 
-const isPositiveInt = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0;
 const blank = (v: unknown) => v === undefined || v === null || v === '';
 
-/** Vitals may be blank, but anything provided must be a number (0 is a legitimate value). */
-function numericVital(value: unknown, label: string): number | null {
+/** A vital may be left blank, but anything entered must be a number (0 is a legitimate value). */
+const vital = (label: string) => z.unknown().transform((value, ctx) => {
     if (blank(value)) return null;
     const n = Number(value);
-    if (!Number.isFinite(n) || n < 0) throw new HttpError(400, `${label} must be a non-negative number`);
+    if (!Number.isFinite(n) || n < 0) {
+        ctx.addIssue({ code: 'custom', message: `${label} must be a non-negative number` });
+        return z.NEVER;
+    }
     return n;
-}
+});
 
-interface PrescriptionInput { medicineId: number; dosage: string; frequency: string; duration: string; quantity: number }
+const positiveInt = (message: string) => z.number({ message }).int(message).positive(message);
+const requiredText = (key: string) => z.string({ message: `${key} is required` }).trim().min(1, `${key} is required`);
 
-function parsePrescription(raw: unknown): PrescriptionInput[] {
-    if (raw === undefined || raw === null) return [];
-    if (!Array.isArray(raw)) throw new HttpError(400, 'prescription must be an array');
-    return raw.map((item: any, i) => {
-        const n = `prescription item ${i + 1}`;
-        if (!isPositiveInt(item?.medicineId)) throw new HttpError(400, `${n}: medicineId is required`);
-        if (!isPositiveInt(item?.quantity)) throw new HttpError(400, `${n}: quantity must be a positive whole number`);
-        for (const key of ['dosage', 'frequency', 'duration'] as const) {
-            if (typeof item[key] !== 'string' || item[key].trim() === '') throw new HttpError(400, `${n}: ${key} is required`);
-        }
-        return { medicineId: item.medicineId, dosage: item.dosage, frequency: item.frequency, duration: item.duration, quantity: item.quantity };
-    });
-}
-
-function parseLabIds(raw: unknown): number[] {
-    if (raw === undefined || raw === null) return [];
-    if (!Array.isArray(raw) || !raw.every(isPositiveInt)) throw new HttpError(400, 'labRequestIds must be an array of test ids');
-    return [...new Set(raw)];
-}
+const consultationSchema = z.object({
+    appointmentId: z.number({ message: 'appointmentId is required' }).int('appointmentId is required'),
+    status: z.enum(['ONGOING', 'COMPLETED'], { message: 'status must be ONGOING or COMPLETED' }),
+    notes: z.unknown().transform((v) => (typeof v === 'string' ? v : null)),
+    vitals: z.object({
+        weight: vital('weight'),
+        temperature: vital('temperature'),
+        pulse: vital('pulse'),
+        blood_pressure: z.unknown().transform((v) => (blank(v) ? null : String(v))),
+    }).nullish().transform((v) => v ?? { weight: null, temperature: null, pulse: null, blood_pressure: null }),
+    prescription: z.array(z.object({
+        medicineId: positiveInt('Each prescription line needs a medicine'),
+        quantity: positiveInt('Prescription quantity must be a positive whole number'),
+        dosage: requiredText('dosage'),
+        frequency: requiredText('frequency'),
+        duration: requiredText('duration'),
+    }), { message: 'prescription must be an array' }).nullish().transform((v) => v ?? []),
+    labRequestIds: z.array(positiveInt('labRequestIds must be an array of test ids'), { message: 'labRequestIds must be an array of test ids' })
+        .nullish().transform((v) => [...new Set(v ?? [])]),
+});
 
 export async function POST(req: Request) {
     const auth = await requireRole('DOCTOR');
@@ -51,33 +57,10 @@ export async function POST(req: Request) {
     const { user } = auth;
 
     try {
-        const body = await req.json().catch(() => null);
-        if (!body || typeof body !== 'object') {
-            return NextResponse.json({ message: 'Invalid request body' }, { status: 400 });
-        }
-        const { appointmentId, status } = body;
-        const notes = typeof body.notes === 'string' ? body.notes : null;
-        const vitalsIn = body.vitals ?? {};
-
-        if (!Number.isInteger(appointmentId)) {
-            return NextResponse.json({ message: 'appointmentId is required' }, { status: 400 });
-        }
-        if (!['ONGOING', 'COMPLETED'].includes(status)) {
-            return NextResponse.json({ message: 'status must be ONGOING or COMPLETED' }, { status: 400 });
-        }
-
-        let weight: number | null, temperature: number | null, pulse: number | null, items: PrescriptionInput[], labIds: number[];
-        try {
-            weight = numericVital(vitalsIn.weight, 'weight');
-            temperature = numericVital(vitalsIn.temperature, 'temperature');
-            pulse = numericVital(vitalsIn.pulse, 'pulse');
-            items = parsePrescription(body.prescription);
-            labIds = parseLabIds(body.labRequestIds);
-        } catch (e) {
-            if (e instanceof HttpError) return NextResponse.json({ message: e.message }, { status: e.status });
-            throw e;
-        }
-        const bloodPressure = blank(vitalsIn.blood_pressure) ? null : String(vitalsIn.blood_pressure);
+        const body = await parseBody(req, consultationSchema);
+        if ('error' in body) return body.error;
+        const { appointmentId, status, notes, prescription: items, labRequestIds: labIds } = body.data;
+        const { weight, temperature, pulse, blood_pressure: bloodPressure } = body.data.vitals;
 
         const connection = await pool.getConnection();
         try {

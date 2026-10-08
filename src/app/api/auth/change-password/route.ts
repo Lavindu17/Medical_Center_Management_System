@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { parseBody } from '@/lib/validate';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 import { query } from '@/lib/db';
 import { clearLimit, limiterKey, rateLimited } from '@/lib/rate-limit';
+
+const required = 'Missing required fields';
+const changePasswordSchema = z.object({
+    currentPassword: z.string({ message: required }).min(1, required),
+    newPassword: z.string({ message: required }).min(1, required)
+        .min(6, 'New password must be at least 6 characters')
+        .refine((v) => Buffer.byteLength(v) <= 72, 'Password is too long (72 bytes maximum)'),
+}).refine((v) => v.newPassword !== v.currentPassword, {
+    path: ['newPassword'], message: 'The new password must be different from the current one',
+});
 
 export async function POST(req: Request) {
     try {
@@ -12,20 +24,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
 
-        const { currentPassword, newPassword } = await req.json().catch(() => ({}));
-
-        if (!currentPassword || !newPassword) {
-            return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
-        }
-        if (typeof newPassword !== 'string' || newPassword.length < 6) {
-            return NextResponse.json({ message: 'New password must be at least 6 characters' }, { status: 400 });
-        }
-        if (Buffer.byteLength(newPassword) > 72) {
-            return NextResponse.json({ message: 'Password is too long (72 bytes maximum)' }, { status: 400 });
-        }
-        if (newPassword === currentPassword) {
-            return NextResponse.json({ message: 'The new password must be different from the current one' }, { status: 400 });
-        }
+        const body = await parseBody(req, changePasswordSchema);
+        if ('error' in body) return body.error;
+        const { currentPassword, newPassword } = body.data;
 
         // A stolen session must not be able to grind through the current password
         const key = limiterKey('change-password', String(payload.id));
