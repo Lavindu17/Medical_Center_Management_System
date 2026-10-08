@@ -1,67 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { state } from '../helpers/state';
-import { tokenFor, Role } from '../helpers/auth';
 import { pool, query } from '@/lib/db';
+import {
+    DOCTOR, ALICE, BOB, PHARMACIST, RECEPTIONIST, FBC_LAB_TEST,
+    as, post, ctx, isoDate, daysFromNow, rows, one, makeAppointment, addMedicine, consult, dispense, rx,
+} from './helpers';
 
 // Plan section 13, step 3: book -> check-in -> consult/complete -> dispense -> bill reconciled.
 // Seed users from full_setup.sql: 2 Dr Smith (fee 2500), 4 Alice, 5 Bob, 6 pharmacist, 8 receptionist.
 // Tests marked `it.fails` document known defects from the audit: they pass while the bug exists and
 // must be flipped to plain `it` when the bug is fixed (Milestone 5).
-
-const DOCTOR = 2, ALICE = 4, BOB = 5, PHARMACIST = 6, RECEPTIONIST = 8;
-const FBC_LAB_TEST = 1; // 850.00
-
-const as = async (role: Role, id: number) => { state.token = await tokenFor(role, id); };
-const post = (url: string, body: unknown, method = 'POST') =>
-    new Request('http://localhost' + url, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) });
-
-function isoDate(offsetDays: number) {
-    const d = new Date(); d.setDate(d.getDate() + offsetDays);
-    return d.toLocaleDateString('en-CA');
-}
-const daysFromNow = isoDate;
-
-async function rows<T = any>(sql: string, params: any[] = []) { return query<T[]>(sql, params); }
-async function one<T = any>(sql: string, params: any[] = []) { return (await rows<T>(sql, params))[0]; }
-
-let slotCounter = 0;
-async function makeAppointment(patient = ALICE, status = 'PENDING') {
-    const slot = `${String(9 + Math.floor(slotCounter / 4)).padStart(2, '0')}:${String((slotCounter % 4) * 15).padStart(2, '0')}`;
-    slotCounter++;
-    const r: any = await query(
-        `INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, ?, ?, ?, ?)`,
-        [patient, DOCTOR, isoDate(2), slot, slotCounter, status]);
-    return r.insertId as number;
-}
-
-async function addMedicine(name: string, batches: { qty: number; expiryDays: number; sell: number }[]) {
-    const m: any = await query(
-        `INSERT INTO medicines (name, stock, unit, price_per_unit, min_stock_level) VALUES (?, ?, 'tablets', 5, 10)`,
-        [name, batches.reduce((s, b) => s + b.qty, 0)]);
-    for (const [i, b] of batches.entries()) {
-        await query(
-            `INSERT INTO inventory_batches (medicine_id, batch_number, expiry_date, quantity_initial, quantity_current, buying_price, selling_price, status)
-             VALUES (?, ?, ?, ?, ?, 3, ?, 'ACTIVE')`,
-            [m.insertId, `${name}-B${i + 1}`, daysFromNow(b.expiryDays), b.qty, b.qty, b.sell]);
-    }
-    return m.insertId as number;
-}
-
-async function consult(appointmentId: number, body: Record<string, unknown>) {
-    await as('DOCTOR', DOCTOR);
-    const { POST } = await import('@/app/api/doctor/consultation/save/route');
-    return POST(post('/api/doctor/consultation/save', { appointmentId, vitals: {}, notes: 'n', ...body }));
-}
-
-async function dispense(prescriptionId: number, body: Record<string, unknown>) {
-    await as('PHARMACIST', PHARMACIST);
-    const { POST } = await import('@/app/api/pharmacist/dispense/[id]/route');
-    return POST(post(`/api/pharmacist/dispense/${prescriptionId}`, body), ctx(prescriptionId));
-}
-
-const rx = (medicineId: number, quantity: number) =>
-    [{ medicineId, dosage: '1', frequency: '1-0-0-0', duration: '5 days', quantity }];
 
 afterAll(async () => { await pool.end(); });
 
@@ -185,17 +132,16 @@ describe('happy path: appointment -> consultation -> bill -> dispense', () => {
         expect(Number(b.total_amount)).toBe(3850 + 310);
     });
 
-    it('reconciliation: medicines.stock equals the sum of batches and bill total equals its parts', async () => {
-        const drift = await rows(`
-            SELECT m.id, m.stock, COALESCE(SUM(b.quantity_current), 0) AS batches
-            FROM medicines m LEFT JOIN inventory_batches b ON b.medicine_id = m.id
-            GROUP BY m.id HAVING m.stock <> batches`);
-        // Seeded demo medicines have stock but no batches; only medicines created by these tests are checked.
-        expect(drift.filter((d: any) => d.batches > 0)).toEqual([]);
-        const bad = await rows(`SELECT id FROM bills WHERE ROUND(total_amount, 2) <> ROUND(doctor_fee + service_charge + lab_total + pharmacy_total, 2)`);
-        expect(bad).toEqual([]);
-        expect(await rows(`SELECT id FROM inventory_batches WHERE quantity_current < 0`)).toEqual([]);
-        expect(await rows(`SELECT id FROM prescription_items WHERE dispensed_quantity < 0 OR dispensed_quantity > quantity`)).toEqual([]);
+    it('reconciliation: stock equals the sum of batches and the bill total equals its parts', async () => {
+        // Scoped to this flow's own data: other test files create deliberately racy data in the same schema.
+        const med = await one(`SELECT m.stock, COALESCE(SUM(b.quantity_current), 0) AS batches
+            FROM medicines m LEFT JOIN inventory_batches b ON b.medicine_id = m.id WHERE m.id = ? GROUP BY m.id`, [medId]);
+        expect(Number(med.stock)).toBe(Number(med.batches));
+        expect(Number(med.stock)).toBe(90);
+        const bill = await one(`SELECT doctor_fee, service_charge, lab_total, pharmacy_total, total_amount FROM bills WHERE appointment_id = ?`, [apptId]);
+        expect(Number(bill.total_amount)).toBeCloseTo(Number(bill.doctor_fee) + Number(bill.service_charge) + Number(bill.lab_total) + Number(bill.pharmacy_total), 2);
+        expect(await rows(`SELECT id FROM inventory_batches WHERE medicine_id = ? AND quantity_current < 0`, [medId])).toEqual([]);
+        expect(await rows(`SELECT id FROM prescription_items WHERE prescription_id = ? AND (dispensed_quantity < 0 OR dispensed_quantity > quantity)`, [prescriptionId])).toEqual([]);
     });
 });
 

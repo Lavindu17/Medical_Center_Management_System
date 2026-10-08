@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { describe, it, expect, beforeEach } from 'vitest';
 import { state } from './helpers/state';
 import { tokenFor, Role } from './helpers/auth';
