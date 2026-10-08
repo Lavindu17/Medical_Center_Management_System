@@ -1,90 +1,84 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { cookies } from 'next/headers';
-import { AuthService } from '@/services/auth.service';
+import { requireRole } from '@/lib/api-auth';
 
-export async function GET(req: Request) {
+const DAYS = 30;
+
+export async function GET() {
+    const auth = await requireRole('PHARMACIST');
+    if ('error' in auth) return auth.error;
+
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get('token')?.value;
-        const user = await AuthService.verifyToken(token || '');
-        if (!user || user.role !== 'PHARMACIST') {
-            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-        }
-
-        // 1. Daily Dispensing Trend (Last 30 Days)
-        const dailyRows: any = await query(`
+        // 1. Daily dispensing trend for the last 30 days (today and the 29 days before it).
+        //    Days are keyed as text by MySQL so no time-zone conversion can shift a payment onto the wrong day,
+        //    and revenue is what was actually charged for the dispensed part of each item.
+        const dailyRows = await query<any[]>(`
             SELECT
-                DATE(b.paid_at) as date,
-                COALESCE(SUM(pi.dispensed_quantity), 0) as quantity_dispensed,
-                COALESCE(SUM(pi.dispensed_quantity * m.price_per_unit), 0) as revenue
+                DATE_FORMAT(b.paid_at, '%Y-%m-%d') AS date,
+                COALESCE(SUM(pi.dispensed_quantity), 0) AS quantity_dispensed,
+                COALESCE(SUM(pi.dispensed_amount), 0) AS revenue
             FROM prescription_items pi
-            JOIN medicines m ON m.id = pi.medicine_id
             JOIN prescriptions pr ON pr.id = pi.prescription_id
             JOIN bills b ON b.appointment_id = pr.appointment_id
-            WHERE pi.status IN ('DISPENSED', 'PARTIALLY_COMPLETED')
-              AND pi.dispensed_quantity > 0
+            WHERE pi.dispensed_quantity > 0
               AND b.status = 'PAID'
-              AND b.paid_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-            GROUP BY DATE(b.paid_at)
+              AND b.paid_at >= DATE_SUB(CURDATE(), INTERVAL ${DAYS - 1} DAY)
+            GROUP BY DATE_FORMAT(b.paid_at, '%Y-%m-%d')
             ORDER BY date ASC
         `);
 
-        // Generate an array of the last 30 days including empty days
-        const last30Days: any[] = [];
+        const lastDays: { date: string; label: string; quantity: number; revenue: number }[] = [];
         const today = new Date();
-        for (let i = 29; i >= 0; i--) {
+        for (let i = DAYS - 1; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(d.getDate() - i);
-            last30Days.push({
-                date: d.toISOString().split('T')[0],
+            lastDays.push({
+                date: d.toLocaleDateString('en-CA'),            // local calendar day, YYYY-MM-DD
                 label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
                 quantity: 0,
                 revenue: 0,
             });
         }
 
-        dailyRows.forEach((row: any) => {
-            const dateStr = new Date(row.date).toISOString().split('T')[0];
-            const target = last30Days.find(d => d.date === dateStr);
+        for (const row of dailyRows) {
+            const target = lastDays.find(d => d.date === row.date);
             if (target) {
                 target.quantity = Number(row.quantity_dispensed);
                 target.revenue = Number(row.revenue);
             }
-        });
+        }
 
-        // 2. Inventory Valuation
-        const inventoryRows: any = await query(`
+        // 2. Inventory valuation
+        const inventoryRows = await query<any[]>(`
             SELECT
-                COALESCE(SUM(CASE WHEN expiry_date >= CURDATE() THEN quantity_current * buying_price ELSE 0 END), 0) as asset_value,
-                COALESCE(SUM(CASE WHEN expiry_date < CURDATE() AND quantity_current > 0 THEN quantity_current * buying_price ELSE 0 END), 0) as write_off_value
+                COALESCE(SUM(CASE WHEN expiry_date >= CURDATE() THEN quantity_current * buying_price ELSE 0 END), 0) AS asset_value,
+                COALESCE(SUM(CASE WHEN expiry_date < CURDATE() AND quantity_current > 0 THEN quantity_current * buying_price ELSE 0 END), 0) AS write_off_value
             FROM inventory_batches
         `);
 
-        // 3. Top Categories by Revenue (All time or last 30 days?) Let's do all time to show general distribution
-        const categoryRows: any = await query(`
+        // 3. Top categories by revenue (all time), again from what was actually charged
+        const categoryRows = await query<any[]>(`
             SELECT
-                COALESCE(m.category, 'Uncategorized') as name,
-                COALESCE(SUM(pi.dispensed_quantity * m.price_per_unit), 0) as value
+                COALESCE(m.category, 'Uncategorized') AS name,
+                COALESCE(SUM(pi.dispensed_amount), 0) AS value
             FROM prescription_items pi
             JOIN medicines m ON m.id = pi.medicine_id
             JOIN prescriptions pr ON pr.id = pi.prescription_id
             JOIN bills b ON b.appointment_id = pr.appointment_id
-            WHERE pi.status IN ('DISPENSED', 'PARTIALLY_COMPLETED')
-              AND pi.dispensed_quantity > 0
+            WHERE pi.dispensed_quantity > 0
               AND b.status = 'PAID'
-            GROUP BY m.category
+            GROUP BY COALESCE(m.category, 'Uncategorized')
             ORDER BY value DESC
             LIMIT 5
         `);
 
         return NextResponse.json({
-            dailyTrend: last30Days,
+            dailyTrend: lastDays,
             inventory: {
                 assetValue: Number(inventoryRows[0].asset_value),
                 writeOffValue: Number(inventoryRows[0].write_off_value)
             },
-            categories: categoryRows.map((r: any) => ({ name: r.name, value: Number(r.value) }))
+            categories: categoryRows.map((r) => ({ name: r.name, value: Number(r.value) }))
         });
 
     } catch (error) {

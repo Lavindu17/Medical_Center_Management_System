@@ -1,5 +1,6 @@
 'use client';
 import { toast } from 'sonner';
+import { medicineForm } from '@/lib/medicine-form';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -198,15 +199,7 @@ export default function ConsultationPage() {
         // Set form type for UI helpers
         const med = medicines.find(m => m.id === item.medicineId);
         if (med) {
-            const name = med.name.toLowerCase();
-            const unit = (med.unit || '').toLowerCase();
-            if (unit.includes('ml') || name.includes('syr') || name.includes('liquid')) {
-                setSelectedMedForm('Syrup');
-            } else if (unit.includes('tube') || unit.includes('g') || name.includes('cream') || name.includes('oint')) {
-                setSelectedMedForm('Cream');
-            } else {
-                setSelectedMedForm('Pill');
-            }
+            setSelectedMedForm(medicineForm(med));
         }
         
         // Scroll to form
@@ -450,18 +443,9 @@ export default function ConsultationPage() {
                                                                             setMedOpen(false);
                                                                             
                                                                             // Auto-fill logic
-                                                                            const name = med.name.toLowerCase();
-                                                                            const unit = (med.unit || '').toLowerCase();
-                                                                            if (unit.includes('ml') || name.includes('syr') || name.includes('liquid')) {
-                                                                                setSelectedMedForm('Syrup');
-                                                                                setSelectedDose('5ml');
-                                                                            } else if (unit.includes('tube') || unit.includes('g') || name.includes('cream') || name.includes('oint')) {
-                                                                                setSelectedMedForm('Cream');
-                                                                                setSelectedDose('Apply');
-                                                                            } else {
-                                                                                setSelectedMedForm('Pill');
-                                                                                setSelectedDose('1');
-                                                                            }
+                                                                            const form = medicineForm(med);
+                                                                            setSelectedMedForm(form);
+                                                                            setSelectedDose(form === 'Syrup' ? '5ml' : form === 'Cream' ? 'Apply' : '1');
                                                                         }}
                                                                     >
                                                                         <Check

@@ -20,10 +20,14 @@ interface Appointment {
 
 function StatusPill({ status }: { status: string }) {
     const map: Record<string, string> = {
-        SCHEDULED:    'bg-emerald-50 text-emerald-700 border-emerald-200',
+        PENDING:    'bg-emerald-50 text-emerald-700 border-emerald-200',
+        CONFIRMED:    'bg-emerald-50 text-emerald-700 border-emerald-200',
+        ARRIVED:    'bg-teal-50 text-teal-700 border-teal-200',
+        ABSENT:    'bg-red-50 text-red-600 border-red-200',
+        NO_SHOW:    'bg-red-50 text-red-600 border-red-200',
         COMPLETED:    'bg-neutral-100 text-neutral-500 border-neutral-200',
         CANCELLED:    'bg-red-50 text-red-600 border-red-200',
-        IN_PROGRESS:  'bg-amber-50 text-amber-700 border-amber-200',
+        ONGOING:  'bg-amber-50 text-amber-700 border-amber-200',
         CHECKED_IN:   'bg-teal-50 text-teal-700 border-teal-200',
     };
     return (

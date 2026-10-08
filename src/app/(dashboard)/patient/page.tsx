@@ -26,10 +26,15 @@ const fadeUp = {
 
 function StatusBadge({ status }: { status: string }) {
     const map: Record<string, string> = {
-        SCHEDULED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        PENDING: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        CONFIRMED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        ARRIVED: 'bg-teal-50 text-teal-700 border-teal-200',
+        ABSENT: 'bg-red-50 text-red-600 border-red-200',
+        NO_SHOW: 'bg-red-50 text-red-600 border-red-200',
         COMPLETED: 'bg-neutral-100 text-neutral-600 border-neutral-200',
         CANCELLED: 'bg-red-50 text-red-600 border-red-200',
-        IN_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
+        CHECKED_IN: 'bg-teal-50 text-teal-700 border-teal-200',
+        ONGOING: 'bg-amber-50 text-amber-700 border-amber-200',
     };
     return (
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${map[status] ?? 'bg-neutral-100 text-neutral-600 border-neutral-200'}`}>
@@ -157,21 +162,25 @@ export default function PatientDashboard() {
                                             </div>
                                             <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2">
                                                 <StatusBadge status={apt.status} />
+                                                {['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED'].includes(apt.status) && (
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
                                                     className="h-7 text-xs text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
                                                     onClick={async () => {
                                                         if (!confirm('Cancel this appointment?')) return;
-                                                        await fetch('/api/appointments/cancel', {
+                                                        const res = await fetch('/api/appointments/cancel', {
                                                             method: 'PUT',
+                                                            headers: { 'Content-Type': 'application/json' },
                                                             body: JSON.stringify({ appointmentId: apt.id })
                                                         });
+                                                        if (!res.ok) alert((await res.json().catch(() => null))?.message || 'Could not cancel this appointment.');
                                                         if (user?.id) fetchAppointments(user.id);
                                                     }}
                                                 >
                                                     Cancel
                                                 </Button>
+                                                )}
                                             </div>
                                         </CardContent>
                                     </div>

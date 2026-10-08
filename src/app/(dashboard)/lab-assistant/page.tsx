@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     Table,
     TableBody,
@@ -12,59 +11,35 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UploadModal } from '@/components/lab/UploadModal';
-import { FlaskConical, Calendar, UserCheck, Search, History, Clock } from 'lucide-react';
+import { FlaskConical, Calendar, UserCheck, Search, History, Clock, RefreshCw, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface LabRequest {
     request_id: number;
-    patient_name: string;
-    doctor_name: string;
-    test_name: string;
+    patient_name: string | null;
+    doctor_name: string | null;
+    test_name: string | null;
     status: string;
     requested_at: string;
-    appointment_date: string;
+    appointment_date: string | null;
+    result_url?: string | null;
 }
 
-export default function LabAssistantDashboard() {
-    const [requests, setRequests] = useState<LabRequest[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+/** A bad or missing date must show a dash, not crash the whole page. */
+function formatDate(value: string | null) {
+    if (!value) return '—';
+    const d = new Date(value);
+    return Number.isNaN(d.getTime()) ? '—' : format(d, 'MMM dd, yyyy');
+}
 
-    const fetchRequests = async () => {
-        try {
-            const res = await fetch('/api/lab-assistant/requests');
-            if (res.ok) {
-                const data = await res.json();
-                setRequests(data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch requests', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchRequests();
-    }, []);
-
-    const handleSuccess = () => {
-        fetchRequests();
-    };
-
-    // Filter Logic
-    const filteredRequests = requests.filter(req =>
-        req.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.test_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const pendingRequests = filteredRequests.filter(req => req.status === 'PENDING');
-    const historyRequests = filteredRequests.filter(req => req.status !== 'PENDING');
-
-    const RequestTable = ({ data, historyMode = false }: { data: LabRequest[], historyMode?: boolean }) => (
+// Defined at module level: a component declared inside the page is a new component on every render, which
+// remounts every row (and closes an open upload dialog) whenever the page's state changes.
+function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: () => void }) {
+    return (
         <div className="rounded-md border bg-white overflow-hidden">
             <Table>
                 <TableHeader className="bg-gray-50">
@@ -90,29 +65,29 @@ export default function LabAssistantDashboard() {
                                 <TableCell className="font-medium">
                                     <div className="flex items-center gap-2">
                                         <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
-                                            {req.patient_name.charAt(0)}
+                                            {(req.patient_name ?? '?').charAt(0)}
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-gray-900">{req.patient_name}</div>
+                                            <div className="font-semibold text-gray-900">{req.patient_name ?? 'Unknown patient'}</div>
                                             <div className="text-xs text-gray-500">ID: #{req.request_id}</div>
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                        {req.test_name}
+                                        {req.test_name ?? 'Unknown test'}
                                     </Badge>
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1.5 text-gray-600">
                                         <UserCheck className="h-3.5 w-3.5" />
-                                        {req.doctor_name}
+                                        {req.doctor_name ?? '—'}
                                     </div>
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1.5 text-gray-500 text-sm">
                                         <Calendar className="h-3.5 w-3.5" />
-                                        {format(new Date(req.appointment_date), 'MMM dd, yyyy')}
+                                        {formatDate(req.appointment_date)}
                                     </div>
                                 </TableCell>
                                 <TableCell>
@@ -127,10 +102,19 @@ export default function LabAssistantDashboard() {
                                     {req.status === 'PENDING' ? (
                                         <UploadModal
                                             requestId={req.request_id}
-                                            patientName={req.patient_name}
-                                            testName={req.test_name}
-                                            onSuccess={handleSuccess}
+                                            patientName={req.patient_name ?? 'Patient'}
+                                            testName={req.test_name ?? 'Test'}
+                                            onSuccess={onUploaded}
                                         />
+                                    ) : req.result_url ? (
+                                        <a
+                                            href={req.result_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" /> View report
+                                        </a>
                                     ) : (
                                         <span className="text-xs text-gray-400 font-medium">Completed</span>
                                     )}
@@ -142,6 +126,53 @@ export default function LabAssistantDashboard() {
             </Table>
         </div>
     );
+}
+
+export default function LabAssistantDashboard() {
+    const [requests, setRequests] = useState<LabRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [failed, setFailed] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchRequests = useCallback(async () => {
+        try {
+            const res = await fetch('/api/lab-assistant/requests', { cache: 'no-store' });
+            if (!res.ok) throw new Error(`Request failed (${res.status})`);
+            const data = await res.json();
+            if (!Array.isArray(data)) throw new Error('Unexpected response');
+            setRequests(data);
+            setFailed(false);
+        } catch (error) {
+            console.error('Failed to fetch requests', error);
+            setFailed(true);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        const first = setTimeout(fetchRequests, 0);
+        // New requests arrive while the page is open (the bell tells you); keep the list current too
+        const timer = setInterval(() => { if (document.visibilityState === 'visible') fetchRequests(); }, 30_000);
+        return () => { clearTimeout(first); clearInterval(timer); };
+    }, [fetchRequests]);
+
+    // Filter Logic
+    const needle = searchTerm.toLowerCase();
+    const filteredRequests = requests.filter(req =>
+        (req.patient_name ?? '').toLowerCase().includes(needle) ||
+        (req.test_name ?? '').toLowerCase().includes(needle)
+    );
+
+    const pendingRequests = filteredRequests.filter(req => req.status === 'PENDING');
+    const historyRequests = filteredRequests.filter(req => req.status !== 'PENDING');
+
+    const errorNotice = failed && (
+        <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
+            <span>Could not load lab requests. The list below may be out of date.</span>
+            <Button size="sm" variant="outline" onClick={fetchRequests}>Try again</Button>
+        </div>
+    );
 
     return (
         <div className="space-y-6">
@@ -150,14 +181,19 @@ export default function LabAssistantDashboard() {
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900">Lab Dashboard</h2>
                     <p className="text-muted-foreground mt-1">Manage pending test requests and view history.</p>
                 </div>
-                <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        placeholder="Search patient or test..."
-                        className="pl-9 bg-white"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <div className="flex w-full sm:w-auto items-center gap-2">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search patient or test..."
+                            className="pl-9 bg-white"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <Button variant="outline" size="icon" onClick={fetchRequests} aria-label="Refresh requests" title="Refresh">
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
                 </div>
             </div>
 
@@ -185,10 +221,11 @@ export default function LabAssistantDashboard() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
+                            {errorNotice}
                             {loading ? (
                                 <div className="text-center py-10 text-gray-500 animate-pulse">Loading requests...</div>
                             ) : (
-                                <RequestTable data={pendingRequests} />
+                                <RequestTable data={pendingRequests} onUploaded={fetchRequests} />
                             )}
                         </CardContent>
                     </Card>
@@ -206,10 +243,11 @@ export default function LabAssistantDashboard() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
+                            {errorNotice}
                             {loading ? (
                                 <div className="text-center py-10 text-gray-500 animate-pulse">Loading history...</div>
                             ) : (
-                                <RequestTable data={historyRequests} historyMode={true} />
+                                <RequestTable data={historyRequests} onUploaded={fetchRequests} />
                             )}
                         </CardContent>
                     </Card>
