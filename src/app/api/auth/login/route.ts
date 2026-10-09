@@ -4,6 +4,7 @@ import { handleError } from '@/lib/errors';
 import { clearLimit, limiterKey, rateLimited } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
+import { audit } from '@/lib/audit';
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
         // 2. Throttle guessing per account (counted whether or not the account exists)
         const key = limiterKey('login', email);
         if (await rateLimited(key, MAX_ATTEMPTS, WINDOW_SECONDS)) {
+            await audit(null, { action: 'LOGIN_FAILED', entity: 'SESSION', outcome: 'DENIED', details: { email, reason: 'rate_limited' } });
             return NextResponse.json({ message: 'Too many sign-in attempts. Please try again in a few minutes.' }, { status: 429 });
         }
 
@@ -35,16 +37,19 @@ export async function POST(req: Request) {
         const user = await AuthService.getUserByEmailWithPassword(email);
         if (!user) {
             await AuthService.fakeCompare(password);
+            await audit(null, { action: 'LOGIN_FAILED', entity: 'SESSION', outcome: 'FAILURE', details: { email, reason: 'bad_credentials' } });
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
         }
 
         const isValid = await AuthService.comparePassword(password, user.password_hash);
         if (!isValid) {
+            await audit(null, { action: 'LOGIN_FAILED', entity: 'SESSION', outcome: 'FAILURE', details: { email, reason: 'bad_credentials', accountId: user.id } });
             return NextResponse.json({ message: 'Invalid email or password' }, { status: 401 });
         }
 
         // Only someone who knows the password learns the account is unverified
         if (!user.is_verified) {
+            await audit(null, { action: 'LOGIN_FAILED', entity: 'SESSION', outcome: 'FAILURE', details: { email, reason: 'unverified', accountId: user.id } });
             return NextResponse.json({ message: 'Email not verified. Please verify your email to log in.' }, { status: 403 });
         }
 
@@ -61,6 +66,8 @@ export async function POST(req: Request) {
             secure: process.env.NODE_ENV === 'production',
             maxAge: 60 * 60 * 24, // 1 day
         });
+
+        await audit({ id: user.id, role: user.role, name: user.name }, { action: 'LOGIN', entity: 'SESSION' });
 
         // 5. Return standard user object (without secrets)
         const { password_hash, ...userWithoutPassword } = user;

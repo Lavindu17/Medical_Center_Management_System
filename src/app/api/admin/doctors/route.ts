@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { query, pool } from '@/lib/db';
 import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
@@ -65,6 +66,7 @@ export async function PUT(req: Request) {
             if (exists.length === 0) return NextResponse.json({ message: 'Doctor not found' }, { status: 404 });
         }
 
+        await audit(auth.user, { action: 'UPDATE', entity: 'DOCTOR_PROFILE', entityId: id, details: { fields: ['consultation_fee', 'commission_rate'] } });
         return NextResponse.json({ message: 'Doctor updated successfully' });
 
     } catch (error) {

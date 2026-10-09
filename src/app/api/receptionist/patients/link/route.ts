@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
                 `INSERT INTO family_links (primary_patient_id, linked_patient_id, relationship, verified_by) VALUES (?, ?, ?, ?)`,
                 [primary_patient_id, linked_patient_id, relationship, user.id]);
             await connection.commit();
+            await audit(user, { action: 'CREATE', entity: 'FAMILY_LINK', patientId: primary_patient_id, details: { linkedPatientId: linked_patient_id, relationship, by: 'reception' } });
             return NextResponse.json({ message: 'Patients Linked Successfully' });
         } catch (err: any) {
             await connection.rollback().catch(() => {});

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/api-auth';
+import { audit } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -22,6 +23,7 @@ export async function GET(req: Request) {
                 WHERE u.role = 'PATIENT' 
                 ORDER BY u.created_at DESC LIMIT 10
             `);
+            await audit(user, { action: 'SEARCH', entity: 'PATIENT_CHART', details: { term: false, results: (rows as any[]).length } });
             return NextResponse.json(rows);
         }
 
@@ -34,6 +36,7 @@ export async function GET(req: Request) {
             LIMIT 20
         `, [`%${search}%`, `%${search}%`]);
 
+        await audit(user, { action: 'SEARCH', entity: 'PATIENT_CHART', details: { term: true, termLength: search.length, results: (rows as any[]).length } });
         return NextResponse.json(rows);
 
     } catch (error) {

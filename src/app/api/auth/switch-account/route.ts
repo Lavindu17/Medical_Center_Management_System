@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -49,7 +50,14 @@ export async function POST(req: Request) {
         // 3. Generate New JWT Token entirely scoped to target_user
         // By relying strictly on the bi-directional nature of 'family_links', 
         // the target_user can ALSO see currentUser in their family dashboard and switch back organically.
-        const newToken = await AuthService.generateToken(targetUser);
+        // Remember the real person, unless they are switching back to their own account
+        const humanId = Number((currentUser as any).actorId ?? currentUser.id);
+        const humanName = (currentUser as any).actorName ?? currentUser.name;
+        const newToken = await AuthService.generateToken(targetUser, humanId === targetUser.id ? undefined : { id: humanId, name: humanName });
+        await audit(
+            { id: Number(currentUser.id), role: String(currentUser.role), name: String(currentUser.name), actorId: (currentUser as any).actorId, actorName: (currentUser as any).actorName },
+            { action: 'ACCOUNT_SWITCH', entity: 'SESSION', patientId: targetUser.id, details: { fromAccount: Number(currentUser.id), toAccount: targetUser.id } },
+        );
 
         // 4. Set Cookie Overwrite
         cookieStore.set({

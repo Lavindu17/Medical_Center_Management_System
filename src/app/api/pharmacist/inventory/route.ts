@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { medicineSchema } from '@/lib/medicine-schema';
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
             [m.name, m.generic_name ?? null, m.manufacturer ?? null, m.category ?? null, m.min_stock_level,
              m.unit, m.dosage_form ?? null, m.strength ?? null, m.price_per_unit, m.location ?? null]);
 
+        await audit(auth.user, { action: 'CREATE', entity: 'MEDICINE', entityId: result.insertId });
         return NextResponse.json({ message: 'Medicine registered successfully. Add stock via batches.', id: result.insertId }, { status: 201 });
     } catch (error) {
         console.error('Create Medicine Error:', error);

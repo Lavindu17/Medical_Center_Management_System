@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
+import { audit } from '@/lib/audit';
 import type { Role } from '@/types';
 
 export interface SessionUser {
@@ -8,6 +9,9 @@ export interface SessionUser {
     email: string;
     name: string;
     role: Role;
+    /** Set when a family member is acting as this account: the real person behind the session */
+    actorId?: number;
+    actorName?: string;
 }
 
 /** Reads the `token` cookie and returns the verified user, or null. */
@@ -30,6 +34,7 @@ export async function requireRole(...roles: Role[]): Promise<{ user: SessionUser
     const user = await getSessionUser();
     if (!user) return { error: NextResponse.json({ message: 'Unauthorized' }, { status: 401 }) };
     if (roles.length > 0 && !roles.includes(user.role)) {
+        await audit(user, { action: 'ACCESS_DENIED', outcome: 'DENIED', details: { requiredRoles: roles.join(',') } });
         return { error: NextResponse.json({ message: 'Forbidden' }, { status: 403 }) };
     }
     return { user };

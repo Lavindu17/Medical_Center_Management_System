@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
             });
         }
 
+        await audit(user, { action: 'CREATE', entity: 'DOCTOR_LEAVE', entityId: id, details: { date, affectedAppointments: affected } });
         return NextResponse.json({ id, date, reason, doctor_id: user.id, affectedAppointments: affected }, { status: 201 });
     } catch (error) {
         console.error('Add leave error:', error);
@@ -82,6 +84,7 @@ export async function DELETE(req: Request) {
         if (res.affectedRows === 0) {
             return NextResponse.json({ message: 'Leave not found' }, { status: 404 });
         }
+        await audit(user, { action: 'DELETE', entity: 'DOCTOR_LEAVE', entityId: id });
         return NextResponse.json({ message: 'Deleted' });
     } catch (error) {
         console.error('Delete leave error:', error);

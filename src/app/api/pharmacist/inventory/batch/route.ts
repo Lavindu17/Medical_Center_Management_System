@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query, pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
@@ -98,6 +99,7 @@ export async function POST(req: Request) {
             await connection.execute('UPDATE medicines SET stock = stock + ? WHERE id = ?', [b.quantity, b.medicine_id]);
 
             await connection.commit();
+            await audit(auth.user, { action: 'CREATE', entity: 'BATCH', entityId: batchNumber, details: { medicineId: b.medicine_id, quantity: b.quantity, expiry: b.expiry_date } });
             return NextResponse.json({ message: 'Batch added successfully' }, { status: 201 });
         } catch (err) {
             await connection.rollback().catch(() => {});

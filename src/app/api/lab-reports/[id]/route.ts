@@ -3,6 +3,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { auditAccess } from '@/lib/audit';
 import { isSafeStoredName, mimeForStoredName, reportDir } from '@/lib/lab-reports';
 
 // GET a lab report. Reports are private: only the lab team, the patient they belong to and the
@@ -32,6 +33,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
         const bytes = await readFile(path.join(reportDir(), report.result_file)).catch(() => null);
         if (!bytes) return NextResponse.json({ message: 'Report file is missing' }, { status: 404 });
+
+        await auditAccess(user, { action: 'DOWNLOAD', entity: 'LAB_REPORT', entityId: requestId, patientId: report.patient_id });
 
         return new NextResponse(new Uint8Array(bytes), {
             headers: {

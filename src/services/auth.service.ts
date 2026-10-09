@@ -5,6 +5,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import crypto from 'crypto';
 import { EmailService } from './email.service';
 import { isSessionCurrent } from '@/lib/session-check';
+import { audit } from '@/lib/audit';
 
 const SALT_ROUNDS = 10;
 const CODE_TTL_MS = 15 * 60 * 1000;
@@ -39,12 +40,17 @@ export class AuthService {
         await bcrypt.compare(password, '$2b$10$xQtcNhKLC5JMmuvx0ail/uJDuUGU5UBKr5wMho7B/CCrGeN5ZVKU2');
     }
 
-    static async generateToken(user: User): Promise<string> {
+    /**
+     * `actor` is set when a family member switches into another account: the token then says who the real person is,
+     * so the audit trail can name them instead of only the account they are acting as.
+     */
+    static async generateToken(user: User, actor?: { id: number; name: string }): Promise<string> {
         return new SignJWT({
             id: user.id,
             email: user.email,
             role: user.role,
-            name: user.name
+            name: user.name,
+            ...(actor ? { actorId: actor.id, actorName: actor.name } : {}),
         })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
@@ -224,6 +230,7 @@ export class AuthService {
             connection.release();
         }
 
+        await audit({ id: user.id, role: user.role, name: user.name }, { action: 'PASSWORD_RESET', entity: 'USER', entityId: user.id });
         return { success: true, message: 'Password reset successfully' };
     }
 }

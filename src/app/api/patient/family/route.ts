@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { requireRole } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -154,6 +155,7 @@ export async function POST(req: Request) {
             emailHtml
         ).catch(err => console.error('Email failed:', err));
 
+        await audit(user, { action: 'CREATE', entity: 'FAMILY_LINK', patientId: member.id, details: { relationship, kind: 'invite' } });
         return NextResponse.json({ message: 'Request sent successfully' });
 
     } catch (error) {

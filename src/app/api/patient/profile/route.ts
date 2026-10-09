@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { parseBody } from '@/lib/validate';
 import { query, pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { audit, auditAccess } from '@/lib/audit';
 
 export async function GET(req: Request) {
     const auth = await requireRole('PATIENT');
@@ -34,6 +35,7 @@ export async function GET(req: Request) {
         }
 
         const profile = patients[0];
+        await auditAccess(user, { action: 'VIEW', entity: 'PATIENT_PROFILE', entityId: user.id, patientId: user.id });
 
         // 2. Fetch Allergies
         const allergies: any = await query(`
@@ -135,6 +137,7 @@ export async function POST(req: Request) {
             }
 
             await connection.commit();
+            await audit(user, { action: 'UPDATE', entity: 'PATIENT_PROFILE', entityId: id, patientId: Number(id), details: { fields: ['name', 'phone', 'address', 'blood_group', 'emergency_contact', 'allergies'].filter((f) => f !== 'allergies' || Array.isArray(allergies)) } });
             return NextResponse.json({ message: 'Profile updated' });
 
         } catch (err: any) {

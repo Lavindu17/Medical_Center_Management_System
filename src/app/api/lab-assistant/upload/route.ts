@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { randomUUID } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
             });
         }
 
+        await audit(user, { action: 'CREATE', entity: 'LAB_REPORT', entityId: requestId, patientId: who?.patient_id ?? null, details: { fileType: type.ext, bytes: file.size } });
         return NextResponse.json({ message: 'Result Uploaded Successfully', url: `/api/lab-reports/${requestId}` });
     } catch (error) {
         if (storedPath) await unlink(storedPath).catch(() => {});

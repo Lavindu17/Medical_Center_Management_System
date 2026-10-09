@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
@@ -32,5 +33,6 @@ export async function PUT(req: Request) {
 
     const { name, phone } = parsed.data;
     await query('UPDATE users SET name = ?, phone = ? WHERE id = ?', [name, phone ? phone : null, auth.user.id]);
+    await audit(auth.user, { action: 'UPDATE', entity: 'USER', entityId: auth.user.id, patientId: auth.user.role === 'PATIENT' ? auth.user.id : null, details: { fields: ['name', 'phone'], self: true } });
     return NextResponse.json({ success: true, message: 'Account updated', account: { name, phone: phone || null } });
 }

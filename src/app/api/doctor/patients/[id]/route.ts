@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/api-auth';
+import { auditAccess } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -21,6 +22,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         `, [id]);
 
         if (patientRows.length === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
+
+        await auditAccess(user, { action: 'VIEW', entity: 'PATIENT_CHART', entityId: id, patientId: Number(id) });
 
         // 2. Fetch History (Completed appointments only)
         const historyRows = await query<any[]>(`

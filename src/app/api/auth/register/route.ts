@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { AuthService } from '@/services/auth.service';
 import { pool } from '@/lib/db';
 import { handleError } from '@/lib/errors';
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
             );
 
             await connection.commit();
+            await audit(null, { action: 'CREATE', entity: 'USER', entityId: userId, patientId: userId, details: { kind: 'self_registration' } });
         } catch (err: any) {
             await connection.rollback().catch(() => {});
             // Two simultaneous sign-ups with one address: the loser gets the same answer as a normal duplicate

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { nameOf, notify } from '@/lib/notify';
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
                     body: `${await nameOf(connection, user.id)} declined your family link request.`, link: '/patient/family',
                 });
                 await connection.commit();
+                await audit(user, { action: 'UPDATE', entity: 'FAMILY_LINK', entityId: requestId, patientId: request.requester_id, details: { response: 'REJECT' } });
                 return NextResponse.json({ message: 'Request rejected' });
             }
 
@@ -69,6 +71,7 @@ export async function POST(req: Request) {
                 body: `${await nameOf(connection, user.id)} accepted your family link request. You can now switch between your accounts.`, link: '/patient/family',
             });
             await connection.commit();
+            await audit(user, { action: 'UPDATE', entity: 'FAMILY_LINK', entityId: requestId, patientId: request.requester_id, details: { response: 'ACCEPT' } });
             return NextResponse.json({ message: 'Request accepted. Accounts linked successfully.' });
         } catch (err) {
             await connection.rollback().catch(() => {});

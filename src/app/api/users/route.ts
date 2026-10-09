@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { z } from 'zod';
@@ -17,6 +18,7 @@ export async function GET(req: Request) {
     try {
         // Query to retrieve all users with basic information, ordered by creation date
         const users = await query<any[]>('SELECT id, name, email, role, phone, created_at as createdAt FROM users ORDER BY created_at DESC');
+        await audit(auth.user, { action: 'SEARCH', entity: 'USER', details: { results: users.length } });
         return NextResponse.json(users);
     } catch (error) {
         return NextResponse.json({ message: 'Failed to fetch users' }, { status: 500 });
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
 
             // Commit transaction on success
             await connection.commit();
+            await audit(auth.user, { action: 'CREATE', entity: 'USER', entityId: userId, patientId: null, details: { role } });
             return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
 
         } catch (err: any) {
@@ -134,7 +137,7 @@ export async function PUT(req: Request) {
 
         const { id, name, email, phone, role } = validation.data;
 
-        const existingUser = await query<any[]>('SELECT role FROM users WHERE id = ?', [id]);
+        const existingUser = await query<any[]>('SELECT role, name, email, phone FROM users WHERE id = ?', [id]);
         if (existingUser.length === 0) {
             return NextResponse.json({ message: 'User not found' }, { status: 404 });
         }
@@ -156,6 +159,10 @@ export async function PUT(req: Request) {
             [name, email, phone || null, role, id]
         );
 
+        await audit(admin, {
+            action: 'UPDATE', entity: 'USER', entityId: id, patientId: role === 'PATIENT' ? id : null,
+            details: { fields: changedFields(existingUser[0], { name, email, phone: phone || null, role }), ...(existingUser[0].role !== role ? { roleFrom: existingUser[0].role, roleTo: role } : {}) },
+        });
         return NextResponse.json({ message: 'User updated successfully' });
 
     } catch (error) {
@@ -192,6 +199,7 @@ export async function DELETE(req: Request) {
 
         // Delete user from database; related records handled by CASCADE
         await query('DELETE FROM users WHERE id = ?', [id]);
+        await audit(admin, { action: 'DELETE', entity: 'USER', entityId: id, patientId: target[0].role === 'PATIENT' ? id : null, details: { role: target[0].role } });
 
         return NextResponse.json({ message: 'User deleted successfully' });
 

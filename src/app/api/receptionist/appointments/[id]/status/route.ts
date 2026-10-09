@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
@@ -55,6 +56,7 @@ export async function PUT(req: Request, props: { params: Promise<{ id: string }>
                     body: `Your appointment on ${slot} was cancelled by the front desk.`, link: '/patient/appointments',
                 });
             }
+            await audit(auth.user, { action: 'STATUS_CHANGE', entity: 'APPOINTMENT', entityId: id, patientId: appt?.patient_id ?? null, details: { to: status } });
             return NextResponse.json({ message: 'Status User Updated' });
         }
 

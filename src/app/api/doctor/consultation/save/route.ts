@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { pool } from '@/lib/db';
 import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
@@ -218,6 +219,10 @@ export async function POST(req: Request) {
             }
 
             await connection.commit();
+            await audit(user, {
+                action: status === 'COMPLETED' && appt.status !== 'COMPLETED' ? 'STATUS_CHANGE' : 'UPDATE', entity: 'CONSULTATION', entityId: appointmentId, patientId: appt.patient_id,
+                details: { status, prescriptionLines: items.length, labTests: labIds.length, billCreated },
+            });
             return NextResponse.json({ message: 'Saved successfully' });
         } catch (err: any) {
             await connection.rollback().catch(() => {});

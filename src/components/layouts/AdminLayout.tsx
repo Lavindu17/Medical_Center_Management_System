@@ -8,7 +8,7 @@ const navItems = [
     { icon: Banknote,        label: 'Revenue',         href: '/admin/revenue' },
     { icon: Users,           label: 'User Management', href: '/admin/users' },
     { icon: HeartPulse,      label: 'Doctor Fees',     href: '/admin/doctors' },
-    { icon: FileText,        label: 'System Logs',     href: '/admin/logs' },
+    { icon: FileText,        label: 'Audit Log',       href: '/admin/logs' },
     { icon: UserCog,        label: 'Account',         href: '/admin/account' },
 ];
 

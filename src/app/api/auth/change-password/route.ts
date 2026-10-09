@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
 
         const isValid = await AuthService.comparePassword(currentPassword, user.password_hash);
         if (!isValid) {
+            await audit({ id: user.id, role: user.role, name: user.name }, { action: 'PASSWORD_CHANGE', entity: 'USER', entityId: user.id, outcome: 'FAILURE', details: { reason: 'wrong_current_password' } });
             return NextResponse.json({ message: 'Incorrect current password' }, { status: 400 });
         }
 
@@ -49,6 +51,7 @@ export async function POST(req: Request) {
         const newHash = await AuthService.hashPassword(newPassword);
         await query('UPDATE users SET password_hash = ?, password_changed_at = NOW() WHERE id = ?', [newHash, user.id]);
         await clearLimit(key);
+        await audit({ id: user.id, role: user.role, name: user.name }, { action: 'PASSWORD_CHANGE', entity: 'USER', entityId: user.id });
 
         // Keep the person who just changed it signed in on this device with a fresh token
         (await cookies()).set({

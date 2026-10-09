@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { parseBody } from '@/lib/validate';
 import { requireRole } from '@/lib/api-auth';
@@ -97,16 +98,17 @@ export async function POST(req: Request) {
 
         try {
             // 1. Mark bill as PAID
-            await connection.execute(
+            const [paid]: any = await connection.execute(
                 `UPDATE bills SET status = 'PAID', paid_at = NOW(), payment_method = ?, paid_by = ? WHERE id = ? AND status = 'PENDING'`,
                 [payment_method, user.id, bill_id]
             );
 
             // 2. Get appointment and mark COMPLETED
             const [billRows]: any = await connection.execute(
-                'SELECT appointment_id FROM bills WHERE id = ?',
+                'SELECT b.appointment_id, a.patient_id FROM bills b JOIN appointments a ON a.id = b.appointment_id WHERE b.id = ?',
                 [bill_id]
             );
+            const billPatientId: number | null = billRows[0]?.patient_id ?? null;
             if (billRows.length > 0) {
                 await connection.execute(
                     "UPDATE appointments SET status = 'COMPLETED' WHERE id = ? AND status != 'CANCELLED'",
@@ -115,6 +117,7 @@ export async function POST(req: Request) {
             }
 
             await connection.commit();
+            await audit(user, { action: 'UPDATE', entity: 'BILL', entityId: bill_id, patientId: billPatientId, outcome: paid.affectedRows === 1 ? 'SUCCESS' : 'FAILURE', details: { status: 'PAID', method: payment_method, alreadyPaid: paid.affectedRows !== 1 } });
             return NextResponse.json({ message: 'Payment marked as paid successfully' });
 
         } catch (err) {

@@ -19,6 +19,7 @@ export default async function setup() {
     ddl = ddl.replace(/CREATE DATABASE[\s\S]*?;/i, '').replace(/^\s*USE\s+[^;]+;/gim, '');
     if (/\bUSE\s+`?\w|CREATE\s+DATABASE|DROP\s+DATABASE/i.test(ddl)) throw new Error('full_setup.sql still contains database-level statements');
     const sync = fs.readFileSync(path.join(SQL_DIR, '18_schema_sync.sql'), 'utf8');
+    const auditLog = fs.readFileSync(path.join(SQL_DIR, '19_audit_log.sql'), 'utf8');
 
     const admin = await mysql.createConnection({
         host,
@@ -33,6 +34,7 @@ export default async function setup() {
         await admin.query(`USE \`${TEST_DB}\``);
         await admin.query(ddl);
         await admin.query(sync);
+        await admin.query(auditLog);
     } finally {
         await admin.end();
     }

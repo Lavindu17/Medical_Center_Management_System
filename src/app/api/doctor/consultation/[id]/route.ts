@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { auditAccess } from '@/lib/audit';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const auth = await requireRole('DOCTOR');
@@ -36,6 +37,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         if (appt.doctor_id !== user.id) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
+
+        await auditAccess(user, { action: 'VIEW', entity: 'CONSULTATION', entityId: id, patientId: appt.patient_id });
 
         // Calc Age
         const dob = new Date(appt.date_of_birth);

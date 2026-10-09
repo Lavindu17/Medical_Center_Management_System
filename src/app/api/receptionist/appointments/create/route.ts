@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
 import { bookAppointment, BookingError } from '@/lib/booking';
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
             patientId: patient_id, doctorId: doctor_id, date, timeSlot: time_slot, reason, actorId: user.id,
         });
 
+        await audit(user, { action: 'CREATE', entity: 'APPOINTMENT', entityId: appointmentId, patientId: patient_id, details: { doctorId: doctor_id, date, timeSlot: time_slot, bookedBy: 'RECEPTIONIST' } });
         return NextResponse.json({
             message: 'Appointment Booked',
             appointmentId,

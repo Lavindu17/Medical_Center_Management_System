@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/api-auth';
+import { audit, auditAccess } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
@@ -43,6 +44,7 @@ export async function GET(
         }
 
         const prescription = presRows[0];
+        await auditAccess(user, { action: 'VIEW', entity: 'PRESCRIPTION', entityId: id, patientId: prescription.patient_id });
 
         // 2. Fetch Items
         const items: any = await query(
@@ -251,6 +253,10 @@ export async function POST(
                 });
             }
             await connection.commit();
+            await audit(user, {
+                action: action === 'REJECT' ? 'REJECT' : 'DISPENSE', entity: 'PRESCRIPTION', entityId: prescriptionId, patientId: owner?.patient_id ?? null,
+                details: { itemId, ...(action === 'REJECT' ? { reason } : { quantity: quantityNeeded }), prescriptionStatus: presStatus },
+            });
 
             return NextResponse.json({
                 message: action === 'REJECT' ? 'Item rejected' : 'Item dispensed successfully',

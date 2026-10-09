@@ -1,5 +1,6 @@
 
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { parseBody } from '@/lib/validate';
 import { requireRole } from '@/lib/api-auth';
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
             [name, description || '', price, cost_price]
         );
 
+        await audit(user, { action: 'CREATE', entity: 'LAB_TEST', details: { name } });
         return NextResponse.json({ message: 'Lab Test Added Successfully' });
     } catch (error) {
         console.error('Create Test Error:', error);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { auditAccess } from '@/lib/audit';
 
 export async function GET(req: Request) {
     const auth = await requireRole('PATIENT');
@@ -17,6 +18,8 @@ export async function GET(req: Request) {
         const type = searchParams.get('type'); // 'prescriptions' | 'labs' | 'bills'
 
         if (!patientId) return NextResponse.json({ message: 'Patient ID required' }, { status: 400 });
+
+        await auditAccess(user, { action: 'VIEW', entity: 'PATIENT_CHART', entityId: user.id, patientId: user.id, details: { section: type } });
 
         let data;
 

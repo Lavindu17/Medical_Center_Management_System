@@ -10,13 +10,14 @@ import { ErrorState } from '@/components/ui/state-views';
 import { FormAlert, TextField } from '@/components/ui/text-field';
 import { useAuth } from '@/context/AuthContext';
 import { ChangePasswordCard } from '@/components/auth/ChangePasswordCard';
+import { AccessHistoryCard } from '@/components/auth/AccessHistoryCard';
 
 /**
  * The one place every role manages their sign-in details: name, phone and password.
  * Role-specific information (a doctor's fee and schedule, a patient's medical history) lives on that role's own page.
  */
 export function AccountPanel() {
-    const { refresh } = useAuth();
+    const { refresh, user } = useAuth();
     const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading');
     const [email, setEmail] = useState('');
     const [name, setName] = useState('');
@@ -107,6 +108,8 @@ export function AccountPanel() {
             </Card>
 
             <ChangePasswordCard />
+
+            {user?.role === 'PATIENT' && <AccessHistoryCard />}
         </div>
     );
 }

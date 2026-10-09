@@ -3,6 +3,7 @@ import { randomInt } from 'crypto';
 import { z } from 'zod';
 import { pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { audit } from '@/lib/audit';
 import { AuthService } from '@/services/auth.service';
 import { escapeLike } from '@/lib/html';
 
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
             );
 
             await connection.commit();
+            await audit(auth.user, { action: 'CREATE', entity: 'USER', entityId: userId, patientId: userId, details: { kind: 'patient_registered_by_reception' } });
             return NextResponse.json({ message: 'Patient Registered Successfully', userId, temporaryPassword: password });
         } catch (err: any) {
             await connection.rollback().catch(() => {});
@@ -97,6 +99,7 @@ export async function GET(req: Request) {
         sql += ` ORDER BY u.created_at DESC LIMIT 50`;
 
         const [patients] = await pool.query(sql, params);
+        await audit(auth.user, { action: 'SEARCH', entity: 'PATIENT_CHART', details: { term: Boolean(q), termLength: q.length, results: (patients as any[]).length } });
         return NextResponse.json(patients);
     } catch (error) {
         console.error('Search Patient Error:', error);

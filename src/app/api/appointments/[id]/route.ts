@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { auditAccess } from '@/lib/audit';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const auth = await requireRole('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN');
@@ -38,6 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         if ((user.role === 'PATIENT' && appointment.patient_id !== user.id) || (user.role === 'DOCTOR' && appointment.doctor_id !== user.id)) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
+        await auditAccess(user, { action: 'VIEW', entity: 'APPOINTMENT', entityId: appointmentId, patientId: appointment.patient_id });
         appointment.timeSlot = appointment.time_slot;
         // Clinical notes are the doctor's private working notes
         if (user.role !== 'DOCTOR') delete appointment.notes;

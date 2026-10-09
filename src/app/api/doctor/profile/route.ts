@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query, pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
@@ -111,6 +112,7 @@ export async function POST(req: Request) {
             }).length;
 
             await connection.commit();
+            await audit(user, { action: 'UPDATE', entity: 'DOCTOR_PROFILE', entityId: user.id, details: { scheduleBlocks: p.schedules.length } });
             return NextResponse.json({ message: 'Updated', outsideSchedule });
         } catch (err) {
             await connection.rollback().catch(() => {});

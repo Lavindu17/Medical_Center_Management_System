@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { audit, changedFields } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { medicineSchema, positiveId } from '@/lib/medicine-schema';
@@ -56,6 +57,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
              m.price_per_unit, m.min_stock_level, m.unit, m.location ?? null, id]);
         if (result.affectedRows === 0) return NextResponse.json({ message: 'Medicine not found' }, { status: 404 });
 
+        await audit(auth.user, { action: 'UPDATE', entity: 'MEDICINE', entityId: id });
         return NextResponse.json({ message: 'Medicine updated successfully' });
     } catch (error) {
         console.error('Error updating medicine:', error);
@@ -80,6 +82,7 @@ export async function DELETE(_req: Request, props: { params: Promise<{ id: strin
         }
 
         await query('DELETE FROM medicines WHERE id = ?', [id]);
+        await audit(auth.user, { action: 'DELETE', entity: 'MEDICINE', entityId: id });
         return NextResponse.json({ message: 'Medicine deleted successfully' });
     } catch (error: any) {
         // Prescriptions keep a reference to the medicine for the patient's record
