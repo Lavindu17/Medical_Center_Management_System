@@ -50,6 +50,10 @@ export async function middleware(request: NextRequest) {
         if (path.startsWith('/receptionist') && role !== 'RECEPTIONIST') {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
         }
+        // The HR portal is for the HR manager, and administrators see it too
+        if (path.startsWith('/hr') && role !== 'HR_MANAGER' && role !== 'ADMIN') {
+            return NextResponse.redirect(new URL('/unauthorized', request.url));
+        }
 
         return NextResponse.next();
 
@@ -68,5 +72,6 @@ export const config = {
         '/lab-assistant/:path*',
         '/receptionist/:path*',
         '/admin/:path*',
+        '/hr/:path*',
     ],
 }

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import {
-    Activity, AlertTriangle, Ban, CheckCircle2, CircleDashed, Clock, PackageCheck, PackageX, UserCheck, XCircle,
+    Activity, AlertTriangle, Ban, CalendarOff, CheckCircle2, CircleDashed, Clock, PackageCheck, PackageX, PartyPopper, UserCheck, XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,7 +14,7 @@ const TONES: Record<Tone, string> = {
     neutral: 'bg-neutral-100 text-neutral-600 border-neutral-200',
 };
 
-export type StatusKind = 'appointment' | 'bill' | 'prescription' | 'lab' | 'batch';
+export type StatusKind = 'appointment' | 'bill' | 'prescription' | 'lab' | 'batch' | 'attendance' | 'leave';
 
 interface Meta { label: string; tone: Tone; icon: React.ComponentType<{ className?: string }> }
 
@@ -49,6 +49,22 @@ const REGISTRY: Record<StatusKind, Record<string, Meta>> = {
     lab: {
         PENDING:   { label: 'Awaiting result', tone: 'warning', icon: Clock },
         COMPLETED: { label: 'Result ready',    tone: 'success', icon: CheckCircle2 },
+    },
+    attendance: {
+        PRESENT:    { label: 'Present',          tone: 'success', icon: CheckCircle2 },
+        LATE:       { label: 'Late',             tone: 'warning', icon: Clock },
+        ABSENT:     { label: 'Absent',           tone: 'danger',  icon: XCircle },
+        ON_LEAVE:   { label: 'On leave',         tone: 'info',    icon: CalendarOff },
+        HOLIDAY:    { label: 'Holiday',          tone: 'info',    icon: PartyPopper },
+        DAY_OFF:    { label: 'Day off',          tone: 'neutral', icon: CircleDashed },
+        INCOMPLETE: { label: 'Missing clock-out', tone: 'warning', icon: AlertTriangle },
+        SCHEDULED:  { label: 'Scheduled',        tone: 'neutral', icon: Clock },
+    },
+    leave: {
+        PENDING:   { label: 'Waiting for HR', tone: 'warning', icon: Clock },
+        APPROVED:  { label: 'Approved',       tone: 'success', icon: CheckCircle2 },
+        REJECTED:  { label: 'Declined',       tone: 'danger',  icon: XCircle },
+        CANCELLED: { label: 'Cancelled',      tone: 'neutral', icon: Ban },
     },
     batch: {
         ACTIVE:   { label: 'In stock', tone: 'success', icon: PackageCheck },

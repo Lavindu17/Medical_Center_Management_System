@@ -15,6 +15,7 @@ const HOME_BY_ROLE: Record<string, string> = {
     PHARMACIST: '/pharmacist',
     LAB_ASSISTANT: '/lab-assistant',
     RECEPTIONIST: '/receptionist',
+    HR_MANAGER: '/hr',
 };
 
 const NOTICES: Record<string, string> = {

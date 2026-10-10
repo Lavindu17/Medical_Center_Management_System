@@ -60,6 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             case 'LAB_ASSISTANT':
                 router.push('/lab-assistant');
                 break;
+            case 'HR_MANAGER':
+                router.push('/hr');
+                break;
             case 'RECEPTIONIST':
                 router.push('/receptionist');
                 break;

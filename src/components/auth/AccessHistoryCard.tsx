@@ -18,7 +18,7 @@ interface AccessRow {
 }
 
 const ROLE: Record<string, string> = {
-    DOCTOR: 'Doctor', PHARMACIST: 'Pharmacist', LAB_ASSISTANT: 'Lab', RECEPTIONIST: 'Reception', ADMIN: 'Administrator', PATIENT: 'Family member',
+    DOCTOR: 'Doctor', PHARMACIST: 'Pharmacist', LAB_ASSISTANT: 'Lab', RECEPTIONIST: 'Reception', HR_MANAGER: 'HR', ADMIN: 'Administrator', PATIENT: 'Family member',
 };
 
 /** Plain-language description of what happened to the patient's record. */

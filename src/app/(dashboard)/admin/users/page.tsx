@@ -179,6 +179,7 @@ export default function UserManagementPage() {
                                             <SelectItem value="PHARMACIST">Pharmacist</SelectItem>
                                             <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
                                             <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
+                                            <SelectItem value="HR_MANAGER">HR Manager</SelectItem>
                                             <SelectItem value="ADMIN">Admin</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -250,6 +251,7 @@ export default function UserManagementPage() {
                                 <SelectItem value="PHARMACIST">Pharmacist</SelectItem>
                                 <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
                                 <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
+                                            <SelectItem value="HR_MANAGER">HR Manager</SelectItem>
                                 <SelectItem value="ADMIN">Admin</SelectItem>
                                 <SelectItem value="PATIENT">Patient</SelectItem>
                             </SelectContent>
@@ -346,6 +348,7 @@ export default function UserManagementPage() {
                                     <SelectItem value="PHARMACIST">Pharmacist</SelectItem>
                                     <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
                                     <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
+                                            <SelectItem value="HR_MANAGER">HR Manager</SelectItem>
                                     <SelectItem value="ADMIN">Admin</SelectItem>
                                     <SelectItem value="PATIENT">Patient</SelectItem>
                                 </SelectContent>

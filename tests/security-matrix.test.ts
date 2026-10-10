@@ -20,7 +20,7 @@ const PUBLIC = [
 const ROLE_PREFIX: Record<string, Role> = {
     admin: 'ADMIN', doctor: 'DOCTOR', pharmacist: 'PHARMACIST',
     'lab-assistant': 'LAB_ASSISTANT', receptionist: 'RECEPTIONIST', patient: 'PATIENT',
-    users: 'ADMIN',
+    users: 'ADMIN', hr: 'HR_MANAGER',
 };
 
 const rel = (p: string) => p.replace('../src/app/api/', '').replace('/route.ts', '');

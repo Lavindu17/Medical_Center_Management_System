@@ -15,6 +15,7 @@ const DASHBOARD: Record<Role, string> = {
   LAB_ASSISTANT: '/lab-assistant',
   RECEPTIONIST: '/receptionist',
   ADMIN: '/admin',
+  HR_MANAGER: '/hr',
 };
 
 // Reads the visitor's session cookie, so this page is rendered per request (never frozen at build time with

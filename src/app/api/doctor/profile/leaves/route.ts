@@ -3,7 +3,7 @@ import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
-import { asDoctor, nameOf, notify, usersWithRole, when } from '@/lib/notify';
+import { blockDoctorDay } from '@/lib/doctor-leave';
 
 const leaveSchema = z.object({
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a valid date').refine(
@@ -28,37 +28,9 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: 'Leave cannot be set for a past date' }, { status: 400 });
         }
 
-        let id: number;
-        try {
-            const res: any = await query('INSERT INTO doctor_leaves (doctor_id, date, reason) VALUES (?, ?, ?)', [user.id, date, reason]);
-            id = res.insertId;
-        } catch (err: any) {
-            if (err?.errno === 1062) {
-                return NextResponse.json({ message: 'You are already on leave on this date' }, { status: 409 });
-            }
-            throw err;
-        }
-
-        // Bookings already made for that day are not cancelled for the doctor; tell them how many need attention
-        const booked = await query<any[]>(
-            `SELECT COUNT(*) AS n FROM appointments
-             WHERE doctor_id = ? AND date = ? AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED')`, [user.id, date]);
-
-        const affected = Number(booked[0].n);
-        if (affected > 0) {
-            const doctorName = await nameOf(null, user.id);
-            const patients = await query<any[]>(
-                `SELECT DISTINCT patient_id FROM appointments
-                 WHERE doctor_id = ? AND date = ? AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED')`, [user.id, date]);
-            await notify(null, patients.map((p) => p.patient_id), {
-                type: 'DOCTOR_LEAVE', title: 'Your appointment needs rescheduling',
-                body: `${asDoctor(doctorName)} is on leave on ${when(date)}. Please book another time.`, link: '/patient/book',
-            });
-            await notify(null, await usersWithRole(null, 'RECEPTIONIST'), {
-                type: 'DOCTOR_LEAVE', title: 'Doctor on leave',
-                body: `${asDoctor(doctorName)} is on leave on ${when(date)} with ${affected} booked appointment${affected === 1 ? '' : 's'} to reschedule.`,
-                link: '/receptionist/appointments',
-            });
+        const { id, alreadyOnLeave, affected } = await blockDoctorDay(user.id, date, reason);
+        if (alreadyOnLeave) {
+            return NextResponse.json({ message: 'You are already on leave on this date' }, { status: 409 });
         }
 
         await audit(user, { action: 'CREATE', entity: 'DOCTOR_LEAVE', entityId: id, details: { date, affectedAppointments: affected } });

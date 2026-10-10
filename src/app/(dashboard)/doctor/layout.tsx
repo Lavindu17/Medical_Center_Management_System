@@ -1,7 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/app-shell';
-import { LayoutDashboard, Calendar, Users, Banknote, User, UserCog } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, Banknote, User, UserCog, Clock } from 'lucide-react';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard',       href: '/doctor' },
@@ -9,6 +9,7 @@ const navItems = [
     { icon: Users,           label: 'Patients',        href: '/doctor/patients' },
     { icon: Banknote,        label: 'Earnings',        href: '/doctor/earnings' },
     { icon: User,            label: 'Practice Profile', href: '/doctor/profile' },
+    { icon: Clock, label: 'My Work', href: '/doctor/work' },
     { icon: UserCog,        label: 'Account',          href: '/doctor/account' },
 ];
 

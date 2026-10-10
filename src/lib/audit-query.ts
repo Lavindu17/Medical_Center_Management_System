@@ -1,5 +1,6 @@
 import 'server-only';
 import { pool } from '@/lib/db';
+import { csvCell } from '@/lib/csv';
 
 export interface AuditFilters {
     actor?: number;
@@ -78,12 +79,6 @@ export async function listAudit(filters: AuditFilters, limit: number): Promise<A
     return rows;
 }
 
-/** A cell that starts with = + - or @ would run as a formula when the CSV is opened in a spreadsheet. */
-function csvCell(value: unknown): string {
-    let text = value === null || value === undefined ? '' : String(value);
-    if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
 
 export const CSV_COLUMNS = ['id', 'occurred_at_utc', 'actor_id', 'actor_role', 'actor_name', 'on_behalf_of_id', 'action', 'entity_type', 'entity_id', 'patient_id', 'patient_name', 'outcome', 'ip', 'details'] as const;
 

@@ -1,4 +1,4 @@
-export type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACIST' | 'LAB_ASSISTANT' | 'RECEPTIONIST' | 'ADMIN';
+export type Role = 'PATIENT' | 'DOCTOR' | 'PHARMACIST' | 'LAB_ASSISTANT' | 'RECEPTIONIST' | 'ADMIN' | 'HR_MANAGER';
 
 export type User = {
     id: string; // or number depending on DB

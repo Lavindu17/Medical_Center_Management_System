@@ -20,6 +20,7 @@ export default async function setup() {
     if (/\bUSE\s+`?\w|CREATE\s+DATABASE|DROP\s+DATABASE/i.test(ddl)) throw new Error('full_setup.sql still contains database-level statements');
     const sync = fs.readFileSync(path.join(SQL_DIR, '18_schema_sync.sql'), 'utf8');
     const auditLog = fs.readFileSync(path.join(SQL_DIR, '19_audit_log.sql'), 'utf8');
+    const hr = fs.readFileSync(path.join(SQL_DIR, '20_hr.sql'), 'utf8');
 
     const admin = await mysql.createConnection({
         host,
@@ -35,6 +36,7 @@ export default async function setup() {
         await admin.query(ddl);
         await admin.query(sync);
         await admin.query(auditLog);
+        await admin.query(hr);
     } finally {
         await admin.end();
     }
