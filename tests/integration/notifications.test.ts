@@ -202,9 +202,9 @@ describe('doctor leave', () => {
         const date = isoDate(110);
         await query(`INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, 3, ?, '10:00', 1, 'PENDING')`, [ALICE, date]);
         const mark = await maxId();
-        await as('DOCTOR', 3);
-        const { POST } = await import('@/app/api/doctor/profile/leaves/route');
-        expect((await POST(post('/x', { date }))).status).toBe(201);
+        await as('ADMIN', 1);
+        const { POST } = await import('@/app/api/admin/doctors/[id]/leaves/route');
+        expect((await POST(post('/x', { from: date }), ctx(3))).status).toBe(201);
         expect(await types(ALICE, mark)).toEqual(['DOCTOR_LEAVE']);
         expect((await since(ALICE, mark))[0].body).not.toMatch(/Dr\.\s+Dr\./);      // names already carry the title
         expect((await since(ALICE, mark))[0].body).toContain('Dr. Jane Doe');
@@ -212,8 +212,9 @@ describe('doctor leave', () => {
         expect(await since(BOB, mark)).toHaveLength(0);        // not booked that day
 
         const mark2 = await maxId();
-        expect((await POST(post('/x', { date: isoDate(111) }))).status).toBe(201);
-        expect(await maxId()).toBe(mark2);
+        expect((await POST(post('/x', { from: isoDate(111) }), ctx(3))).status).toBe(201);
+        expect(await types(ALICE, mark2)).toEqual([]);                  // only the doctor hears about a day nobody booked
+        expect(await types(RECEPTIONIST, mark2)).toEqual([]);
     });
 });
 

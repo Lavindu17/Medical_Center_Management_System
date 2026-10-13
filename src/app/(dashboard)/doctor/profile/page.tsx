@@ -2,60 +2,26 @@
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 import { friendlyDay } from '@/lib/dates';
-import { useConfirm } from '@/components/ui/confirm-dialog';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Using our custom Tabs
-import { Trash2, Save, Clock, Ban, User, Plus } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
-import { CalendarGrid } from '@/components/doctor/CalendarGrid';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Save } from 'lucide-react';
 import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import { ShieldCheck } from 'lucide-react';
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function DoctorProfilePage() {
-    const confirm = useConfirm();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-
-    // Data State
-    const [profile, setProfile] = useState({
-        name: '',
-        phone: '',
-        specialization: '',
-        consultation_fee: '',
-        license_number: ''
-    });
-
-    // Schedule State (Advanced Multi-Slot)
-    // Structure: { id: number/string, days: string[], start_time: string, end_time: string }[]
+    const [profile, setProfile] = useState({ name: '', phone: '', specialization: '', consultation_fee: '', license_number: '' });
+    // Working hours and time off are read-only here: the administrator sets them
     const [schedules, setSchedules] = useState<any[]>([]);
-
-    const [slotDuration, setSlotDuration] = useState('15');
-
-    // Leaves State
-    const [blockedDates, setBlockedDates] = useState<any[]>([]);
-
-    // Calendar State
-    const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-    const [blockReason, setBlockReason] = useState('');
-
-    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const [slotDuration, setSlotDuration] = useState(15);
+    const [leaves, setLeaves] = useState<any[]>([]);
 
     useEffect(() => {
         fetch('/api/doctor/profile')
@@ -69,29 +35,9 @@ export default function DoctorProfilePage() {
                         consultation_fee: data.doctor.consultation_fee || '',
                         license_number: data.doctor.license_number || ''
                     });
-                    setSlotDuration(data.doctor.slot_duration?.toString() || '15');
-
-                    // Group Raw Schedules into Blocks
-                    if (data.schedules && Array.isArray(data.schedules)) {
-                        const grouped: any[] = [];
-                        data.schedules.forEach((row: any) => {
-                            // Check if matching block exists (same start/end)
-                            const existing = grouped.find(g => g.start_time.slice(0, 5) === row.start_time.slice(0, 5) && g.end_time.slice(0, 5) === row.end_time.slice(0, 5));
-                            if (existing) {
-                                if (!existing.days.includes(row.day)) existing.days.push(row.day);
-                            } else {
-                                grouped.push({
-                                    id: Math.random(), // Temp UI ID
-                                    start_time: row.start_time.slice(0, 5),
-                                    end_time: row.end_time.slice(0, 5),
-                                    days: [row.day]
-                                });
-                            }
-                        });
-                        setSchedules(grouped);
-                    }
-
-                    setBlockedDates(data.leaves || []);
+                    setSlotDuration(Number(data.doctor.slot_duration) || 15);
+                    setSchedules(Array.isArray(data.schedules) ? data.schedules.filter((r: any) => r.is_active !== 0) : []);
+                    setLeaves(data.leaves || []);
                 }
             })
             .catch((e) => { console.error(e); toast.error('Could not load this page. Please refresh and try again.'); })
@@ -104,12 +50,7 @@ export default function DoctorProfilePage() {
             const res = await fetch('/api/doctor/profile', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'profile',
-                    ...profile,
-                    slot_duration: slotDuration,
-                    schedules: schedules
-                })
+                body: JSON.stringify(profile),
             });
             if (res.ok) toast.success('Profile updated successfully');
             else throw new Error('Failed to update');
@@ -120,102 +61,16 @@ export default function DoctorProfilePage() {
         }
     };
 
-    // --- LEAVE MANAGEMENT ---
-
-    const handleDateClick = async (date: Date, isBlocked: boolean, isWorking: boolean) => {
-        if (isBlocked) {
-            // Unblock Logic
-            const dateStr = format(date, 'yyyy-MM-dd');
-            const leave = blockedDates.find(b => {
-                if (!b.date) return false;
-                // Normalize date string to handle both DATE and DATETIME formats
-                const blockedDateStr = typeof b.date === 'string'
-                    ? b.date.split('T')[0].split(' ')[0]
-                    : format(new Date(b.date), 'yyyy-MM-dd');
-                return blockedDateStr === dateStr;
-            });
-            if (leave && await confirm({
-                title: `Remove your leave on ${friendlyDay(dateStr)}?`,
-                description: 'Patients will be able to book you on that day again.',
-                confirmLabel: 'Remove leave',
-                cancelLabel: 'Keep leave',
-            })) {
-                try {
-                    const res = await fetch(`/api/doctor/profile/leaves?id=${leave.id}`, { method: 'DELETE' });
-                    if (res.ok) {
-                        setBlockedDates(blockedDates.filter(b => b.id !== leave.id));
-                    }
-                } catch (err) { console.error(err); }
-            }
-        } else {
-            // Block Logic (Open Dialog)
-            setSelectedDate(date);
-            setBlockReason('');
-            setIsBlockDialogOpen(true);
-        }
-    };
-
-    const confirmBlockDate = async () => {
-        if (!selectedDate) return;
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
-
-        try {
-            const res = await fetch('/api/doctor/profile/leaves', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ date: dateStr, reason: blockReason })
-            });
-
-            if (res.ok) {
-                const newLeave = await res.json();
-                setBlockedDates([...blockedDates, newLeave]);
-                setIsBlockDialogOpen(false);
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    // --- SCHEDULE HELPERS ---
-
-    const addScheduleBlock = () => {
-        setSchedules([...schedules, { id: Math.random(), days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], start_time: '09:00', end_time: '17:00' }]);
-    };
-
-    const removeScheduleBlock = (idx: number) => {
-        const newSched = [...schedules];
-        newSched.splice(idx, 1);
-        setSchedules(newSched);
-    };
-
-    const toggleScheduleDay = (idx: number, day: string) => {
-        const newSched = [...schedules];
-        const block = newSched[idx];
-        if (block.days.includes(day)) {
-            block.days = block.days.filter((d: string) => d !== day);
-        } else {
-            block.days.push(day);
-        }
-        setSchedules(newSched);
-    };
-
-    const updateScheduleTime = (idx: number, field: 'start_time' | 'end_time', value: string) => {
-        const newSched = [...schedules];
-        newSched[idx][field] = value;
-        setSchedules(newSched);
-    };
-
     if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Profile…</div>;
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <PageHeader title="Practice Profile" description="Your fee, working schedule and days off. Name, phone and password are on the Account page." />
+            <PageHeader title="Practice Profile" description="Your details and fee. Working hours and time off are set by the administrator. Name, phone and password are on the Account page." />
 
             <Tabs defaultValue="general" className="w-full">
                 <TabsList className="mb-4 flex flex-wrap h-auto">
                     <TabsTrigger value="general">General Info</TabsTrigger>
-                    <TabsTrigger value="schedule">Schedule & Availability</TabsTrigger>
-                    <TabsTrigger value="leaves">Blocked Dates (Calendar)</TabsTrigger>
+                    <TabsTrigger value="schedule">Working Hours & Time Off</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general">
@@ -268,136 +123,33 @@ export default function DoctorProfilePage() {
                 <TabsContent value="schedule">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Schedule & Availability</CardTitle>
-                            <CardDescription>Configure your working hours. Add multiple blocks for different shifts (e.g., Morning/Evening).</CardDescription>
+                            <CardTitle>Working hours</CardTitle>
+                            <CardDescription>Patients can book {slotDuration}-minute slots inside these hours. To change them or to take time off, ask the administrator.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-
-                            <div className="space-y-2">
-                                <Label htmlFor="f-slot-duration-minutes">Slot Duration (Minutes)</Label>
-                                <select id="f-slot-duration-minutes"
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm max-w-xs"
-                                    value={slotDuration}
-                                    onChange={e => setSlotDuration(e.target.value)}
-                                >
-                                    <option value="15">15 Minutes</option>
-                                    <option value="20">20 Minutes</option>
-                                    <option value="30">30 Minutes</option>
-                                    <option value="45">45 Minutes</option>
-                                    <option value="60">60 Minutes</option>
-                                </select>
-                            </div>
-
-                            <Separator className="my-4" />
-
-                            <div className="space-y-4">
-                                {schedules.map((block, idx) => (
-                                    <div key={block.id || idx} className="p-4 border rounded-lg bg-neutral-50 space-y-3 relative group">
-                                        <Button
-                                            size="icon" variant="ghost"
-                                            className="absolute top-2 right-2 text-neutral-400 hover:text-red-500 h-8 w-8"
-                                            onClick={() => removeScheduleBlock(idx)}
-                                         aria-label="Delete">
-                                            <Trash2 className="h-4 w-4" aria-hidden />
-                                        </Button>
-
-                                        <div className="grid grid-cols-2 gap-4 max-w-md">
-                                            <div className="space-y-1">
-                                                <Label htmlFor="f-start-time" className="text-xs">Start Time</Label>
-                                                <div className="relative">
-                                                    <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
-                                                    <Input id="f-start-time" type="time" className="pl-8 h-9" value={block.start_time} onChange={e => updateScheduleTime(idx, 'start_time', e.target.value)} />
-                                                </div>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label htmlFor="f-end-time" className="text-xs">End Time</Label>
-                                                <div className="relative">
-                                                    <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-neutral-400" />
-                                                    <Input id="f-end-time" type="time" className="pl-8 h-9" value={block.end_time} onChange={e => updateScheduleTime(idx, 'end_time', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Active Days</Label>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {daysOfWeek.map(day => (
-                                                    <div
-                                                        key={day}
-                                                        onClick={() => toggleScheduleDay(idx, day)}
-                                                        className={`
-                                                            cursor-pointer px-3 py-1.5 rounded text-xs font-medium transition-colors border select-none
-                                                            ${block.days.includes(day)
-                                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                                                                : 'bg-white text-neutral-500 border-neutral-200 hover:border-emerald-300'}
-                                                        `}
-                                                    >
-                                                        {day.slice(0, 3)}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-
-                                <Button variant="outline" onClick={addScheduleBlock} className="w-full border-dashed border-2 hover:bg-neutral-50 mt-2">
-                                    <Plus className="mr-2 h-4 w-4" /> Add Another Schedule Block
-                                </Button>
-                            </div>
-
-                            <div className="pt-4 flex justify-end">
-                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 min-w-[120px]">
-                                    <Save className="mr-2 h-4 w-4" /> Save Schedule
-                                </Button>
+                            <ul className="divide-y rounded-lg border">
+                                {DAYS.map(day => {
+                                    const sessions = schedules.filter(r => r.day === day).sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
+                                    return (
+                                        <li key={day} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2.5 text-sm">
+                                            <span className="w-28 font-medium">{day}</span>
+                                            {sessions.length === 0
+                                                ? <span className="text-neutral-500">Not working</span>
+                                                : sessions.map(r => <span key={r.id} className="rounded-md bg-emerald-50 px-2 py-0.5 text-emerald-800">{String(r.start_time).slice(0, 5)} – {String(r.end_time).slice(0, 5)}</span>)}
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <div>
+                                <h3 className="mb-2 text-sm font-semibold">Upcoming time off</h3>
+                                {leaves.length === 0
+                                    ? <p className="text-sm text-neutral-500">None scheduled.</p>
+                                    : <ul className="space-y-1 text-sm">{leaves.map(l => <li key={l.id}>{friendlyDay(l.date)}{l.reason ? <span className="text-neutral-500"> · {l.reason}</span> : null}</li>)}</ul>}
                             </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
-
-                <TabsContent value="leaves">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Block Dates</CardTitle>
-                            <CardDescription>Click on a date to block/unblock it. Red dates are already blocked.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <CalendarGrid
-                                currentMonth={currentMonth}
-                                onMonthChange={setCurrentMonth}
-                                schedules={schedules}
-                                blockedDates={blockedDates}
-                                onDateClick={handleDateClick}
-                            />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
             </Tabs>
-
-            <Dialog open={isBlockDialogOpen} onOpenChange={setIsBlockDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Block Date: {selectedDate ? format(selectedDate, 'MMM dd, yyyy') : ''}</DialogTitle>
-                        <DialogDescription>
-                            Prevent appointments from being booked on this date.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="f-reason-optional">Reason (Optional)</Label>
-                            <Input id="f-reason-optional"
-                                placeholder="vacation, personal leave, conference..."
-                                value={blockReason}
-                                onChange={e => setBlockReason(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsBlockDialogOpen(false)}>Cancel</Button>
-                        <Button variant="destructive" onClick={confirmBlockDate}>Block Date</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

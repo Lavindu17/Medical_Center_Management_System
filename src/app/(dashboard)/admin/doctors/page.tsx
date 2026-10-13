@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Stethoscope } from 'lucide-react';
+import { CalendarClock, Edit, Stethoscope } from 'lucide-react';
+import Link from 'next/link';
 
 interface DoctorData {
     id: number;
@@ -84,7 +85,7 @@ export default function DoctorManagementPage() {
 
     return (
         <div className="space-y-8">
-            <PageHeader title="Doctor Management" description="Set consultation fees and view earnings configuration." />
+            <PageHeader title="Doctor Management" description="Set fees and commission, and manage each doctor's working hours and time off." />
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-8">
                 <Card className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900">
@@ -132,7 +133,10 @@ export default function DoctorManagementPage() {
                                     </TableCell>
                                     <TableCell className="font-mono">{formatLKR(doc.consultationFee)}</TableCell>
                                     <TableCell className="font-mono">{doc.commissionRate}%</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        <Button asChild variant="ghost" size="sm">
+                                            <Link href={`/admin/doctors/${doc.id}`}><CalendarClock className="mr-1 h-4 w-4" aria-hidden /> Schedule</Link>
+                                        </Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(doc)} aria-label="Edit">
                                             <Edit className="h-4 w-4" aria-hidden />
                                         </Button>

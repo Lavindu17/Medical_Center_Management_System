@@ -4,11 +4,7 @@ import { z } from 'zod';
 import { query, pool } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
-const SLOT_DURATIONS = [5, 10, 15, 20, 30, 45, 60];
-
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, 'Times must look like 09:00');
-const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+// Working hours, slot length and time off are managed by the administrator (/api/admin/doctors/[id]/schedule)
 
 const profileSchema = z.object({
     name: z.string().trim().min(2, 'Name is required').max(255),
@@ -16,12 +12,6 @@ const profileSchema = z.object({
     consultation_fee: z.coerce.number({ message: 'Consultation fee must be a number' }).min(0, 'Consultation fee cannot be negative').max(10_000_000),
     license_number: z.string().trim().min(1, 'License number is required').max(50),
     specialization: z.string().trim().min(1).max(100).optional(),
-    slot_duration: z.coerce.number().int().refine((n) => SLOT_DURATIONS.includes(n), `Slot length must be one of ${SLOT_DURATIONS.join(', ')} minutes`),
-    schedules: z.array(z.object({
-        days: z.array(z.enum(DAYS)).min(1, 'Choose at least one day for each working block'),
-        start_time: time,
-        end_time: time,
-    }).refine((b) => toMinutes(b.end_time) > toMinutes(b.start_time), { message: 'A working block must end after it starts' })).default([]),
 });
 
 export async function GET() {
@@ -60,20 +50,6 @@ export async function POST(req: Request) {
         }
         const p = parsed.data;
 
-        // Two blocks on the same day must not overlap (they would produce duplicate slots)
-        const perDay = new Map<string, [number, number][]>();
-        for (const block of p.schedules) {
-            for (const day of new Set(block.days)) {
-                const ranges = perDay.get(day) ?? [];
-                const range: [number, number] = [toMinutes(block.start_time), toMinutes(block.end_time)];
-                if (ranges.some(([s, e]) => range[0] < e && s < range[1])) {
-                    return NextResponse.json({ message: `Working hours overlap on ${day}` }, { status: 400 });
-                }
-                ranges.push(range);
-                perDay.set(day, ranges);
-            }
-        }
-
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
@@ -90,30 +66,12 @@ export async function POST(req: Request) {
                 await connection.execute('UPDATE doctors SET specialization = ? WHERE user_id = ?', [p.specialization, user.id]);
             }
             await connection.execute(
-                'UPDATE doctors SET consultation_fee = ?, license_number = ?, slot_duration = ? WHERE user_id = ?',
-                [p.consultation_fee, p.license_number, p.slot_duration, user.id]);
-
-            await connection.execute('DELETE FROM doctor_schedules WHERE doctor_id = ?', [user.id]);
-            for (const block of p.schedules) {
-                for (const day of new Set(block.days)) {
-                    await connection.execute(
-                        'INSERT INTO doctor_schedules (doctor_id, day, start_time, end_time) VALUES (?, ?, ?, ?)',
-                        [user.id, day, block.start_time.slice(0, 5) + ':00', block.end_time.slice(0, 5) + ':00']);
-                }
-            }
-
-            // Existing bookings are never cancelled silently; report how many no longer fit so the doctor can act
-            const [upcoming]: any = await connection.execute(
-                `SELECT DAYNAME(date) AS day, time_slot FROM appointments
-                 WHERE doctor_id = ? AND date >= CURDATE() AND status IN ('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED')`, [user.id]);
-            const outsideSchedule = upcoming.filter((a: any) => {
-                const t = toMinutes(String(a.time_slot));
-                return !(perDay.get(a.day) ?? []).some(([s, e]) => t >= s && t < e);
-            }).length;
+                'UPDATE doctors SET consultation_fee = ?, license_number = ? WHERE user_id = ?',
+                [p.consultation_fee, p.license_number, user.id]);
 
             await connection.commit();
-            await audit(user, { action: 'UPDATE', entity: 'DOCTOR_PROFILE', entityId: user.id, details: { scheduleBlocks: p.schedules.length } });
-            return NextResponse.json({ message: 'Updated', outsideSchedule });
+            await audit(user, { action: 'UPDATE', entity: 'DOCTOR_PROFILE', entityId: user.id, });
+            return NextResponse.json({ message: 'Updated' });
         } catch (err) {
             await connection.rollback().catch(() => {});
             throw err;
