@@ -1,10 +1,12 @@
 'use client';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
-import { usePrompt } from '@/components/ui/confirm-dialog';
+import { useConfirm, usePrompt } from '@/components/ui/confirm-dialog';
 import { medicineForm } from '@/lib/medicine-form';
+import { allergyMatches } from '@/lib/allergy';
+import { NONE, describeLine, hasSlots, quantityFor } from '@/lib/prescription-calc';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,18 +15,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Using our custom Tabs if radix not avail or standard
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon, Check, ChevronsUpDown, Search, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
 import { formatLKR, cn } from '@/lib/utils';
 
 // Interfaces
 interface Medicine {
     id: number;
     name: string;
+    generic_name?: string | null;
+    strength?: string | null;
     stock: number;
+    usable_stock?: number | string;
     unit: string;
+    dosage_form?: string | null;
 }
 
 interface LabTest {
@@ -40,10 +47,27 @@ interface PrescriptionItem {
     frequency: string;
     duration: string;
     quantity: number;
+    /** How much the pharmacist has already handed out: that part of the line can no longer be removed */
+    dispensedQuantity?: number;
 }
+
+interface Allergy { name: string; severity: string | null }
+interface CurrentLab { id: number; testId: number; name: string; status: string; resultUrl: string | null }
+
+const usable = (m: Medicine) => Number(m.usable_stock ?? m.stock ?? 0);
+
+/** How a medicine stands in the pharmacy, in words (never colour alone). */
+function stockNote(m: Medicine): { text: string; tone: 'ok' | 'low' | 'out' } {
+    const n = usable(m);
+    if (n <= 0) return { text: 'Out of stock', tone: 'out' };
+    if (n < 10) return { text: `Low: ${n} left`, tone: 'low' };
+    return { text: `${n} in stock`, tone: 'ok' };
+}
+const STOCK_TONE = { ok: 'text-neutral-500', low: 'text-amber-700 font-medium', out: 'text-red-700 font-medium' } as const;
 
 export default function ConsultationPage() {
     const askText = usePrompt();
+    const confirm = useConfirm();
     const params = useParams();
     const router = useRouter();
     const appointmentId = params.id;
@@ -82,14 +106,18 @@ export default function ConsultationPage() {
     const [selectedDose, setSelectedDose] = useState<string>('1');
     const [selectedTimes, setSelectedTimes] = useState<[string, string, string, string]>(['0', '0', '0', '0']);
     const [selectedDuration, setSelectedDuration] = useState<string>('3 days');
+    /** Medicines the doctor confirmed despite an allergy warning (sent with the save) */
+    const [acknowledged, setAcknowledged] = useState<number[]>([]);
 
     // Form State - Labs
     const [selectedLabs, setSelectedLabs] = useState<number[]>([]); // Lab Test IDs
+    const [currentLabs, setCurrentLabs] = useState<CurrentLab[]>([]); // what is already saved for this visit
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
     // UI State for Searchable Dropdowns
     const [medOpen, setMedOpen] = useState(false);
     const [labOpen, setLabOpen] = useState(false);
+    const [reviewOpen, setReviewOpen] = useState(false);
 
     // Fetch Initial Data
     useEffect(() => {
@@ -114,6 +142,15 @@ export default function ConsultationPage() {
                     });
                     setNotes(data.appointment.notes || '');
                 }
+                // What was already saved for this visit: reopening a draft must show it, because saving sends the whole list
+                if (data.current) {
+                    setCurrentPrescription((data.current.prescription ?? []).map((r: any) => ({
+                        medicineId: r.medicineId, medicineName: r.medicineName, dosage: r.dosage, frequency: r.frequency,
+                        duration: r.duration, quantity: Number(r.quantity), dispensedQuantity: Number(r.dispensedQuantity ?? 0),
+                    })));
+                    setCurrentLabs(data.current.labs ?? []);
+                    setSelectedLabs((data.current.labs ?? []).map((l: CurrentLab) => l.testId));
+                }
 
                 // 2. Fetch Medicines & Tests
                 const [medRes, labRes] = await Promise.all([
@@ -134,44 +171,56 @@ export default function ConsultationPage() {
         loadData();
     }, [appointmentId]);
 
+    const allergies: Allergy[] = patient?.allergies ?? [];
+    const medicine = useMemo(() => medicines.find(m => m.id.toString() === selectedMed), [medicines, selectedMed]);
+
+    // The line being built, worked out the same way it will be saved
+    const draftQuantity = medicine ? quantityFor({ form: selectedMedForm === 'Other' ? 'Pill' : selectedMedForm, times: selectedTimes, duration: selectedDuration, unit: medicine.unit }) : 0;
+    const draftText = describeLine({ form: selectedMedForm === 'Other' ? 'Pill' : selectedMedForm, times: selectedTimes, duration: selectedDuration, quantity: draftQuantity });
+    const alreadyListed = Boolean(medicine) && editingIndex === null && currentPrescription.some(p => p.medicineId === medicine!.id);
+    const draftAllergy = medicine ? allergyMatches(medicine, allergies) : [];
+
     // Handlers
-    const handleAddMedicine = () => {
+    const handleAddMedicine = async () => {
         if (!selectedMed) return;
         const med = medicines.find(m => m.id.toString() === selectedMed);
         if (!med) return;
 
-        let daily = 0;
-        selectedTimes.forEach(t => {
-            if (t !== '0') {
-                if (t === '¼') daily += 0.25;
-                else if (t === '½') daily += 0.5;
-                else if (t === '1') daily += 1;
-                else if (t === '2') daily += 2;
-                else daily += 1;
-            }
-        });
-        if (daily === 0 && selectedMedForm === 'Pill') daily = 1; // Fallback if pill but no times selected
-
-        let days = parseInt(selectedDuration) || 1;
-        if (selectedDuration.includes('week')) days = parseInt(selectedDuration) * 7;
-        if (selectedDuration.includes('month')) days = parseInt(selectedDuration) * 30;
-        
-        let qty = 1;
-        if (selectedMedForm === 'Pill') {
-            // daily already incorporates the specific fractional dose for each time slot
-            qty = Math.ceil(daily * days);
-            if (qty === 0) qty = 1;
+        if (!hasSlots(selectedTimes)) {
+            toast.error('Choose when the patient takes it: tap Morning, Noon, Evening or Night, or a preset such as BD.');
+            return;
         }
 
-        const frequencyStr = selectedTimes.join('-'); // e.g. "½-0-0-1"
+        // Allergy: ask once; the doctor's confirmation travels with the save and is recorded
+        const hits = allergyMatches(med, allergies);
+        if (hits.length > 0 && !acknowledged.includes(med.id)) {
+            const ok = await confirm({
+                title: `Allergy warning: ${hits.map(h => h.name).join(', ')}`,
+                description: `${patient?.name ?? 'This patient'} is recorded as allergic to ${hits.map(h => `${h.name}${h.severity ? ` (${h.severity.toLowerCase()})` : ''}`).join(', ')}, and ${med.name} may contain it. Prescribe it anyway?`,
+                confirmLabel: 'Prescribe anyway',
+                cancelLabel: 'Choose another medicine',
+                destructive: true,
+            });
+            if (!ok) return;
+            setAcknowledged(list => [...list, med.id]);
+        }
+
+        const form = selectedMedForm === 'Other' ? 'Pill' : selectedMedForm;
+        let qty = quantityFor({ form, times: selectedTimes, duration: selectedDuration, unit: med.unit });
+        const dispensed = editingIndex !== null ? currentPrescription[editingIndex]?.dispensedQuantity ?? 0 : 0;
+        if (qty < dispensed) {
+            qty = dispensed;
+            toast.message(`The quantity stays at ${dispensed}: that much was already dispensed.`);
+        }
 
         const newItem: PrescriptionItem = {
             medicineId: med.id,
             medicineName: med.name,
             dosage: selectedDose || '1',
-            frequency: frequencyStr,
+            frequency: selectedTimes.join('-'), // e.g. "½-0-0-1"
             duration: selectedDuration,
-            quantity: qty
+            quantity: qty,
+            dispensedQuantity: dispensed,
         };
 
         if (editingIndex !== null) {
@@ -182,7 +231,7 @@ export default function ConsultationPage() {
         } else {
             setCurrentPrescription([...currentPrescription, newItem]);
         }
-        
+
         setSelectedMed('');
         setSelectedTimes(['0', '0', '0', '0']);
         setSelectedDose('1');
@@ -193,7 +242,7 @@ export default function ConsultationPage() {
         setEditingIndex(index);
         setSelectedMed(item.medicineId.toString());
         setSelectedDose(item.dosage);
-        
+
         // Parse frequency back to times
         const times = item.frequency.split('-') as [string, string, string, string];
         setSelectedTimes(times);
@@ -204,7 +253,7 @@ export default function ConsultationPage() {
         if (med) {
             setSelectedMedForm(medicineForm(med));
         }
-        
+
         // Scroll to form
         const form = document.getElementById('add-med-form');
         if (form) form.scrollIntoView({ behavior: 'smooth' });
@@ -218,6 +267,10 @@ export default function ConsultationPage() {
     };
 
     const handleRemoveMedicine = (index: number) => {
+        if ((currentPrescription[index]?.dispensedQuantity ?? 0) > 0) {
+            toast.error('The pharmacy has already dispensed this medicine, so it cannot be removed.');
+            return;
+        }
         const list = [...currentPrescription];
         list.splice(index, 1);
         setCurrentPrescription(list);
@@ -227,11 +280,12 @@ export default function ConsultationPage() {
         setSaving(true);
         try {
             const payload = {
-                appointmentId,
+                appointmentId: Number(appointmentId),
                 vitals,
                 notes,
-                prescription: currentPrescription,
+                prescription: currentPrescription.map(({ dispensedQuantity: _d, ...line }) => line),
                 labRequestIds: selectedLabs,
+                allergyAcknowledged: acknowledged,
                 status: complete ? 'COMPLETED' : 'ONGOING'
             };
 
@@ -241,7 +295,10 @@ export default function ConsultationPage() {
                 body: JSON.stringify(payload)
             });
 
-            if (!res.ok) throw new Error('Failed to save');
+            if (!res.ok) {
+                const err = await res.json().catch(() => null);
+                throw new Error(err?.message || 'Failed to save');
+            }
 
             if (complete) {
                 router.push('/doctor?success=consultation_complete');
@@ -249,13 +306,24 @@ export default function ConsultationPage() {
                 toast.success('Progress saved');
             }
 
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            toast.error('Failed to save data');
+            toast.error(err?.message || 'Failed to save data');
         } finally {
             setSaving(false);
+            setReviewOpen(false);
         }
     };
+
+    const labById = (id: number) => labTests.find(t => t.id === id);
+    const labTotal = selectedLabs.reduce((sum, id) => sum + Number(labById(id)?.price ?? 0), 0);
+    const medicineCost = currentPrescription.reduce((sum, p) => sum + p.quantity * Number((medicines.find(m => m.id === p.medicineId) as any)?.price ?? 0), 0);
+    const lastDone = (testId: number) => {
+        const cutoff = Date.now() - 30 * 86_400_000;
+        const found = history.labs.find((l: any) => l.test_id === testId && l.status === 'COMPLETED' && new Date(l.requested_at).getTime() >= cutoff);
+        return found ? formatDate(found.requested_at) : null;
+    };
+    const savedLab = (testId: number) => currentLabs.find(l => l.testId === testId);
 
     if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Consultation…</div>;
     if (!appointment) return <div role="alert" className="py-16 text-center text-neutral-600">Appointment not found</div>;
@@ -264,6 +332,15 @@ export default function ConsultationPage() {
         <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-6 lg:h-[calc(100vh-8rem)] overflow-hidden">
             {/* LEFT COLUMN: Patient & Vitals */}
             <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-4 overflow-y-auto pr-2">
+                {allergies.length > 0 && (
+                    <div role="alert" className="rounded-xl border-2 border-red-300 bg-red-50 p-3 text-red-900">
+                        <p className="flex items-center gap-2 text-sm font-bold"><ShieldAlert className="h-4 w-4" aria-hidden /> Allergies</p>
+                        <ul className="mt-1 space-y-0.5 text-sm">
+                            {allergies.map(a => <li key={a.name}>{a.name}{a.severity ? <span className="ml-1 text-xs font-semibold uppercase">({a.severity.toLowerCase()})</span> : null}</li>)}
+                        </ul>
+                    </div>
+                )}
+
                 {/* Patient Card */}
                 <Card>
                     <CardHeader className="bg-emerald-50 pb-4">
@@ -350,7 +427,6 @@ export default function ConsultationPage() {
                                 </div>
                             ))
                         )}
-                        {/* Full history button could go here */}
                     </CardContent>
                 </Card>
             </div>
@@ -358,7 +434,7 @@ export default function ConsultationPage() {
             {/* RIGHT COLUMN: Workbench */}
             <div className="col-span-12 md:col-span-8 lg:col-span-9 flex flex-col h-full overflow-hidden">
                 <Tabs defaultValue="consultation" className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                         <TabsList>
                             <TabsTrigger value="consultation">Current Consultation</TabsTrigger>
                             <TabsTrigger value="history">Full History</TabsTrigger>
@@ -367,8 +443,8 @@ export default function ConsultationPage() {
                             <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all">
                                 <Save className="mr-2 h-4 w-4" /> Save Draft
                             </Button>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-6 transition-all" onClick={() => handleSave(true)} disabled={saving}>
-                                <CheckCircle className="mr-2 h-4 w-4" /> Complete Consultation
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-6 transition-all" onClick={() => setReviewOpen(true)} disabled={saving}>
+                                <CheckCircle className="mr-2 h-4 w-4" /> Review and complete
                             </Button>
                         </div>
                     </div>
@@ -424,50 +500,62 @@ export default function ConsultationPage() {
                                                         aria-expanded={medOpen}
                                                         className="w-full justify-between font-normal"
                                                     >
-                                                        {selectedMed
-                                                            ? medicines.find((m) => m.id.toString() === selectedMed)?.name
-                                                            : "Select medicine..."}
+                                                        {medicine ? medicine.name : "Select medicine..."}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-[400px] p-0 shadow-2xl bg-white border-emerald-200 z-50" align="start">
                                                     <Command className="bg-white">
-                                                        <CommandInput placeholder="Search medicine..." />
+                                                        <CommandInput placeholder="Search by name or generic name..." />
                                                         <CommandList>
                                                             <CommandEmpty>No medicine found.</CommandEmpty>
                                                             <CommandGroup>
-                                                                {medicines.map((med) => (
-                                                                    <CommandItem
-                                                                        key={med.id}
-                                                                        value={med.name}
-                                                                        onSelect={() => {
-                                                                            const val = med.id.toString();
-                                                                            setSelectedMed(val);
-                                                                            setMedOpen(false);
-                                                                            
-                                                                            // Auto-fill logic
-                                                                            const form = medicineForm(med);
-                                                                            setSelectedMedForm(form);
-                                                                            setSelectedDose(form === 'Syrup' ? '5ml' : form === 'Cream' ? 'Apply' : '1');
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                selectedMed === med.id.toString() ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        <div className="flex flex-col">
-                                                                            <span>{med.name}</span>
-                                                                            <span className="text-[10px] text-neutral-400">Stock: {med.stock} {med.unit}</span>
-                                                                        </div>
-                                                                    </CommandItem>
-                                                                ))}
+                                                                {medicines.map((med) => {
+                                                                    const note = stockNote(med);
+                                                                    const risky = allergyMatches(med, allergies).length > 0;
+                                                                    return (
+                                                                        <CommandItem
+                                                                            key={med.id}
+                                                                            value={`${med.name} ${med.generic_name ?? ''} ${med.id}`}
+                                                                            onSelect={() => {
+                                                                                const val = med.id.toString();
+                                                                                setSelectedMed(val);
+                                                                                setMedOpen(false);
+
+                                                                                // Auto-fill logic
+                                                                                const form = medicineForm(med);
+                                                                                setSelectedMedForm(form);
+                                                                                setSelectedDose(form === 'Syrup' ? '5ml' : form === 'Cream' ? 'Apply' : '1');
+                                                                                setSelectedTimes(['0', '0', '0', '0']);
+                                                                            }}
+                                                                        >
+                                                                            <Check className={cn("mr-2 h-4 w-4", selectedMed === med.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                                            <div className="flex min-w-0 flex-1 flex-col">
+                                                                                <span className="truncate">{med.name}{med.strength ? ` ${med.strength}` : ''}</span>
+                                                                                <span className="text-[11px] text-neutral-500">
+                                                                                    {med.generic_name ? `${med.generic_name} · ` : ''}<span className={STOCK_TONE[note.tone]}>{note.text}</span>
+                                                                                </span>
+                                                                            </div>
+                                                                            {risky && <span className="ml-2 inline-flex items-center gap-1 rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-800"><ShieldAlert className="h-3 w-3" aria-hidden /> Allergy</span>}
+                                                                        </CommandItem>
+                                                                    );
+                                                                })}
                                                             </CommandGroup>
                                                         </CommandList>
                                                     </Command>
                                                 </PopoverContent>
                                             </Popover>
+                                            {medicine && (
+                                                <p className={`text-xs ${STOCK_TONE[stockNote(medicine).tone]}`}>
+                                                    {stockNote(medicine).tone === 'out' ? 'Out of stock (expired batches are not counted). You can still prescribe it; the pharmacy will need to restock.' : `Pharmacy: ${stockNote(medicine).text}`}
+                                                </p>
+                                            )}
+                                            {draftAllergy.length > 0 && (
+                                                <p role="alert" className="flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-900"><ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> Recorded allergy: {draftAllergy.map(a => a.name).join(', ')}. You will be asked to confirm.</p>
+                                            )}
+                                            {alreadyListed && (
+                                                <p role="status" className="flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-900"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> This medicine is already on the prescription. Edit that line instead, unless you really want it twice.</p>
+                                            )}
                                         </div>
 
                                         {selectedMed && (
@@ -487,38 +575,31 @@ export default function ConsultationPage() {
                                                 </div>
 
                                                 <div className="grid grid-cols-4 gap-2">
-                                                    <Button 
-                                                        variant={selectedTimes[0] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[0] !== '0' ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-100 hover:bg-amber-200' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
-                                                        onClick={() => setSelectedTimes([selectedTimes[0] === selectedDose ? '0' : selectedDose, selectedTimes[1], selectedTimes[2], selectedTimes[3]])}
-                                                    >
-                                                        <Sunrise className={`h-5 w-5 ${selectedTimes[0] !== '0' ? 'text-amber-600' : 'text-neutral-300'}`} />
-                                                        <span className={selectedTimes[0] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[0] !== '0' ? selectedTimes[0] : 'Morning'}</span>
-                                                    </Button>
-                                                    <Button 
-                                                        variant={selectedTimes[1] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[1] !== '0' ? 'bg-yellow-50 text-yellow-900 border-yellow-300 ring-2 ring-yellow-50 hover:bg-yellow-100' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
-                                                        onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1] === selectedDose ? '0' : selectedDose, selectedTimes[2], selectedTimes[3]])}
-                                                    >
-                                                        <Sun className={`h-5 w-5 ${selectedTimes[1] !== '0' ? 'text-yellow-600' : 'text-neutral-300'}`} />
-                                                        <span className={selectedTimes[1] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[1] !== '0' ? selectedTimes[1] : 'Noon'}</span>
-                                                    </Button>
-                                                    <Button 
-                                                        variant={selectedTimes[2] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[2] !== '0' ? 'bg-orange-50 text-orange-900 border-orange-300 ring-2 ring-orange-50 hover:bg-orange-100' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
-                                                        onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1], selectedTimes[2] === selectedDose ? '0' : selectedDose, selectedTimes[3]])}
-                                                    >
-                                                        <Sunset className={`h-5 w-5 ${selectedTimes[2] !== '0' ? 'text-orange-600' : 'text-neutral-300'}`} />
-                                                        <span className={selectedTimes[2] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[2] !== '0' ? selectedTimes[2] : 'Evening'}</span>
-                                                    </Button>
-                                                    <Button 
-                                                        variant={selectedTimes[3] !== '0' ? 'default' : 'outline'} 
-                                                        size="sm" className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${selectedTimes[3] !== '0' ? 'bg-emerald-900 text-white border-emerald-950 ring-2 ring-emerald-100 hover:bg-emerald-950' : 'bg-white hover:bg-neutral-50 text-neutral-400'}`}
-                                                        onClick={() => setSelectedTimes([selectedTimes[0], selectedTimes[1], selectedTimes[2], selectedTimes[3] === selectedDose ? '0' : selectedDose])}
-                                                    >
-                                                        <Moon className={`h-5 w-5 ${selectedTimes[3] !== '0' ? 'text-emerald-300' : 'text-neutral-300'}`} />
-                                                        <span className={selectedTimes[3] !== '0' ? 'font-bold' : 'font-medium'}>{selectedTimes[3] !== '0' ? selectedTimes[3] : 'Night'}</span>
-                                                    </Button>
+                                                    {([
+                                                        { i: 0, label: 'Morning', Icon: Sunrise, on: 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-100 hover:bg-amber-200', icon: 'text-amber-600' },
+                                                        { i: 1, label: 'Noon', Icon: Sun, on: 'bg-yellow-50 text-yellow-900 border-yellow-300 ring-2 ring-yellow-50 hover:bg-yellow-100', icon: 'text-yellow-600' },
+                                                        { i: 2, label: 'Evening', Icon: Sunset, on: 'bg-orange-50 text-orange-900 border-orange-300 ring-2 ring-orange-50 hover:bg-orange-100', icon: 'text-orange-600' },
+                                                        { i: 3, label: 'Night', Icon: Moon, on: 'bg-emerald-900 text-white border-emerald-950 ring-2 ring-emerald-100 hover:bg-emerald-950', icon: 'text-emerald-300' },
+                                                    ] as const).map(({ i, label, Icon, on, icon }) => {
+                                                        const active = selectedTimes[i] !== NONE;
+                                                        return (
+                                                            <Button
+                                                                key={label}
+                                                                variant={active ? 'default' : 'outline'}
+                                                                size="sm"
+                                                                aria-pressed={active}
+                                                                className={`h-14 text-xs flex flex-col items-center gap-1.5 justify-center transition-all ${active ? on : 'bg-white hover:bg-neutral-50 text-neutral-500'}`}
+                                                                onClick={() => {
+                                                                    const next = [...selectedTimes] as [string, string, string, string];
+                                                                    next[i] = active ? NONE : selectedDose;
+                                                                    setSelectedTimes(next);
+                                                                }}
+                                                            >
+                                                                <Icon className={`h-5 w-5 ${active ? icon : 'text-neutral-400'}`} aria-hidden />
+                                                                <span className={active ? 'font-bold' : 'font-medium'}>{active ? `${label}: ${selectedTimes[i]}` : label}</span>
+                                                            </Button>
+                                                        );
+                                                    })}
                                                 </div>
 
                                                 {/* Dynamic Dose & Duration */}
@@ -527,16 +608,17 @@ export default function ConsultationPage() {
                                                         <Label className="text-xs">Dose</Label>
                                                         <div className="flex flex-wrap gap-1 mt-1">
                                                             {selectedMedForm === 'Pill' && ['¼', '½', '1', '2'].map(d => (
-                                                                <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setSelectedDose(d)}>{d}</Badge>
+                                                                <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" role="button" tabIndex={0} onClick={() => setSelectedDose(d)}>{d}</Badge>
                                                             ))}
                                                             {selectedMedForm === 'Syrup' && ['2.5ml', '5ml', '10ml'].map(d => (
-                                                                <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setSelectedDose(d)}>{d}</Badge>
+                                                                <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" role="button" tabIndex={0} onClick={() => setSelectedDose(d)}>{d}</Badge>
                                                             ))}
                                                             {selectedMedForm === 'Cream' && ['Apply', 'Thin Layer'].map(d => (
-                                                                <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setSelectedDose(d)}>{d}</Badge>
+                                                                <Badge key={d} variant={selectedDose === d ? 'default' : 'outline'} className="cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800" role="button" tabIndex={0} onClick={() => setSelectedDose(d)}>{d}</Badge>
                                                             ))}
-                                                            <Badge variant="outline" className="cursor-pointer hover:bg-emerald-50 text-emerald-600 border-emerald-200" role="button" tabIndex={0} onClick={async () => { const dose = await askText({ title: 'Custom dose', label: 'Dose', defaultValue: selectedDose, placeholder: 'For example 1.5 or 7.5ml', confirmLabel: 'Use this dose' }); if (dose) setSelectedDose(dose); }}>Custom</Badge>
+                                                            <Badge variant="outline" className="cursor-pointer hover:bg-emerald-50 text-emerald-600 border-emerald-200" role="button" tabIndex={0} onClick={async () => { const dose = await askText({ title: 'Custom dose', label: 'Dose', defaultValue: selectedDose, placeholder: 'For example 1.5 or 7.5ml', confirmLabel: 'Use this dose' }); if (dose) setSelectedDose(dose.trim()); }}>Custom</Badge>
                                                         </div>
+                                                        <p className="mt-1 text-[11px] text-neutral-500">Dose now: <strong>{selectedDose}</strong>. Pick it before tapping a time.</p>
                                                     </div>
                                                     <div>
                                                         <Label htmlFor="f-duration" className="text-xs">Duration</Label>
@@ -548,17 +630,20 @@ export default function ConsultationPage() {
                                                             <option value="1 day">1 Day</option>
                                                             <option value="3 days">3 Days</option>
                                                             <option value="5 days">5 Days</option>
-                                                            <option value="1 week">1 Week</option>
+                                                            <option value="7 days">7 Days</option>
+                                                            <option value="10 days">10 Days</option>
                                                             <option value="2 weeks">2 Weeks</option>
                                                             <option value="1 month">1 Month</option>
+                                                            <option value="2 months">2 Months</option>
                                                         </select>
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 p-3 bg-neutral-50 rounded-lg border border-dashed border-neutral-300 flex justify-between items-center text-sm group hover:border-emerald-300 hover:bg-emerald-50/30 transition-all">
-                                                    <span className="text-neutral-500 font-bold uppercase tracking-tighter text-[11px]">Final Frequency Schema:</span>
-                                                    <Badge variant="outline" className="font-mono bg-white text-emerald-800 border-emerald-200 px-3 py-1 shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                                                        {selectedTimes.join(' - ')}
-                                                    </Badge>
+                                                <div aria-live="polite" className="mt-4 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/40 p-3 text-sm">
+                                                    <p className="text-[11px] font-bold uppercase tracking-tight text-neutral-500">How the patient will read it</p>
+                                                    <p className="mt-1 font-medium text-neutral-900">{draftText}</p>
+                                                    {medicine && hasSlots(selectedTimes) && usable(medicine) < draftQuantity && (
+                                                        <p className="mt-1 text-xs font-medium text-amber-800">The pharmacy has {usable(medicine)} usable, and this needs {draftQuantity}. It may only be partly dispensed.</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -577,54 +662,56 @@ export default function ConsultationPage() {
 
                                     {/* List */}
                                     <div className="space-y-3">
-                                        {currentPrescription.map((item, idx) => (
-                                            <div key={idx} className="group flex flex-col p-3 bg-white border border-emerald-100 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-200 transition-all">
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex gap-3">
-                                                        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                                                            <Pill className="h-5 w-5" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-neutral-800 text-base leading-tight">{item.medicineName}</div>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 text-[10px] py-0 px-1.5 border-emerald-100 uppercase font-bold tracking-wider">{item.duration}</Badge>
-                                                                <span className="text-xs text-neutral-400 font-medium">{item.dosage}</span>
+                                        {currentPrescription.map((item, idx) => {
+                                            const med = medicines.find(m => m.id === item.medicineId);
+                                            const form = med ? medicineForm(med) : 'Pill';
+                                            const locked = (item.dispensedQuantity ?? 0) > 0;
+                                            return (
+                                                <div key={`${item.medicineId}-${idx}`} className="group flex flex-col p-3 bg-white border border-emerald-100 rounded-xl shadow-sm hover:shadow-md hover:border-emerald-200 transition-all">
+                                                    <div className="flex justify-between items-start gap-3">
+                                                        <div className="flex gap-3 min-w-0">
+                                                            <div className="w-10 h-10 shrink-0 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+                                                                <Pill className="h-5 w-5" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="font-bold text-neutral-800 text-base leading-tight">{item.medicineName}</div>
+                                                                <p className="mt-1 text-sm text-neutral-700">{describeLine({ form, times: item.frequency.split('-'), duration: item.duration, quantity: item.quantity })}</p>
                                                             </div>
                                                         </div>
+                                                        <div className="text-right shrink-0">
+                                                            <div className="font-mono font-black text-xl text-emerald-900">x{item.quantity}</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="font-mono font-black text-xl text-emerald-900 opacity-20 group-hover:opacity-100 transition-opacity">x{item.quantity}</div>
+
+                                                    <div className="mt-3 pt-3 border-t border-emerald-50 flex flex-wrap justify-between items-center gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            {locked && <span className="inline-flex items-center gap-1 rounded bg-neutral-100 px-2 py-1 text-[11px] font-semibold text-neutral-700"><Lock className="h-3 w-3" aria-hidden /> {item.dispensedQuantity} of {item.quantity} dispensed</span>}
+                                                            {med && usable(med) < item.quantity - (item.dispensedQuantity ?? 0) && !locked && <span className="text-[11px] font-medium text-amber-800">Stock: {usable(med)}</span>}
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleEditMedicine(idx)}
+                                                                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
+                                                            >
+                                                                <Pencil className="h-3 w-3" aria-hidden /> EDIT
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoveMedicine(idx)}
+                                                                disabled={locked}
+                                                                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-red-700 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-40"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" aria-hidden /> REMOVE
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                
-                                                <div className="mt-3 pt-3 border-t border-emerald-50 flex justify-between items-center">
-                                                    <div className="flex gap-1.5">
-                                                        {item.frequency.split('-').map((val, i) => (
-                                                            <div key={i} className={`w-8 h-6 rounded flex items-center justify-center text-[10px] font-bold ${val !== '0' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-neutral-100 text-neutral-400'}`}>
-                                                                {val !== '0' ? val : '-'}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <button 
-                                                            onClick={() => handleEditMedicine(idx)} 
-                                                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-600 hover:text-white rounded-lg transition-all"
-                                                        >
-                                                            <Pencil className="h-3 w-3" /> EDIT
-                                                        </button>
-                                                        <button 
-                                                            onClick={() => handleRemoveMedicine(idx)} 
-                                                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-600 hover:text-white rounded-lg transition-all"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" /> REMOVE
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {currentPrescription.length === 0 && (
-                                            <div className="flex flex-col items-center justify-center py-10 text-neutral-300 border-2 border-dashed border-neutral-100 rounded-xl bg-neutral-50/50">
-                                                <Pill className="h-10 w-10 mb-2 opacity-20" />
+                                            <div className="flex flex-col items-center justify-center py-10 text-neutral-500 border-2 border-dashed border-neutral-200 rounded-xl bg-neutral-50/50">
+                                                <Pill className="h-10 w-10 mb-2 opacity-30" />
                                                 <p className="text-xs font-medium uppercase tracking-widest">No medicines prescribed yet</p>
                                             </div>
                                         )}
@@ -641,26 +728,16 @@ export default function ConsultationPage() {
                                 </CardHeader>
                                 <CardContent className="pt-4 space-y-4">
                                     <div className="space-y-2">
-                                        <Label className="text-xs">Request Lab Tests</Label>
+                                        <Label className="text-xs">Add a test</Label>
                                         <Popover open={labOpen} onOpenChange={setLabOpen}>
                                             <PopoverTrigger asChild>
                                                 <Button
                                                     variant="outline"
                                                     role="combobox"
                                                     aria-expanded={labOpen}
-                                                    className="w-full justify-between font-normal h-auto min-h-[40px] py-2"
+                                                    className="w-full justify-between font-normal"
                                                 >
-                                                    <div className="flex flex-wrap gap-1 text-left">
-                                                        {selectedLabs.length > 0 ? (
-                                                            selectedLabs.map(id => (
-                                                                <Badge key={id} variant="secondary" className="text-[10px] bg-teal-50 text-teal-700 border-teal-100">
-                                                                    {labTests.find(t => t.id === id)?.name}
-                                                                </Badge>
-                                                            ))
-                                                        ) : (
-                                                            <span className="text-neutral-500">Search and select tests...</span>
-                                                        )}
-                                                    </div>
+                                                    <span className="text-neutral-500">Search tests...</span>
                                                     <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                 </Button>
                                             </PopoverTrigger>
@@ -670,48 +747,84 @@ export default function ConsultationPage() {
                                                     <CommandList>
                                                         <CommandEmpty>No lab test found.</CommandEmpty>
                                                         <CommandGroup>
-                                                            {labTests.map((test) => (
-                                                                <CommandItem
-                                                                    key={test.id}
-                                                                    value={test.name}
-                                                                    onSelect={() => {
-                                                                        if (selectedLabs.includes(test.id)) {
-                                                                            setSelectedLabs(selectedLabs.filter(id => id !== test.id));
-                                                                        } else {
-                                                                            setSelectedLabs([...selectedLabs, test.id]);
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    <div className="flex items-center w-full">
-                                                                        <div className={cn(
-                                                                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                                                                            selectedLabs.includes(test.id)
-                                                                                ? "bg-primary text-primary-foreground"
-                                                                                : "opacity-50 [&_svg]:invisible"
-                                                                        )}>
-                                                                            <Check className="h-4 w-4" />
+                                                            {labTests.map((test) => {
+                                                                const picked = selectedLabs.includes(test.id);
+                                                                const done = lastDone(test.id);
+                                                                return (
+                                                                    <CommandItem
+                                                                        key={test.id}
+                                                                        value={`${test.name} ${test.id}`}
+                                                                        onSelect={() => {
+                                                                            if (picked) {
+                                                                                if (savedLab(test.id)?.status === 'COMPLETED') return;
+                                                                                setSelectedLabs(selectedLabs.filter(id => id !== test.id));
+                                                                            } else {
+                                                                                setSelectedLabs([...selectedLabs, test.id]);
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <div className="flex items-center w-full">
+                                                                            <div className={cn(
+                                                                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                                                picked ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                                                                            )}>
+                                                                                <Check className="h-4 w-4" />
+                                                                            </div>
+                                                                            <span className="flex flex-1 flex-col">
+                                                                                <span>{test.name}</span>
+                                                                                {done && <span className="text-[11px] font-medium text-amber-800">Result already on file from {done}</span>}
+                                                                            </span>
+                                                                            <span className="text-xs text-neutral-500">{formatLKR(test.price)}</span>
                                                                         </div>
-                                                                        <span className="flex-1">{test.name}</span>
-                                                                        <span className="text-xs text-neutral-400">{formatLKR(test.price)}</span>
-                                                                    </div>
-                                                                </CommandItem>
-                                                            ))}
+                                                                    </CommandItem>
+                                                                );
+                                                            })}
                                                         </CommandGroup>
                                                     </CommandList>
                                                 </Command>
                                             </PopoverContent>
                                         </Popover>
                                     </div>
-                                    {selectedLabs.length > 0 && (
-                                        <div className="pt-2">
-                                            <Label className="text-xs">Selected ({selectedLabs.length})</Label>
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {selectedLabs.map(id => {
-                                                    const t = labTests.find(l => l.id === id);
-                                                    return t ? <Badge key={id} variant="secondary" className="text-xs">{t.name}</Badge> : null
-                                                })}
-                                            </div>
+
+                                    {selectedLabs.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-8 text-neutral-500 border-2 border-dashed border-neutral-200 rounded-xl bg-neutral-50/50">
+                                            <FlaskConical className="h-8 w-8 mb-2 opacity-30" />
+                                            <p className="text-xs font-medium uppercase tracking-widest">No tests requested</p>
                                         </div>
+                                    ) : (
+                                        <ul className="divide-y rounded-xl border border-teal-100">
+                                            {selectedLabs.map(id => {
+                                                const t = labById(id);
+                                                const saved = savedLab(id);
+                                                const finished = saved?.status === 'COMPLETED';
+                                                const done = !saved ? lastDone(id) : null;
+                                                return (
+                                                    <li key={id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                                                        <div className="min-w-0">
+                                                            <p className="truncate font-medium text-neutral-900">{t?.name ?? saved?.name ?? `Test #${id}`}</p>
+                                                            <p className="text-xs text-neutral-600">
+                                                                {finished ? 'Result ready' : saved ? 'Requested, waiting for the lab' : 'Will be sent when you save'}
+                                                                {t ? ` · ${formatLKR(t.price)}` : ''}
+                                                            </p>
+                                                            {done && <p className="text-[11px] font-medium text-amber-800">Already done on {done}. Is a repeat needed?</p>}
+                                                        </div>
+                                                        {finished ? (
+                                                            <span className="flex shrink-0 items-center gap-2 text-xs">
+                                                                {saved?.resultUrl && <a href={saved.resultUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-emerald-800 underline"><FileText className="h-3.5 w-3.5" aria-hidden /> View</a>}
+                                                                <Lock className="h-3.5 w-3.5 text-neutral-500" aria-label="Locked: the result is in" />
+                                                            </span>
+                                                        ) : (
+                                                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-neutral-600 hover:text-red-700" onClick={() => setSelectedLabs(selectedLabs.filter(x => x !== id))} aria-label={`Remove ${t?.name ?? 'test'}`}>
+                                                                <X className="h-4 w-4" aria-hidden />
+                                                            </Button>
+                                                        )}
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                    {selectedLabs.length > 0 && (
+                                        <p className="flex justify-between text-sm"><span className="text-neutral-600">{selectedLabs.length} test{selectedLabs.length === 1 ? '' : 's'}</span><span className="font-semibold tabular-nums">{formatLKR(labTotal)}</span></p>
                                     )}
                                 </CardContent>
                             </Card>
@@ -859,6 +972,52 @@ export default function ConsultationPage() {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            {/* Review before completing: completing creates the bill and cannot be undone */}
+            <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Complete this consultation?</DialogTitle>
+                        <DialogDescription>Check what will be sent. Completing creates the bill and cannot be reopened.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 text-sm">
+                        {!notes.trim() && (
+                            <p role="alert" className="flex items-start gap-2 rounded-md bg-amber-50 p-2.5 font-medium text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> There are no clinical notes. Add a diagnosis or observations before completing.</p>
+                        )}
+                        <section>
+                            <h3 className="mb-1 font-semibold">Medicines ({currentPrescription.length})</h3>
+                            {currentPrescription.length === 0 ? <p className="text-neutral-600">None prescribed.</p> : (
+                                <ul className="space-y-2">
+                                    {currentPrescription.map((p, i) => {
+                                        const med = medicines.find(m => m.id === p.medicineId);
+                                        return (
+                                            <li key={i} className="rounded-md border p-2">
+                                                <p className="font-medium">{p.medicineName}</p>
+                                                <p className="text-neutral-700">{describeLine({ form: med ? medicineForm(med) : 'Pill', times: p.frequency.split('-'), duration: p.duration, quantity: p.quantity })}</p>
+                                                {acknowledged.includes(p.medicineId) && <p className="mt-0.5 text-xs font-semibold text-red-800">Prescribed despite an allergy warning (recorded).</p>}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </section>
+                        <section>
+                            <h3 className="mb-1 font-semibold">Lab tests ({selectedLabs.length})</h3>
+                            {selectedLabs.length === 0 ? <p className="text-neutral-600">None requested.</p> : <p className="text-neutral-700">{selectedLabs.map(id => labById(id)?.name ?? savedLab(id)?.name).filter(Boolean).join(', ')}</p>}
+                        </section>
+                        <section className="rounded-md bg-neutral-50 p-3">
+                            <h3 className="mb-1 font-semibold">Added to the patient&apos;s bill (estimate)</h3>
+                            <p className="flex justify-between"><span>Medicines</span><span className="tabular-nums">{formatLKR(medicineCost)}</span></p>
+                            <p className="flex justify-between"><span>Lab tests</span><span className="tabular-nums">{formatLKR(labTotal)}</span></p>
+                            <p className="mt-1 text-xs text-neutral-600">Plus your consultation fee and the service charge. Medicines are billed as dispensed.</p>
+                        </section>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-2">
+                        <Button variant="outline" onClick={() => setReviewOpen(false)} disabled={saving}>Back to editing</Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleSave(true)} disabled={saving}>{saving ? 'Completing…' : 'Complete consultation'}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

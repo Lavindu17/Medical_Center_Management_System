@@ -70,7 +70,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         };
 
         // 2. Fetch Full Relational History
-        const [pastAppointments, pastLabs, pastPrescriptions] = await Promise.all([
+        const [pastAppointments, pastLabs, pastPrescriptions, currentItems, currentLabs, allergies] = await Promise.all([
             // A. All Completed Appointments
             query<any[]>(
                 `SELECT id, date, notes as diagnosis, reason
@@ -81,7 +81,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             ),
             // B. All Requested Labs
             query<any[]>(
-                `SELECT lr.id, lr.appointment_id, lr.status, lr.result_url, lr.requested_at, lt.name as testName
+                `SELECT lr.id, lr.appointment_id, lr.test_id, lr.status, lr.result_url, lr.requested_at, lt.name as testName
                  FROM lab_requests lr
                  JOIN appointments a ON lr.appointment_id = a.id
                  JOIN lab_tests lt ON lr.test_id = lt.id
@@ -101,12 +101,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                  WHERE a.patient_id = ? AND a.id != ?
                  ORDER BY p.issued_at DESC`,
                 [appt.patient_id, id]
-            )
+            ),
+            // D. What is already saved for this visit, so reopening a draft shows it (and saving keeps it)
+            query<any[]>(
+                `SELECT pi.medicine_id AS medicineId, m.name AS medicineName, pi.dosage, pi.frequency, pi.duration, pi.quantity,
+                        pi.status, COALESCE(pi.dispensed_quantity, 0) AS dispensedQuantity
+                 FROM prescriptions p JOIN prescription_items pi ON pi.prescription_id = p.id JOIN medicines m ON m.id = pi.medicine_id
+                 WHERE p.appointment_id = ? ORDER BY pi.id`, [id]),
+            query<any[]>(
+                `SELECT lr.id, lr.test_id AS testId, lt.name, lr.status, lr.result_url AS resultUrl
+                 FROM lab_requests lr JOIN lab_tests lt ON lt.id = lr.test_id WHERE lr.appointment_id = ? ORDER BY lr.id`, [id]),
+            // E. Allergies, shown for the whole visit and checked when a medicine is added
+            query<any[]>('SELECT allergy_name AS name, severity FROM patient_allergies WHERE patient_id = ? ORDER BY allergy_name', [appt.patient_id]),
         ]);
 
         return NextResponse.json({
             appointment: appointmentData,
-            patient: patientData,
+            patient: { ...patientData, allergies },
+            current: {
+                prescription: currentItems.map((r) => ({ ...r, quantity: Number(r.quantity), dispensedQuantity: Number(r.dispensedQuantity) })),
+                labs: currentLabs,
+            },
             history: {
                 appointments: pastAppointments,
                 labs: pastLabs,

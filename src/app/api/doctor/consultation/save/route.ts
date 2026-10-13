@@ -6,13 +6,14 @@ import { requireRole } from '@/lib/api-auth';
 import { parseBody } from '@/lib/validate';
 import { itemStatus, prescriptionStatus } from '@/lib/prescription';
 import { nameOf, notify, usersWithRole } from '@/lib/notify';
+import { allergyMatches } from '@/lib/allergy';
 
 const SERVICE_CHARGE = 500.0;
 const CLOSED_STATUSES = ['CANCELLED', 'ABSENT', 'NO_SHOW'];
 
 /** Business-rule failure that maps to a specific HTTP status instead of a generic 500. */
 class HttpError extends Error {
-    constructor(public status: number, message: string) { super(message); }
+    constructor(public status: number, message: string, public extra: Record<string, unknown> = {}) { super(message); }
 }
 
 const blank = (v: unknown) => v === undefined || v === null || v === '';
@@ -47,10 +48,32 @@ const consultationSchema = z.object({
         dosage: requiredText('dosage'),
         frequency: requiredText('frequency'),
         duration: requiredText('duration'),
-    }), { message: 'prescription must be an array' }).nullish().transform((v) => v ?? []),
+    }), { message: 'prescription must be an array' }).nullish().transform((v) => v ?? null),   // omitted: leave the prescription as it is
     labRequestIds: z.array(positiveInt('labRequestIds must be an array of test ids'), { message: 'labRequestIds must be an array of test ids' })
-        .nullish().transform((v) => [...new Set(v ?? [])]),
+        .nullish().transform((v) => (v ? [...new Set(v)] : null)),   // omitted: leave the requests as they are
+    // Medicines the doctor has confirmed despite an allergy warning
+    allergyAcknowledged: z.array(positiveInt('allergyAcknowledged must be a list of medicine ids')).nullish().transform((v) => new Set(v ?? [])),
 });
+
+/**
+ * Stops a new prescription line for a medicine the patient is allergic to, unless the doctor confirmed it.
+ * A confirmed override is written to the audit trail.
+ */
+async function checkAllergy(
+    connection: { execute: (sql: string, p?: any[]) => Promise<any> }, patientId: number, medicineId: number,
+    acknowledged: Set<number>,
+): Promise<{ medicineId: number; allergies: string[] } | null> {
+    const [allergies]: any = await connection.execute('SELECT allergy_name AS name, severity FROM patient_allergies WHERE patient_id = ?', [patientId]);
+    if (allergies.length === 0) return null;
+    const [meds]: any = await connection.execute('SELECT name, generic_name FROM medicines WHERE id = ?', [medicineId]);
+    if (meds.length === 0) return null;
+    const hits = allergyMatches(meds[0], allergies);
+    if (hits.length === 0) return null;
+    if (!acknowledged.has(medicineId)) {
+        throw new HttpError(409, `Allergy warning: the patient is allergic to ${hits.map((h: any) => h.name).join(', ')}, and ${meds[0].name} may contain it. Confirm to prescribe it anyway.`, { code: 'ALLERGY', medicineId });
+    }
+    return { medicineId, allergies: hits.map((h: any) => h.name) };
+}
 
 export async function POST(req: Request) {
     const auth = await requireRole('DOCTOR');
@@ -60,13 +83,14 @@ export async function POST(req: Request) {
     try {
         const body = await parseBody(req, consultationSchema);
         if ('error' in body) return body.error;
-        const { appointmentId, status, notes, prescription: items, labRequestIds: labIds } = body.data;
+        const { appointmentId, status, notes, prescription: items, labRequestIds: labIds, allergyAcknowledged } = body.data;
         const { weight, temperature, pulse, blood_pressure: bloodPressure } = body.data.vitals;
 
         const connection = await pool.getConnection();
         try {
             await connection.beginTransaction();
             let newPrescription = false, newItems = 0, newLabs = 0, billCreated = false;
+            const overrides: { medicineId: number; allergies: string[] }[] = [];
 
             // Lock the appointment first: every save for it is serialised, which also keeps the
             // prescription / item / bill writes below free of lock-order deadlocks.
@@ -90,8 +114,10 @@ export async function POST(req: Request) {
                 [weight, bloodPressure, temperature, pulse, notes, status, appointmentId]);
 
             // 2. Prescription: update lines in place so dispensing progress is never lost
-            if (items.length > 0) {
-                const [presRows]: any = await connection.execute('SELECT id FROM prescriptions WHERE appointment_id = ?', [appointmentId]);
+            // The list is the whole prescription when it is sent (an empty list removes every line not yet dispensed);
+            // when it is left out the saved prescription is not touched.
+            const [presRows]: any = items === null ? [[]] : await connection.execute('SELECT id FROM prescriptions WHERE appointment_id = ?', [appointmentId]);
+            if (items !== null && (items.length > 0 || presRows.length > 0)) {
                 let prescriptionId: number = presRows[0]?.id;
                 if (!prescriptionId) {
                     const [res]: any = await connection.execute(
@@ -109,6 +135,8 @@ export async function POST(req: Request) {
                 for (const item of items) {
                     const idx = unmatched.findIndex((e: any) => e.medicine_id === item.medicineId);
                     if (idx === -1) {
+                        const override = await checkAllergy(connection, appt.patient_id, item.medicineId, allergyAcknowledged);
+                        if (override) overrides.push(override);
                         await connection.execute(
                             `INSERT INTO prescription_items (prescription_id, medicine_id, dosage, frequency, duration, quantity)
                              VALUES (?, ?, ?, ?, ?, ?)`,
@@ -138,13 +166,23 @@ export async function POST(req: Request) {
                 await connection.execute('UPDATE prescriptions SET status = ? WHERE id = ?', [prescriptionStatus(after), prescriptionId]);
             }
 
-            // 3. Lab requests (add-only; never touch ones already carrying a result)
-            for (const testId of labIds) {
-                const [exists]: any = await connection.execute(
-                    'SELECT id FROM lab_requests WHERE appointment_id = ? AND test_id = ?', [appointmentId, testId]);
-                if (exists.length === 0) {
-                    await connection.execute('INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)', [appointmentId, testId]);
-                    newLabs++;
+            // 3. Lab requests: the list is the whole set when it is sent. Tests that already carry a result are kept;
+            //    a test not yet done can be taken off the list again.
+            let removedLabs = 0;
+            if (labIds !== null) {
+                for (const testId of labIds) {
+                    const [exists]: any = await connection.execute(
+                        'SELECT id FROM lab_requests WHERE appointment_id = ? AND test_id = ?', [appointmentId, testId]);
+                    if (exists.length === 0) {
+                        await connection.execute('INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)', [appointmentId, testId]);
+                        newLabs++;
+                    }
+                }
+                const [open]: any = await connection.execute(
+                    "SELECT id, test_id FROM lab_requests WHERE appointment_id = ? AND status = 'PENDING'", [appointmentId]);
+                for (const row of open.filter((r: any) => !labIds.includes(r.test_id))) {
+                    await connection.execute('DELETE FROM lab_requests WHERE id = ?', [row.id]);
+                    removedLabs++;
                 }
             }
 
@@ -221,12 +259,12 @@ export async function POST(req: Request) {
             await connection.commit();
             await audit(user, {
                 action: status === 'COMPLETED' && appt.status !== 'COMPLETED' ? 'STATUS_CHANGE' : 'UPDATE', entity: 'CONSULTATION', entityId: appointmentId, patientId: appt.patient_id,
-                details: { status, prescriptionLines: items.length, labTests: labIds.length, billCreated },
+                details: { status, prescriptionLines: items?.length ?? null, labTests: labIds?.length ?? null, removedLabs, billCreated, ...(overrides.length ? { allergyOverrides: overrides } : {}) },
             });
             return NextResponse.json({ message: 'Saved successfully' });
         } catch (err: any) {
             await connection.rollback().catch(() => {});
-            if (err instanceof HttpError) return NextResponse.json({ message: err.message }, { status: err.status });
+            if (err instanceof HttpError) return NextResponse.json({ message: err.message, ...err.extra }, { status: err.status });
             if (err?.errno === 1452) {
                 return NextResponse.json({ message: 'Unknown medicine or lab test in the request' }, { status: 400 });
             }

@@ -7,7 +7,11 @@ export async function GET() {
     if ('error' in auth) return auth.error;
 
     try {
-        const medicines = await query('SELECT id, name, stock, unit, dosage_form, price_per_unit as price FROM medicines ORDER BY name ASC');
+        // usable_stock leaves out batches that have expired, so the doctor sees what can really be dispensed
+        const medicines = await query(
+            `SELECT m.id, m.name, m.generic_name, m.strength, m.stock, m.unit, m.dosage_form, m.price_per_unit AS price,
+                    COALESCE((SELECT SUM(b.quantity_current) FROM inventory_batches b WHERE b.medicine_id = m.id AND b.expiry_date >= CURDATE()), 0) AS usable_stock
+             FROM medicines m ORDER BY m.name ASC`);
         return NextResponse.json(medicines);
     } catch (error) {
         return NextResponse.json({ message: 'Error' }, { status: 500 });
