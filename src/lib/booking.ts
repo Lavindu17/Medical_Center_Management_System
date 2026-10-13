@@ -1,4 +1,5 @@
 import { pool } from '@/lib/db';
+import { slotsFor } from '@/lib/availability';
 import { asDoctor, nameOf, notify, when } from '@/lib/notify';
 
 export class BookingError extends Error {
@@ -56,6 +57,10 @@ export async function bookAppointment(input: BookingInput): Promise<BookingResul
 
         const [leave]: any = await connection.execute('SELECT id FROM doctor_leaves WHERE doctor_id = ? AND date = ?', [doctorId, date]);
         if (leave.length > 0) throw new BookingError(409, 'The doctor is not available on this date.');
+
+        // Only times the doctor actually offers can be booked: working days, inside their sessions, on their slot grid
+        const offered = await slotsFor(doctorId, date);
+        if (!offered.slots.includes(timeSlot)) throw new BookingError(400, "That time is not one of the doctor's available slots.");
 
         const [existing]: any = await connection.execute(
             'SELECT id FROM appointments WHERE doctor_id = ? AND date = ? AND time_slot = ? AND status != "CANCELLED"',

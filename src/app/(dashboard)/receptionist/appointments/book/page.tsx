@@ -42,7 +42,10 @@ export default function ReceptionistBookAppointment() {
 
     // Fetch Doctors
     useEffect(() => {
-        fetch('/api/receptionist/doctors').then(r => r.json()).then(setDoctors);
+        fetch('/api/receptionist/doctors')
+            .then(r => (r.ok ? r.json() : []))
+            .then((list) => setDoctors(Array.isArray(list) ? list : []))
+            .catch(() => toast.error('Could not load the doctors. Please refresh and try again.'));
     }, []);
 
     // Fetch Slots
@@ -55,18 +58,6 @@ export default function ReceptionistBookAppointment() {
     const fetchSlots = async () => {
         setLoadingSlots(true);
         try {
-            // Using the public generic slot API or creating a new internal one?
-            // The existing /api/doctors/[id]/slots seems reusable if public.
-            // Let's assume /api/users/doctors/[id]/slots or similar.
-            // Wait, we have 'backend01': API for Doctor Slots. Where is it?
-            // It was likely /api/patient/doctors/[id]/slots. I should check. 
-            // Reuse logic: Front end can calculate or fetch availability.
-            // For simplicity, let's just implement a direct fetch here:
-            // Actually, let's create a quick API fetch or reuse the logic inside the component if simple (8-5).
-            // But we need to check booked slots.
-            // Let's use the new endpoint I'll make: /api/receptionist/doctors/[id]/slots?date=...
-            // Or reuse /api/receptionist/appointments?date=...&doctorId=... to find taken slots and subtract.
-
             // Slots come from the doctor's real schedule, leave days and existing bookings
             const res = await fetch(`/api/doctors/availability?doctorId=${selectedDoctor}&date=${date}`);
             const data = res.ok ? await res.json() : { slots: [] };
@@ -98,10 +89,13 @@ export default function ReceptionistBookAppointment() {
                 toast.success('Appointment Booked!');
                 router.push('/receptionist/appointments');
             } else {
-                toast.error('Booking Failed');
+                // Say why (slot just taken, doctor on leave, time not offered), not just that it failed
+                toast.error((await res.json().catch(() => null))?.message || 'Booking failed');
+                if (res.status === 409 || res.status === 400) fetchSlots();
             }
         } catch (e) {
             console.error(e);
+            toast.error('Booking failed. Check your connection and try again.');
         }
     };
 

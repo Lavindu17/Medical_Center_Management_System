@@ -47,7 +47,7 @@ export async function PUT(req: Request) {
     if ('error' in auth) return auth.error;
 
     try {
-        const body = await req.json();
+        const body = await req.json().catch(() => null);
         const validation = updateDoctorSchema.safeParse(body);
 
         if (!validation.success) {

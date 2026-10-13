@@ -37,6 +37,11 @@ export default async function setup() {
         await admin.query(sync);
         await admin.query(auditLog);
         await admin.query(hr);
+        // Booking only accepts times a doctor offers, so the seeded doctors need working hours: every day, all day, 15-minute slots
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        await admin.query(
+            'INSERT INTO doctor_schedules (doctor_id, day, start_time, end_time) VALUES ?',
+            [[2, 3].flatMap((doctor) => days.map((day) => [doctor, day, '00:00:00', '23:59:00']))]);
     } finally {
         await admin.end();
     }

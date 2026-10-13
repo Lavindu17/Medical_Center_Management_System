@@ -16,7 +16,7 @@ export async function PUT(req: Request) {
     const { user } = auth;
 
     try {
-        const body = await req.json();
+        const body = await req.json().catch(() => null);
         const validation = cancelSchema.safeParse(body);
 
         if (!validation.success) {

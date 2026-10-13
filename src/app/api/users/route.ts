@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     if ('error' in auth) return auth.error;
 
     try {
-        const body = await req.json();
+        const body = await req.json().catch(() => null);
         const validation = createUserSchema.safeParse(body);
 
         if (!validation.success) {
@@ -128,7 +128,7 @@ export async function PUT(req: Request) {
     const { user: admin } = auth;
 
     try {
-        const body = await req.json();
+        const body = await req.json().catch(() => null);
         const validation = updateUserSchema.safeParse(body);
 
         if (!validation.success) {

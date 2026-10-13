@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { NotificationBell } from '@/components/notification-bell';
 import { useAuth } from '@/context/AuthContext';
 import { useIsClient } from '@/hooks/useIsClient';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { initialOf } from '@/lib/names';
 import { cn } from '@/lib/utils';
 
@@ -133,6 +134,8 @@ function AccountCard() {
 export function AppShell({ navItems, roleName, roleHref, bottomTabs, hideTabsOn = [], children }: AppShellProps) {
     const pathname = usePathname();
     const [drawerOpen, setDrawerOpen] = useState(false);
+    // Only one bell is mounted: two (sidebar and phone header) would each poll the server every 30 seconds
+    const isDesktop = useMediaQuery('(min-width: 768px)');
     const isClient = useIsClient();   // Radix generates different ids on server and client; create the drawer in the browser only
     const showTabs = Boolean(bottomTabs) && !hideTabsOn.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
@@ -142,7 +145,7 @@ export function AppShell({ navItems, roleName, roleHref, bottomTabs, hideTabsOn 
             <aside className="fixed inset-y-0 z-30 hidden w-64 flex-col border-r border-neutral-200 bg-white md:flex">
                 <div className="flex h-16 items-center gap-2 border-b border-neutral-100 px-4">
                     <Brand roleName={roleName} roleHref={roleHref} />
-                    <NotificationBell />
+                    {isDesktop && <NotificationBell />}
                 </div>
                 <SidebarNav navItems={navItems} />
                 <AccountCard />
@@ -164,7 +167,7 @@ export function AppShell({ navItems, roleName, roleHref, bottomTabs, hideTabsOn 
                     <div className="min-w-0 flex-1">
                         <Brand roleName={roleName} roleHref={roleHref} />
                     </div>
-                    <NotificationBell />
+                    {!isDesktop && <NotificationBell />}
                 </header>
 
                 <main id="main-content" tabIndex={-1} className="flex-1 outline-none">

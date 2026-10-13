@@ -1,5 +1,7 @@
 
 import { pool } from '@/lib/db';
+import { loadSettings } from '@/lib/hr';
+import { localDay } from '@/lib/hr-time';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Calendar, Banknote, Clock, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -9,8 +11,13 @@ import { EmptyState } from '@/components/ui/state-views';
 import { formatLKR } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
+// This page reads the database for today's numbers, so it must be rendered on every request. Without this, Next.js builds it
+// once at build time and the dashboard shows the figures from the day the app was built.
+export const dynamic = 'force-dynamic';
+
 async function getStats() {
-    const today = new Date().toISOString().split('T')[0];
+    // The clinic's today, not UTC's: for the first hours of the local day UTC is still yesterday
+    const today = localDay(new Date(), (await loadSettings()).timezone);
 
     const [apptStats]: any = await pool.query(`
         SELECT 
