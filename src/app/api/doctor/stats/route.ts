@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
+import { loadSettings } from '@/lib/hr';
+import { localDay } from '@/lib/hr-time';
 
 export async function GET() {
     const auth = await requireRole('DOCTOR');
@@ -8,8 +10,8 @@ export async function GET() {
     const { user } = auth;
 
     try {
-        // Local calendar day (YYYY-MM-DD)
-        const today = new Date().toLocaleDateString('en-CA');
+        // The clinic's calendar day (YYYY-MM-DD)
+        const today = localDay(new Date(), (await loadSettings()).timezone);
 
         const [todayRows, upcomingRows, seenRows, revenueRows] = await Promise.all([
             query<any[]>(

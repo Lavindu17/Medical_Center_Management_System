@@ -40,7 +40,7 @@ export function StatCard({ label, value, hint, icon: Icon, tone = 'brand', href,
                     </span>
                 )}
             </div>
-            <p className={cn('font-bold leading-none tabular tracking-tight', compact ? 'mt-2 text-2xl sm:mt-3 sm:text-3xl' : 'mt-3 text-3xl', t.value)}>{value}</p>
+            <p className={cn('font-bold leading-none tabular tracking-tight', compact ? 'mt-2 text-2xl sm:mt-3 sm:text-3xl' : 'mt-3 text-2xl min-[420px]:text-3xl', t.value)}>{value}</p>
             {hint && <p className={cn('mt-2 text-xs text-neutral-500', compact && 'hidden sm:block')}>{hint}</p>}
             {href && (
                 <ArrowUpRight

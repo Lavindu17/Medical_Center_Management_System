@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views';
+import { ChartCard, TrendChart } from '@/components/charts';
 import { useApi } from '@/hooks/useApi';
 import { ROLE_LABEL, dayText, minutesText, shiftText } from '@/lib/hr-format';
 import { cn } from '@/lib/utils';
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils';
 interface Overview {
     today: string; timezone: string; pendingLeave: number; pendingCorrections: number;
     counts: { staff: number; working: number; late: number; absent: number; onLeave: number; scheduled: number; dayOff: number; holiday: number; missingClockOut: number };
+    trend: { day: string; label: string; onTime: number; late: number; absent: number; onLeave: number }[];
     people: { id: number; name: string; role: string; department: string | null; status: string; openNow: boolean; lateMinutes: number; shifts: { id: number; start: string; end: string }[] }[];
 }
 
@@ -23,7 +25,7 @@ const FILTERS = [
 ];
 
 export default function HrOverviewPage() {
-    const { data, loading, error, reload } = useApi<Overview>('/api/hr/overview');
+    const { data, loading, error, reload } = useApi<Overview>('/api/hr/overview', { refreshMs: 60_000 });
     const [filter, setFilter] = useState('ALL');
 
     const people = useMemo(() => {
@@ -74,6 +76,13 @@ export default function HrOverviewPage() {
                     )}
                 </section>
             )}
+
+            <ChartCard title="Attendance, last 14 days" icon={Clock} empty={data.trend.every((d) => d.onTime + d.late + d.absent + d.onLeave === 0)} emptyText="No attendance to show yet. Add shifts in the roster."
+                summary={`Staff on time, late, absent and on leave per day: ${data.trend.map((d) => `${d.label} ${d.onTime}/${d.late}/${d.absent}/${d.onLeave}`).join(', ')}.`}>
+                <TrendChart data={data.trend} xKey="label" kind="bar" stacked series={[
+                    { key: 'onTime', label: 'On time', color: '#059669' }, { key: 'late', label: 'Late', color: '#d97706' },
+                    { key: 'absent', label: 'Absent', color: '#dc2626' }, { key: 'onLeave', label: 'On leave', color: '#0284c7' }]} />
+            </ChartCard>
 
             <section aria-labelledby="who-heading" className="space-y-3">
                 <h2 id="who-heading" className="text-base font-semibold text-neutral-900">Who is where</h2>

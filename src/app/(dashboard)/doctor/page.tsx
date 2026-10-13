@@ -1,149 +1,106 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { SkeletonKpiRow } from '@/components/ui/skeleton';
+import Link from 'next/link';
+import { Activity, ArrowRight, Banknote, Calendar, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { SkeletonKpiRow } from '@/components/ui/skeleton';
+import { ChartCard, TrendChart } from '@/components/charts';
+import { useApi } from '@/hooks/useApi';
+import { useAuth } from '@/context/AuthContext';
 import { asDoctor } from '@/lib/names';
 import { greeting } from '@/lib/dates';
-import { Calendar, Users, Banknote, Activity, Stethoscope, ArrowRight } from 'lucide-react';
 import { formatLKR } from '@/lib/utils';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-
-
-/** 500 -> LKR 500, 2500 -> LKR 2.5k, 1,200,000 -> LKR 1.2M */
-function compactLKR(value: number) {
-    if (!Number.isFinite(value)) return '';
-    if (Math.abs(value) >= 1_000_000) return `LKR ${+(value / 1_000_000).toFixed(1)}M`;
-    if (Math.abs(value) >= 1_000) return `LKR ${+(value / 1_000).toFixed(1)}k`;
-    return `LKR ${value}`;
+interface Stats { todayAppointments: number; upcomingAppointments: number; totalPatients: number; revenue: number }
+interface Entry { id: number; queue: number; time: string; patient: string; status: string }
+interface Overview {
+    today: string;
+    series: { day: string; label: string; appointments: number; revenue: number; upcoming: boolean }[];
+    queue: { now: Entry | null; waiting: Entry[]; later: Entry[]; seen: number; total: number };
+    lastThirtyDays: { completed: number; missed: number; cancelled: number; completionRate: number | null };
 }
 
 export default function DoctorDashboard() {
-    const [stats, setStats] = useState({
-        todayAppointments: 0,
-        upcomingAppointments: 0,
-        totalPatients: 0,
-        revenue: 0
-    });
-    const [chartData, setChartData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
-
-    useEffect(() => {
-        // Fetch User and Stats
-        Promise.all([
-            fetch('/api/auth/session').then(res => res.json()),
-            fetch('/api/doctor/stats').then(res => res.json()),
-            fetch('/api/doctor/chart-data').then(res => res.json())
-        ]).then(([userData, statsData, chartResData]) => {
-            if (userData?.user) setUser(userData.user);
-            // Validate statsData before setting
-            if (statsData && typeof statsData.revenue === 'number') {
-                setStats(statsData);
-            } else {
-                console.error("Invalid stats data:", statsData);
-            }
-            if (Array.isArray(chartResData)) {
-                setChartData(chartResData);
-            }
-        }).catch(err => console.error(err))
-            .finally(() => setLoading(false));
-    }, []);
+    const { user } = useAuth();
+    const stats = useApi<Stats>('/api/doctor/stats', { refreshMs: 60_000 });
+    const overview = useApi<Overview>('/api/doctor/overview', { refreshMs: 60_000 });
+    const o = overview.data;
+    const s = stats.data;
+    const firstUpcoming = o?.series.find((d) => d.upcoming)?.label;
+    const past = o?.series.filter((d) => !d.upcoming) ?? [];
+    const next = o ? (o.queue.now ?? o.queue.waiting[0] ?? o.queue.later[0] ?? null) : null;
 
     return (
         <div className="space-y-6">
             <PageHeader
                 title={`${greeting()}, ${asDoctor(user?.name)}`}
-                description="Your day at a glance."
-                actions={
-                    <Button asChild size="lg" className="gap-2">
-                        <Link href="/doctor/appointments"><Calendar className="h-4 w-4" aria-hidden /> Today&apos;s appointments</Link>
-                    </Button>
-                }
+                description="Your day at a glance. Updates every minute."
+                actions={<Button asChild size="lg" className="gap-2"><Link href="/doctor/appointments"><Calendar className="h-4 w-4" aria-hidden /> Today&apos;s appointments</Link></Button>}
             />
 
-            {/* KPI Grid */}
-            {loading ? <SkeletonKpiRow count={4} /> : (
+            {stats.loading && !s ? <SkeletonKpiRow count={4} /> : s && (
                 <section aria-label="Overview" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <StatCard label="Today's appointments" value={stats.todayAppointments} hint="Scheduled for today" icon={Calendar} tone="brand" href="/doctor/appointments" />
-                    <StatCard label="Upcoming" value={stats.upcomingAppointments} hint="Future appointments" icon={Activity} tone="info" href="/doctor/appointments" />
-                    <StatCard label="Patients seen" value={stats.totalPatients} hint="Patients with a completed visit" icon={Users} tone="neutral" href="/doctor/patients" />
-                    <StatCard label="Revenue" value={formatLKR(stats.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} hint="From paid bills" icon={Banknote} tone="brand" href="/doctor/earnings" />
+                    <StatCard label="Today's appointments" value={s.todayAppointments} hint={o ? `${o.queue.seen} seen so far` : 'Scheduled for today'} icon={Calendar} tone="brand" href="/doctor/appointments" />
+                    <StatCard label="Upcoming" value={s.upcomingAppointments} hint="After today" icon={Activity} tone="info" href="/doctor/appointments" />
+                    <StatCard label="Patients seen" value={s.totalPatients} hint="With a completed visit" icon={Users} tone="neutral" href="/doctor/patients" />
+                    <StatCard label="Earned from paid bills" value={formatLKR(s.revenue, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} hint="Your fee, before commission" icon={Banknote} tone="brand" href="/doctor/earnings" />
                 </section>
             )}
 
-            {/* Charts Section */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border border-neutral-200 shadow-none">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base font-semibold text-neutral-800">Weekly Appointments</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[250px] w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        itemStyle={{ color: '#059669', fontWeight: 600 }}
-                                    />
-                                    <Line type="monotone" dataKey="appointments" stroke="#059669" strokeWidth={3} dot={{ r: 4, fill: '#059669', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border border-neutral-200 shadow-none">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base font-semibold text-neutral-800">Revenue Trends</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="h-[250px] w-full mt-4">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} tickFormatter={(value) => compactLKR(Number(value))} />
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(value) => [formatLKR(Number(value ?? 0)), 'Revenue']}
-                                        cursor={{ fill: '#f3f4f6' }}
-                                    />
-                                    <Bar dataKey="revenue" fill="#0d9488" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </CardContent>
-                </Card>
-            </motion.div>
-
-            {/* Quick Actions */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
-                <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wide mb-3">Quick Actions</h2>
-                <div className="grid grid-cols-2 gap-3">
-                    {[
-                        { label: "Today's Appointments", href: '/doctor/appointments', icon: Calendar },
-                        { label: 'My Patients',           href: '/doctor/patients',     icon: Users },
-                    ].map((action) => (
-                        <Button key={action.href} asChild variant="outline" className="h-14 gap-3 justify-start border-neutral-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all duration-200">
-                            <Link href={action.href}>
-                                <action.icon className="h-4 w-4 text-emerald-600" />
-                                <span className="text-sm font-medium">{action.label}</span>
-                                <ArrowRight className="h-3 w-3 ml-auto text-neutral-400" />
-                            </Link>
-                        </Button>
-                    ))}
+            <section aria-labelledby="queue" className="rounded-xl border border-neutral-200 bg-white p-4 shadow-[var(--shadow-card)]">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <h2 id="queue" className="text-base font-semibold text-neutral-900">Today&apos;s queue</h2>
+                    {o && <span className="text-xs text-neutral-600">{o.queue.seen} of {o.queue.total} seen</span>}
                 </div>
-            </motion.div>
+                {!o ? <p className="text-sm text-neutral-500">Loading…</p> : o.queue.total === 0 ? <p className="text-sm text-neutral-500">No appointments today.</p> : (
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <div>
+                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">{o.queue.now ? 'With you now' : 'Next patient'}</p>
+                            {next ? (
+                                <Link href={`/doctor/consultation/${next.id}`} className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 hover:shadow-[var(--shadow-raised)]">
+                                    <span className="min-w-0"><span className="block truncate font-semibold text-neutral-900">#{next.queue} {next.patient}</span><span className="text-xs text-neutral-600">{next.time}</span></span>
+                                    <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-800">{o.queue.now ? 'Open' : 'Start'} <ArrowRight className="h-3.5 w-3.5" aria-hidden /></span>
+                                </Link>
+                            ) : <p className="text-sm text-neutral-500">Everyone has been seen.</p>}
+                        </div>
+                        <div>
+                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Waiting ({o.queue.waiting.length})</p>
+                            {o.queue.waiting.length === 0 ? <p className="text-sm text-neutral-500">Nobody waiting.</p> : (
+                                <ol className="space-y-1 text-sm">{o.queue.waiting.slice(0, 5).map((w) => <li key={w.id} className="flex items-center justify-between gap-2"><span className="truncate">#{w.queue} {w.patient}</span><span className="text-xs text-neutral-500">{w.time}</span></li>)}</ol>
+                            )}
+                        </div>
+                        <div>
+                            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Not arrived ({o.queue.later.length})</p>
+                            {o.queue.later.length === 0 ? <p className="text-sm text-neutral-500">None.</p> : (
+                                <ol className="space-y-1 text-sm">{o.queue.later.slice(0, 5).map((w) => <li key={w.id} className="flex items-center justify-between gap-2"><span className="truncate">#{w.queue} {w.patient}</span><StatusBadge status={w.status} size="sm" /></li>)}</ol>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+                <ChartCard title="Appointments, past and upcoming" icon={Calendar} loading={overview.loading && !o} error={overview.error && !o ? overview.error : null}
+                    empty={o ? o.series.every((d) => d.appointments === 0) : false} summary={`Appointments per day from a week ago to a week ahead: ${o?.series.map((d) => `${d.label} ${d.appointments}`).join(', ')}. Days after today are upcoming.`}>
+                    <TrendChart data={o?.series ?? []} xKey="label" kind="bar" shadeFrom={firstUpcoming} series={[{ key: 'appointments', label: 'Appointments', color: '#059669' }]} />
+                </ChartCard>
+                <ChartCard title="Earned per day (paid bills), last 7 days" icon={TrendingUp} loading={overview.loading && !o} error={overview.error && !o ? overview.error : null}
+                    empty={past.every((d) => d.revenue === 0)} emptyText="No paid bills in the last week yet."
+                    summary={`Your fee on paid bills per day: ${past.map((d) => `${d.label} ${d.revenue}`).join(', ')}.`}>
+                    <TrendChart data={past.slice(-7)} xKey="label" kind="area" series={[{ key: 'revenue', label: 'Earned', kind: 'money', color: '#0d9488' }]} />
+                </ChartCard>
+            </div>
+
+            {o && (
+                <section aria-label="Last 30 days" className="grid grid-cols-3 gap-3">
+                    <StatCard label="Completion rate" value={o.lastThirtyDays.completionRate === null ? '-' : `${o.lastThirtyDays.completionRate}%`} icon={UserCheck} tone="brand" hint="Booked visits that were seen, last 30 days" />
+                    <StatCard label="Seen" value={o.lastThirtyDays.completed} tone="neutral" hint="Last 30 days" />
+                    <StatCard label="Missed or cancelled" value={o.lastThirtyDays.missed + o.lastThirtyDays.cancelled} tone={o.lastThirtyDays.missed > 0 ? 'warning' : 'neutral'} hint={`${o.lastThirtyDays.missed} no-show, ${o.lastThirtyDays.cancelled} cancelled`} />
+                </section>
+            )}
         </div>
     );
 }

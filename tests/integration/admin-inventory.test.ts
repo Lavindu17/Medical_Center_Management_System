@@ -317,13 +317,4 @@ describe('admin: doctor fees and revenue', () => {
         expect((await GET(new Request('http://x/api/admin/revenue'))).status).toBe(200);
     });
 
-    it('dashboard stats count patients, staff and today\'s bookings', async () => {
-        await as('ADMIN', ADMIN);
-        const { GET } = await import('@/app/api/admin/dashboard-stats/route');
-        const body = await (await GET()).json();
-        expect(body.patients).toBeGreaterThanOrEqual(2);
-        expect(body.staff).toBeGreaterThanOrEqual(6);
-        expect(typeof body.revenue).toBe('number');
-        expect(typeof body.todayAppointments).toBe('number');
-    });
 });

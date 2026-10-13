@@ -1,258 +1,114 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Pill, AlertTriangle, FileText, Activity, TrendingUp, Package, BarChart2 } from 'lucide-react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { formatLKR } from '@/lib/utils';
-import { SkeletonKpiRow } from '@/components/ui/skeleton';
+import { AlertTriangle, BarChart2, FileText, Package, Pill, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
-import {
-    ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
-    AreaChart, Area
-} from 'recharts';
+import { SkeletonKpiRow } from '@/components/ui/skeleton';
+import { ChartCard, DonutBreakdown, RankedBars, TrendChart } from '@/components/charts';
+import { useApi } from '@/hooks/useApi';
+import { formatLKR } from '@/lib/utils';
 
-const THEME = {
-    primary:  '#10B981', // emerald-500
-    mint:     '#73E6CA', 
-    teal:     '#0891B2', 
-    emerald:  '#059669', 
-    orange:   '#F97316', 
-    red:      '#EF4444', 
-    slate:    '#94A3B8', 
-    neutral:  '#E5E7EB', 
-} as const;
-
-const CHART_COLORS = [THEME.primary, THEME.mint, THEME.emerald, THEME.teal, THEME.orange];
-
-function CurrencyTooltip({ active, payload, label }: any) {
-    if (!active || !payload?.length) return null;
-    return (
-        <div className="bg-white border border-neutral-200 rounded-lg shadow-lg px-3 py-2 text-xs">
-            <p className="font-semibold text-neutral-700 mb-1">{label}</p>
-            {payload.map((p: any) => (
-                <p key={p.dataKey} style={{ color: p.color }} className="font-mono">
-                    {p.name}: {p.name.includes('Revenue') || p.name.includes('Value') ? formatLKR(p.value) : p.value}
-                </p>
-            ))}
-        </div>
-    );
+interface Stats { pendingPrescriptions: number; lowStockCount: number; outOfStockCount: number; totalMedicines: number; expiredBatchesCount: number; expiringSoonCount: number }
+interface Charts {
+    dailyTrend: { date: string; label: string; quantity: number; revenue: number }[];
+    inventory: { assetValue: number; writeOffValue: number };
+    categories: { name: string; value: number }[];
+}
+interface Lists {
+    expiring: { name: string; batch: string; quantity: number; expiry: string; daysLeft: number }[];
+    lowStock: { name: string; stock: number; minimum: number }[];
+    topMedicines: { name: string; value: number }[];
+    prescriptions: { day: string; label: string; issued: number }[];
 }
 
+const daysText = (n: number) => (n < 0 ? `expired ${-n} day${n === -1 ? '' : 's'} ago` : n === 0 ? 'expires today' : `${n} day${n === 1 ? '' : 's'} left`);
+
 export default function PharmacistDashboard() {
-    const [stats, setStats] = useState({
-        pendingPrescriptions: 0,
-        lowStockCount: 0,
-        outOfStockCount: 0,
-        totalMedicines: 0,
-        expiredBatchesCount: 0,
-        expiringSoonCount: 0
-    });
-    
-    const [chartData, setChartData] = useState<{
-        dailyTrend: any[];
-        inventory: { assetValue: number; writeOffValue: number };
-        categories: { name: string; value: number }[];
-    } | null>(null);
+    const stats = useApi<Stats>('/api/pharmacist/stats', { refreshMs: 60_000 });
+    const charts = useApi<Charts>('/api/pharmacist/chart-data', { refreshMs: 60_000 });
+    const lists = useApi<Lists>('/api/pharmacist/lists', { refreshMs: 60_000 });
+    const s = stats.data, c = charts.data, l = lists.data;
+    const alerts = s ? s.expiredBatchesCount + s.expiringSoonCount + s.lowStockCount + s.outOfStockCount : 0;
+    const anyError = stats.error || charts.error || lists.error;
 
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState(false);
-
-    useEffect(() => {
-        // Each call is handled on its own so one failing endpoint cannot take the whole dashboard down.
-        const load = async (url: string) => {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`${url} responded ${res.status}`);
-            return res.json();
-        };
-        Promise.allSettled([load('/api/pharmacist/stats'), load('/api/pharmacist/chart-data')])
-            .then(([statsRes, chartsRes]) => {
-                if (statsRes.status === 'fulfilled') setStats(statsRes.value);
-                else { console.error(statsRes.reason); setLoadError(true); }
-                if (chartsRes.status === 'fulfilled') setChartData(chartsRes.value);
-                else { console.error(chartsRes.reason); setLoadError(true); }
-            })
-            .finally(() => setLoading(false));
-    }, []);
-
-    const cards = [
-        {
-            title: 'Pending Prescriptions',
-            value: stats.pendingPrescriptions,
-            icon: FileText,
-            description: 'Require dispensing',
-            tone: 'brand' as const,
-            href: '/pharmacist/prescriptions'
-        },
-        {
-            title: 'Alerts',
-            value: stats.expiredBatchesCount + stats.expiringSoonCount + stats.lowStockCount + stats.outOfStockCount,
-            icon: AlertTriangle,
-            description: 'Inventory & Expiry warnings',
-            tone: 'warning' as const,
-            href: '/pharmacist/alerts'
-        },
-        {
-            title: 'Total Inventory',
-            value: stats.totalMedicines,
-            icon: Pill,
-            description: 'Medicine types registered',
-            tone: 'info' as const,
-            href: '/pharmacist/inventory'
-        }
-    ];
-
-    const inventoryData = chartData?.inventory ? [
-        { name: 'Active Asset Value', value: chartData.inventory.assetValue, fill: THEME.primary },
-        { name: 'Expired Write-offs', value: chartData.inventory.writeOffValue, fill: THEME.red }
-    ] : [];
+    const inventory = c ? [{ name: 'Usable stock', value: c.inventory.assetValue }, { name: 'Expired write-off', value: c.inventory.writeOffValue }] : [];
 
     return (
         <div className="space-y-6">
-            <PageHeader title="Pharmacist Dashboard" description="Overview of pharmacy operations and inventory." />
+            <PageHeader title="Pharmacist Dashboard" description="Prescriptions to dispense, stock to watch and what is selling. Updates every minute." />
 
-            {loadError && !loading && (
+            {anyError && !(s && c && l) && (
                 <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                     Some dashboard figures could not be loaded. Reload the page; if it keeps happening, the database may be missing the latest schema updates.
                 </div>
             )}
 
-            {loading ? <SkeletonKpiRow count={3} /> : (
-                <div className="grid gap-4 md:grid-cols-3">
-                    {cards.map((card) => (
-                        <StatCard
-                            key={card.title}
-                            label={card.title}
-                            value={card.value}
-                            hint={card.description}
-                            icon={card.icon}
-                            tone={card.title === 'Alerts' && card.value > 0 ? 'danger' : card.tone}
-                            href={card.href}
-                        />
-                    ))}
+            {stats.loading && !s ? <SkeletonKpiRow count={3} /> : s && (
+                <div className="grid gap-3 md:grid-cols-3">
+                    <StatCard label="Pending prescriptions" value={s.pendingPrescriptions} hint="Require dispensing" icon={FileText} tone="brand" href="/pharmacist/prescriptions" />
+                    <StatCard label="Alerts" value={alerts} hint="Low stock, expired or expiring" icon={AlertTriangle} tone={alerts > 0 ? 'danger' : 'warning'} href="/pharmacist/alerts" />
+                    <StatCard label="Medicines" value={s.totalMedicines} hint="Registered in inventory" icon={Pill} tone="info" href="/pharmacist/inventory" />
                 </div>
             )}
 
-            {!loading && chartData && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    
-                    {/* Daily Trend Area Chart */}
-                    <Card className="border border-neutral-100 lg:col-span-2">
-                        <CardHeader className="pb-0 pt-4 px-4">
-                            <CardTitle className="text-xs font-semibold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-emerald-600" />
-                                Dispensing & Revenue Trend (Last 30 Days)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="px-4 pb-4 mt-2">
-                            <ResponsiveContainer width="100%" height={240}>
-                                <AreaChart data={chartData.dailyTrend}>
-                                    <defs>
-                                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={THEME.primary} stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor={THEME.primary} stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke={THEME.neutral} vertical={false} />
-                                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: THEME.slate }} axisLine={false} tickLine={false} interval={5} />
-                                    <YAxis yAxisId="left" tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} tick={{ fontSize: 10, fill: THEME.slate }} axisLine={false} tickLine={false} width={36} />
-                                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: THEME.slate }} axisLine={false} tickLine={false} width={24} />
-                                    <ReTooltip content={<CurrencyTooltip />} />
-                                    <Legend wrapperStyle={{ fontSize: 11, color: THEME.slate }} />
-                                    <Area yAxisId="left" type="monotone" dataKey="revenue" name="Revenue (LKR)" stroke={THEME.primary} fill="url(#colorRev)" strokeWidth={2} dot={false} />
-                                    <Area yAxisId="right" type="step" dataKey="quantity" name="Units Dispensed" stroke={THEME.slate} fill="none" strokeWidth={1.5} dot={false} />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </CardContent>
-                    </Card>
+            <div className="grid gap-4 lg:grid-cols-2">
+                <section aria-labelledby="expiring" className="rounded-xl border border-neutral-200 bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between"><h2 id="expiring" className="text-base font-semibold text-neutral-800">Expiring soon</h2><Link href="/pharmacist/alerts" className="text-sm font-medium text-emerald-800 hover:underline">All alerts</Link></div>
+                    {!l ? <p className="text-sm text-neutral-500">Loading…</p> : l.expiring.length === 0 ? <p className="text-sm text-neutral-500">Nothing expires in the next 30 days.</p> : (
+                        <ul className="divide-y text-sm">
+                            {l.expiring.map((b, i) => (
+                                <li key={`${i}-${b.name}-${b.batch}`} className="flex items-center justify-between gap-3 py-2">
+                                    <span className="min-w-0"><span className="block truncate font-medium">{b.name}</span><span className="text-xs text-neutral-600">Batch {b.batch}, {b.quantity} left</span></span>
+                                    <span className={`shrink-0 text-xs font-medium ${b.daysLeft < 0 ? 'text-red-700' : 'text-amber-800'}`}>{daysText(b.daysLeft)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+                <section aria-labelledby="low" className="rounded-xl border border-neutral-200 bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between"><h2 id="low" className="text-base font-semibold text-neutral-800">Running low</h2><Link href="/pharmacist/inventory" className="text-sm font-medium text-emerald-800 hover:underline">Inventory</Link></div>
+                    {!l ? <p className="text-sm text-neutral-500">Loading…</p> : l.lowStock.length === 0 ? <p className="text-sm text-neutral-500">Every medicine is above its minimum.</p> : (
+                        <ul className="divide-y text-sm">
+                            {l.lowStock.map((m, i) => (
+                                <li key={`${i}-${m.name}`} className="flex items-center justify-between gap-3 py-2">
+                                    <span className="truncate font-medium">{m.name}</span>
+                                    <span className={`shrink-0 text-xs font-medium ${m.stock === 0 ? 'text-red-700' : 'text-amber-800'}`}>{m.stock === 0 ? 'Out of stock' : `${m.stock} left`} (minimum {m.minimum})</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+            </div>
 
-                    {/* Inventory & Category Visuals */}
-                    <div className="space-y-4">
-                        <Card className="border border-neutral-100">
-                            <CardHeader className="pb-0 pt-4 px-4">
-                                <CardTitle className="text-xs font-semibold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Package className="h-4 w-4 text-emerald-600" />
-                                    Inventory Valuation
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-4 mt-2">
-                                <ResponsiveContainer width="100%" height={120}>
-                                    <BarChart data={inventoryData} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                        <XAxis type="number" hide />
-                                        <YAxis type="category" dataKey="name" hide />
-                                        <ReTooltip cursor={{fill: 'transparent'}} content={<CurrencyTooltip />} />
-                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={24}>
-                                            {inventoryData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                                <div className="space-y-2 mt-2">
-                                    {inventoryData.map(item => (
-                                        <div key={item.name} className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.fill }} />
-                                                <span className="text-neutral-600">{item.name}</span>
-                                            </div>
-                                            <span className="font-mono font-medium text-neutral-800">{formatLKR(item.value)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+            <div className="grid gap-4 lg:grid-cols-3">
+                <ChartCard title="Dispensing and revenue, last 30 days" icon={TrendingUp} loading={charts.loading && !c} error={charts.error && !c ? charts.error : null}
+                    empty={c ? c.dailyTrend.every((d) => d.revenue === 0 && d.quantity === 0) : false} emptyText="Nothing dispensed and paid in the last 30 days."
+                    summary={`Revenue and units dispensed per day over 30 days. Total revenue ${formatLKR(c?.dailyTrend.reduce((n, d) => n + d.revenue, 0) ?? 0)}.`} className="border border-neutral-200 shadow-none lg:col-span-2">
+                    <TrendChart data={c?.dailyTrend ?? []} xKey="label" kind="area" series={[
+                        { key: 'revenue', label: 'Revenue', kind: 'money', color: '#059669' },
+                        { key: 'quantity', label: 'Units dispensed', color: '#0284c7', right: true }]} />
+                </ChartCard>
+                <ChartCard title="Stock value" icon={Package} loading={charts.loading && !c} empty={inventory.every((i) => i.value === 0)} emptyText="No stock recorded yet."
+                    summary={`Stock value at cost: usable ${formatLKR(c?.inventory.assetValue ?? 0)}, expired ${formatLKR(c?.inventory.writeOffValue ?? 0)}.`}>
+                    <DonutBreakdown data={inventory} kind="money" colors={{ 'Usable stock': '#059669', 'Expired write-off': '#dc2626' }} />
+                </ChartCard>
+            </div>
 
-                        <Card className="border border-neutral-100">
-                            <CardHeader className="pb-0 pt-4 px-4">
-                                <CardTitle className="text-xs font-semibold text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-                                    <BarChart2 className="h-4 w-4 text-emerald-600" />
-                                    Top Categories (Revenue)
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-4 mt-2">
-                                {chartData.categories.length === 0 ? (
-                                    <div className="h-[140px] flex items-center justify-center text-sm text-neutral-400">No data available</div>
-                                ) : (
-                                    <>
-                                        <ResponsiveContainer width="100%" height={140}>
-                                            <PieChart>
-                                                <Pie
-                                                    data={chartData.categories}
-                                                    cx="50%" cy="50%"
-                                                    innerRadius={35} outerRadius={60}
-                                                    paddingAngle={2}
-                                                    dataKey="value"
-                                                    strokeWidth={0}
-                                                >
-                                                    {chartData.categories.map((_, i) => (
-                                                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                                                    ))}
-                                                </Pie>
-                                                <ReTooltip formatter={(v: any) => formatLKR(Number(v))} />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                        <div className="space-y-1.5 mt-2">
-                                            {chartData.categories.slice(0, 3).map((c, i) => (
-                                                <div key={c.name} className="flex items-center justify-between text-xs">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                                                        <span className="text-neutral-600 truncate max-w-[100px]">{c.name}</span>
-                                                    </div>
-                                                    <span className="font-mono text-neutral-700">{formatLKR(c.value)}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </motion.div>
-            )}
+            <div className="grid gap-4 lg:grid-cols-3">
+                <ChartCard title="Most dispensed, last 30 days" icon={Pill} loading={lists.loading && !l} empty={(l?.topMedicines.length ?? 0) === 0} emptyText="Nothing dispensed yet."
+                    summary={`Units dispensed: ${l?.topMedicines.map((m) => `${m.name} ${m.value}`).join(', ')}.`} height={220}>
+                    <RankedBars data={l?.topMedicines ?? []} />
+                </ChartCard>
+                <ChartCard title="Revenue by category" icon={BarChart2} loading={charts.loading && !c} empty={(c?.categories.length ?? 0) === 0} emptyText="No category revenue yet."
+                    summary={`Revenue by category: ${c?.categories.map((x) => `${x.name} ${formatLKR(x.value)}`).join(', ')}.`} height={220}>
+                    <DonutBreakdown data={c?.categories ?? []} kind="money" />
+                </ChartCard>
+                <ChartCard title="Prescriptions issued, last 14 days" icon={FileText} loading={lists.loading && !l} empty={l ? l.prescriptions.every((d) => d.issued === 0) : false}
+                    summary={`Prescriptions per day: ${l?.prescriptions.map((d) => `${d.label} ${d.issued}`).join(', ')}.`} height={220}>
+                    <TrendChart data={l?.prescriptions ?? []} xKey="label" kind="bar" series={[{ key: 'issued', label: 'Issued', color: '#0284c7' }]} />
+                </ChartCard>
+            </div>
         </div>
     );
 }
-

@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UploadModal } from '@/components/lab/UploadModal';
+import { LabSummary } from '@/components/lab/LabSummary';
 import { FlaskConical, Calendar, UserCheck, Search, History, Clock, RefreshCw, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -125,6 +126,7 @@ export default function LabAssistantDashboard() {
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [version, setVersion] = useState(0);
 
     const fetchRequests = useCallback(async () => {
         try {
@@ -133,6 +135,7 @@ export default function LabAssistantDashboard() {
             const data = await res.json();
             if (!Array.isArray(data)) throw new Error('Unexpected response');
             setRequests(data);
+            setVersion((v) => v + 1);
             setFailed(false);
         } catch (error) {
             console.error('Failed to fetch requests', error);
@@ -186,6 +189,8 @@ export default function LabAssistantDashboard() {
                     </Button>
                 </div>}
             />
+
+            <LabSummary version={version} />
 
             <Tabs defaultValue="pending" className="space-y-4">
                 <TabsList>

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import { pool, query } from '@/lib/db';
 import { ALICE, BOB, as, isoDate } from './helpers';
+import { addDays, localDay } from '@/lib/hr-time';
 
 // The doctor dashboard cards say "Total Revenue - from paid bills" and "patients seen". These tests pin the numbers
 // to those labels, using a brand-new doctor so every count is exact.
@@ -45,7 +46,7 @@ const stats = async () => {
 };
 const chart = async () => {
     await as('DOCTOR', DR);
-    const { GET } = await import('@/app/api/doctor/chart-data/route');
+    const { GET } = await import('@/app/api/doctor/overview/route');
     return GET();
 };
 
@@ -86,40 +87,75 @@ describe('doctor stats', () => {
     });
 });
 
-describe('doctor weekly chart', () => {
-    it('returns the last 7 days, oldest first, ending today', async () => {
+describe('doctor overview', () => {
+    const todayStr = () => localDay(new Date(), 'Asia/Colombo');
+
+    it('returns a week back to a week ahead (15 days), oldest first, with today in the middle and later days flagged upcoming', async () => {
         const res = await chart();
         expect(res.status).toBe(200);
-        const data = await res.json();
-        expect(data).toHaveLength(7);
-        const expectedDays = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date(); d.setDate(d.getDate() - (6 - i));
-            return d.toLocaleDateString('en-US', { weekday: 'short' });
-        });
-        expect(data.map((d: any) => d.day)).toEqual(expectedDays);
+        const { series, today } = await res.json();
+        expect(series).toHaveLength(15);
+        expect(series[7].day).toBe(today);
+        expect(series[0].day).toBe(addDays(today, -7));
+        expect(series[14].day).toBe(addDays(today, 7));
+        expect(series.map((d: any) => d.upcoming)).toEqual(series.map((_: any, i: number) => i > 7));
     });
 
     it('shows appointments per day (cancelled excluded) and revenue only from paid, completed visits', async () => {
-        const data = await (await chart()).json();
-        // index 6 = today, 5 = yesterday, 4 = 2 days ago, 3 = 3 days ago, 2 = 4 days ago
-        expect(data[6]).toMatchObject({ appointments: 1, revenue: 0 });          // today: one live booking, nothing paid yet
-        expect(data[5]).toMatchObject({ appointments: 1, revenue: 0 });          // yesterday: completed but the bill is unpaid
-        expect(data[4]).toMatchObject({ appointments: 1, revenue: FEE });
-        expect(data[3]).toMatchObject({ appointments: 1, revenue: FEE });
-        expect(data[2]).toMatchObject({ appointments: 1, revenue: 0 });          // 4 days ago: still pending
-        expect(data[1]).toMatchObject({ appointments: 0, revenue: 0 });
-        expect(data[0]).toMatchObject({ appointments: 0, revenue: 0 });
+        const { series } = await (await chart()).json();
+        const at = (offset: number) => series[7 + offset];
+        expect(at(0)).toMatchObject({ appointments: 1, revenue: 0 });          // today: one live booking, nothing paid yet
+        expect(at(-1)).toMatchObject({ appointments: 1, revenue: 0 });         // yesterday: completed but the bill is unpaid
+        expect(at(-2)).toMatchObject({ appointments: 1, revenue: FEE });
+        expect(at(-3)).toMatchObject({ appointments: 1, revenue: FEE });
+        expect(at(-4)).toMatchObject({ appointments: 1, revenue: 0 });         // still pending
+        expect(at(-5)).toMatchObject({ appointments: 0, revenue: 0 });
+        expect(at(1)).toMatchObject({ appointments: 1, revenue: 0 });          // tomorrow's booking
+        expect(at(2)).toMatchObject({ appointments: 0 });                      // the cancelled one is not counted
     });
 
     it('weekly revenue adds up to the dashboard total for the same period', async () => {
-        const data = await (await chart()).json();
-        const weekly = data.reduce((s: number, d: any) => s + d.revenue, 0);
-        expect(weekly).toBe((await stats()).revenue);       // all paid visits here fall inside the week
+        const { series } = await (await chart()).json();
+        const weekly = series.filter((d: any) => !d.upcoming).reduce((s: number, d: any) => s + d.revenue, 0);
+        expect(weekly).toBe((await stats()).revenue);       // all paid visits here fall inside the window
+    });
+
+    it("builds today's queue: waiting, not arrived, with the doctor, and counts those seen", async () => {
+        const t = todayStr();
+        const ids: number[] = [];
+        for (const [time, status] of [['10:00', 'ONGOING'], ['10:15', 'CHECKED_IN'], ['10:30', 'COMPLETED']] as const) {
+            const r: any = await query(`INSERT INTO appointments (patient_id, doctor_id, date, time_slot, queue_number, status) VALUES (?, ?, ?, ?, 1, ?)`, [ALICE, DR, t, time, status]);
+            ids.push(r.insertId);
+        }
+        const { queue } = await (await chart()).json();
+        expect(queue.now.time).toBe('10:00');
+        expect(queue.waiting.map((w: any) => w.time)).toEqual(['10:15']);
+        expect(queue.later.map((w: any) => w.time)).toEqual(['09:00']);        // the pending one from setup
+        expect(queue.seen).toBe(1);
+        expect(queue.total).toBe(4);                                            // cancelled not counted
+        await query(`DELETE FROM appointments WHERE id IN (${ids.join(',')})`);
+    });
+
+    it('last 30 days: completion rate counts pending-in-the-past as missed, and reports cancellations', async () => {
+        const { lastThirtyDays: l } = await (await chart()).json();
+        expect(l.completed).toBe(3);        // -1, -2, -3
+        expect(l.missed).toBe(1);           // -4 still pending
+        expect(l.completionRate).toBe(75);
+    });
+
+    it('a doctor with nothing booked gets empty lists and no rate, not an error', async () => {
+        const u: any = await query(`INSERT INTO users (email, password_hash, name, role, is_verified) VALUES (?, 'x', 'Dr. Quiet', 'DOCTOR', TRUE)`, [`quiet.${Date.now()}@dd-test.local`]);
+        await query(`INSERT INTO doctors (user_id, specialization, license_number, consultation_fee) VALUES (?, 'GP', ?, 100)`, [u.insertId, `LIC-${u.insertId}`]);
+        await as('DOCTOR', u.insertId);
+        const { GET } = await import('@/app/api/doctor/overview/route');
+        const body = await (await GET()).json();
+        expect(body.queue).toMatchObject({ now: null, waiting: [], later: [], seen: 0, total: 0 });
+        expect(body.lastThirtyDays.completionRate).toBeNull();
     });
 
     it('requires the doctor role', async () => {
         await as('PATIENT', ALICE);
-        const { GET } = await import('@/app/api/doctor/chart-data/route');
+        const { GET } = await import('@/app/api/doctor/overview/route');
         expect((await GET()).status).toBe(403);
     });
 });

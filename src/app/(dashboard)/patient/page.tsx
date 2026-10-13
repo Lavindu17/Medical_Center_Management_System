@@ -14,6 +14,8 @@ import { EmptyState, ErrorState } from '@/components/ui/state-views';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useAuth } from '@/context/AuthContext';
+import { useApi } from '@/hooks/useApi';
+import { formatLKR } from '@/lib/utils';
 import { asDoctor } from '@/lib/names';
 import { daysFromToday, firstName, friendlyDay, greeting, parseDay, shortTime } from '@/lib/dates';
 
@@ -144,6 +146,7 @@ export default function PatientDashboard() {
     const [appointments, setAppointments] = useState<Appointment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [failed, setFailed] = useState(false);
+    const summary = useApi<{ prescriptionsToCollect: number; labResultsReady: number; unpaidBills: number; unpaidAmount: number }>('/api/patient/summary', { refreshMs: 120_000 });
 
     const load = useCallback(async () => {
         try {
@@ -163,7 +166,7 @@ export default function PatientDashboard() {
         return () => clearTimeout(timer);
     }, [load]);
 
-    const { upcoming, history, completedCount, cancelledCount } = useMemo(() => {
+    const { upcoming, history } = useMemo(() => {
         const live = appointments.filter((a) => a.status !== 'CANCELLED' && a.status !== 'COMPLETED' && a.status !== 'ABSENT' && a.status !== 'NO_SHOW' && daysFromToday(a.date) >= 0);
         live.sort((a, b) => parseDay(a.date).getTime() - parseDay(b.date).getTime() || a.timeSlot.localeCompare(b.timeSlot));
         const rest = appointments.filter((a) => !live.includes(a));
@@ -171,8 +174,6 @@ export default function PatientDashboard() {
         return {
             upcoming: live,
             history: rest,
-            completedCount: appointments.filter((a) => a.status === 'COMPLETED').length,
-            cancelledCount: appointments.filter((a) => a.status === 'CANCELLED').length,
         };
     }, [appointments]);
 
@@ -241,10 +242,12 @@ export default function PatientDashboard() {
                         />
                     )}
 
-                    <section aria-label="Overview" className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <section aria-label="Overview" className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
                         <StatCard compact label="Upcoming" value={upcoming.length} icon={CalendarClock} tone="brand" href="/patient/appointments" />
-                        <StatCard compact label="Completed" value={completedCount} icon={CheckCircle2} tone="info" />
-                        <StatCard compact label="Cancelled" value={cancelledCount} icon={CalendarX} tone="neutral" />
+                        <StatCard compact label="Medicines to collect" value={summary.data?.prescriptionsToCollect ?? '-'} icon={Pill} tone={summary.data?.prescriptionsToCollect ? 'warning' : 'neutral'} href="/patient/prescriptions" />
+                        <StatCard compact label="Lab results ready" value={summary.data?.labResultsReady ?? '-'} icon={FileText} tone="info" href="/patient/labs" hint="Last 30 days" />
+                        <StatCard compact label="Unpaid bills" value={summary.data?.unpaidBills ?? '-'} icon={CreditCard} tone={summary.data?.unpaidBills ? 'warning' : 'neutral'} href="/patient/billing"
+                            hint={summary.data?.unpaidBills ? formatLKR(summary.data.unpaidAmount) : undefined} />
                     </section>
 
                     <section aria-labelledby="quick-heading" className="space-y-3">
