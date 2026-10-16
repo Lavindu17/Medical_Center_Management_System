@@ -17,9 +17,9 @@ export async function GET() {
     if ('error' in auth) return auth.error;
     try {
         const roles = await Promise.all(STAFF_ROLES.map(async (role) => {
-            const { grants, customised, stored } = await roleGrants(role);
+            const { grants, customised, stored, missing } = await roleGrants(role);
             const [n] = await query<any[]>('SELECT COUNT(*) AS n FROM users WHERE role = ?', [role]);
-            return { role, grants, customised, stored, people: Number(n.n) };
+            return { role, grants, customised, stored, missing, people: Number(n.n) };
         }));
 
         let custom: any[] = [];

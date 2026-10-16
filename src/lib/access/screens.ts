@@ -15,7 +15,7 @@ export interface Screen {
     resource: ResourceKey;
     level: Level;
     /** Other paths that belong to this screen (a detail page, a booking page) */
-    also?: string[];
+    also?: (string | { href: string; level: Level })[];
 }
 
 export const SCREENS: Screen[] = [
@@ -26,7 +26,7 @@ export const SCREENS: Screen[] = [
     { section: 'Dashboards', label: 'Doctor', href: '/doctor', icon: 'LayoutDashboard', resource: 'doctor.dashboard', level: 'view' },
     { section: 'Dashboards', label: 'Pharmacy', href: '/pharmacist', icon: 'LayoutDashboard', resource: 'pharmacy.dashboard', level: 'view' },
     // Front desk
-    { section: 'Front desk', label: 'Appointments', href: '/receptionist/appointments', icon: 'CalendarCheck', resource: 'reception.appointments', level: 'view', also: ['/receptionist/appointments/book'] },
+    { section: 'Front desk', label: 'Appointments', href: '/receptionist/appointments', icon: 'CalendarCheck', resource: 'reception.appointments', level: 'view', also: [{ href: '/receptionist/appointments/book', level: 'add' }] },
     { section: 'Front desk', label: 'Register patient', href: '/receptionist/register', icon: 'UserPlus', resource: 'reception.patients', level: 'add' },
     { section: 'Front desk', label: 'Patient directory', href: '/receptionist/patients', icon: 'Users', resource: 'reception.patients', level: 'view' },
     // Clinical
@@ -68,16 +68,20 @@ export const screensFor = (grants: GrantMap): Screen[] => SCREENS.filter((s) => 
 // A section root such as /doctor is only that page itself: pages beneath it are their own screens (or closed)
 const underPath = (pathname: string, base: string) => pathname === base || (base.split('/').length > 2 && pathname.startsWith(base + '/'));
 
-/** The screen a path belongs to (the most specific match), or null for pages that are open to every member of staff. */
-export function screenAt(pathname: string): Screen | null {
-    let best: Screen | null = null, bestLen = -1;
+/** What a path needs: the screen it belongs to (the most specific match) and the level that opens it, or null if it is not a screen. */
+export function requirementAt(pathname: string): { screen: Screen; level: Level } | null {
+    let best: { screen: Screen; level: Level } | null = null, bestLen = -1;
     for (const s of SCREENS) {
-        for (const base of [s.href, ...(s.also ?? [])]) {
-            if (underPath(pathname, base) && base.length > bestLen) { best = s; bestLen = base.length; }
+        const entries = [{ href: s.href, level: s.level }, ...(s.also ?? []).map((a) => (typeof a === 'string' ? { href: a, level: s.level } : a))];
+        for (const e of entries) {
+            if (underPath(pathname, e.href) && e.href.length > bestLen) { best = { screen: s, level: e.level }; bestLen = e.href.length; }
         }
     }
     return best;
 }
+
+/** The screen a path belongs to, or null when it is not a screen. */
+export const screenAt = (pathname: string): Screen | null => requirementAt(pathname)?.screen ?? null;
 
 /** The one staff page that is not a screen: it only sends people to their start screen (or says they have none). */
 const HOME_PATH = '/staff';
@@ -88,8 +92,8 @@ const HOME_PATH = '/staff';
  */
 export function mayOpen(grants: GrantMap, pathname: string): boolean {
     if (pathname === HOME_PATH) return true;
-    const screen = screenAt(pathname);
-    return screen ? allows(grants, screen) : false;
+    const need = requirementAt(pathname);
+    return need ? allows(grants, { resource: need.screen.resource, level: need.level }) : false;
 }
 
 /** Where a person lands after signing in: the dashboard that suits their role, else the first screen they can open, else null. */

@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
@@ -18,6 +19,8 @@ import { User } from '@/types';
 import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
 
 export default function UserManagementPage() {
+    const canAdd = useCan('admin.users', 'add');
+    const canChange = useCan('admin.users', 'change');
     const confirm = useConfirm();
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -148,7 +151,7 @@ export default function UserManagementPage() {
                 <PageHeader title="User Management" description="Manage staff access and patient accounts." />
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700">
+                        <Button hidden={!canAdd} className="bg-emerald-600 hover:bg-emerald-700">
                             <Plus className="mr-2 h-4 w-4" /> Add Staff
                         </Button>
                     </DialogTrigger>
@@ -180,6 +183,7 @@ export default function UserManagementPage() {
                                             <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
                                             <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
                                             <SelectItem value="HR_MANAGER">HR Manager</SelectItem>
+                                            <SelectItem value="STAFF">Other staff (permissions by profile)</SelectItem>
                                             <SelectItem value="ADMIN">Admin</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -252,6 +256,7 @@ export default function UserManagementPage() {
                                 <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
                                 <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
                                             <SelectItem value="HR_MANAGER">HR Manager</SelectItem>
+                                            <SelectItem value="STAFF">Other staff (permissions by profile)</SelectItem>
                                 <SelectItem value="ADMIN">Admin</SelectItem>
                                 <SelectItem value="PATIENT">Patient</SelectItem>
                             </SelectContent>
@@ -290,10 +295,10 @@ export default function UserManagementPage() {
                                     <TableCell>{user.phone || '-'}</TableCell>
                                     <TableCell>{formatDate(user.createdAt)}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(user)} aria-label="Edit">
+                                        <Button variant="ghost" size="icon" hidden={!canChange} onClick={() => handleEditClick(user)} aria-label="Edit">
                                             <Edit className="h-4 w-4 text-neutral-500" aria-hidden />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} aria-label="Delete">
+                                        <Button variant="ghost" size="icon" hidden={!canChange} onClick={() => handleDeleteUser(user.id)} aria-label="Delete">
                                             <Trash2 className="h-4 w-4 text-red-500" aria-hidden />
                                         </Button>
                                     </TableCell>
@@ -349,6 +354,7 @@ export default function UserManagementPage() {
                                     <SelectItem value="LAB_ASSISTANT">Lab Assistant</SelectItem>
                                     <SelectItem value="RECEPTIONIST">Receptionist</SelectItem>
                                             <SelectItem value="HR_MANAGER">HR Manager</SelectItem>
+                                            <SelectItem value="STAFF">Other staff (permissions by profile)</SelectItem>
                                     <SelectItem value="ADMIN">Admin</SelectItem>
                                     <SelectItem value="PATIENT">Patient</SelectItem>
                                 </SelectContent>

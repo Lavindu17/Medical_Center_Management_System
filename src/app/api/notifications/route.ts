@@ -2,12 +2,11 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 
-const ALL_ROLES = ['PATIENT', 'DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN'] as const;
 
 // GET the signed-in user's notifications, newest first. Everyone only ever sees their own.
 //   ?limit=20 (max 100)   ?unread=1 only unread   ?before=<id> older than this id (paging)   ?countOnly=1
 export async function GET(req: Request) {
-    const auth = await requireRole(...ALL_ROLES);
+    const auth = await requireRole();
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

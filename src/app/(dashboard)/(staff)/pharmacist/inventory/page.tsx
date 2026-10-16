@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
@@ -24,6 +25,8 @@ const SHELF_OPTIONS = [
 ];
 
 export default function InventoryPage() {
+    const canAdd = useCan('pharmacy.inventory', 'add');
+    const canChange = useCan('pharmacy.inventory', 'change');
     const confirm = useConfirm();
     const [medicines, setMedicines] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -226,7 +229,7 @@ export default function InventoryPage() {
                 <PageHeader title="Inventory" description="Manage medicine stocks and pricing." />
                 <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">
+                        <Button hidden={!canAdd} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">
                             <Plus className="mr-2 h-4 w-4" /> Add Medicine
                         </Button>
                     </DialogTrigger>
@@ -448,13 +451,13 @@ export default function InventoryPage() {
                                 <Button size="sm" variant="outline" onClick={() => openBatches(med)} className="border-emerald-600 text-emerald-700 hover:bg-emerald-50" title="View Batches">
                                     <Package className="h-4 w-4 mr-1" /> Batches
                                 </Button>
-                                <Button size="sm" onClick={() => openRestock(med)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-bold">
+                                <Button size="sm" hidden={!canAdd} onClick={() => openRestock(med)} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm hover:shadow-md transition-all font-bold">
                                     Restock
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => openEdit(med)} className="hover:bg-neutral-100" aria-label={`Edit ${med.name}`}>
+                                <Button size="sm" variant="ghost" hidden={!canChange} onClick={() => openEdit(med)} className="hover:bg-neutral-100" aria-label={`Edit ${med.name}`}>
                                     <Edit2 className="h-4 w-4" aria-hidden />
                                 </Button>
-                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(med.id)} aria-label={`Delete ${med.name}`}>
+                                <Button size="sm" variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" hidden={!canChange} onClick={() => handleDelete(med.id)} aria-label={`Delete ${med.name}`}>
                                     <Trash2 className="h-4 w-4" aria-hidden />
                                 </Button>
                             </div>

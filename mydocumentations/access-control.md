@@ -36,3 +36,28 @@ Add it to `RESOURCE_LIST`, give roles their starting ticks in `defaults.ts`, add
 ## Not (yet) permissions
 
 Notifications (the bell) and signing in/out are available to everyone who is signed in; they only ever show a person their own items.
+
+## "Other staff" (the STAFF role)
+
+For jobs that fit no built-in role (a billing clerk, a pharmacy assistant who must not dispense). `24_staff_role.sql` adds the role; it starts with only
+My Work and Account, and everything else comes from the profiles you give the person. (Permissions only ever add up, so to give someone *less* than a
+built-in role, use "Other staff" plus profiles instead of trying to subtract from the role.)
+
+## What follows permissions (not job titles)
+
+- **Notifications**: who is told about a new prescription, lab request, bill, doctor leave, leave request or correction is decided by permission
+  (`usersWithPermission` in `src/lib/notify.ts`): a person given dispensing through a profile is told, a pharmacist whose dispensing was removed is not.
+- **Whose records**: the shared appointment and lab-report routes show a person everything only if they hold the front desk's / the lab's permission;
+  otherwise (a doctor) only their own patients' visits. Private clinical notes are shown only to the visit's own doctor.
+- **Screens**: buttons a person cannot use are hidden or disabled (`useCan`, `AccessContext.tsx`). The server still checks every request.
+  Pages that need more than viewing declare it in `screens.ts` (for example booking needs "add").
+
+## Upgrades
+
+When a release adds a screen, existing sites have no stored row for it, so it is closed to every role until it is added. The Access window shows a
+notice per role and "Add them with the starting ticks" fills the missing screens without changing anything that exists (also `23_access_seed.sql`, re-run).
+
+## Worth knowing
+
+- Whoever can *change* Access control can give anyone (themselves included) any permission. Give it only to people you would trust as administrators.
+- Two administrators saving at once take turns (the person's or the role's row is locked); a rare lost race is retried.

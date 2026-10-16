@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 
-const ALL_ROLES = ['PATIENT', 'DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN'] as const;
 
 const schema = z.union([
     z.object({ all: z.literal(true) }),
@@ -12,7 +11,7 @@ const schema = z.union([
 
 // POST mark notifications as read: { ids: [1, 2] } or { all: true }. Only the caller's own can be touched.
 export async function POST(req: Request) {
-    const auth = await requireRole(...ALL_ROLES);
+    const auth = await requireRole();
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

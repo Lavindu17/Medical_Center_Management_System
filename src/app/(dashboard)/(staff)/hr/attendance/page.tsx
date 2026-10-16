@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronUp, Download, Pencil, Plus, Trash2 } from 'lucide-react';
@@ -69,6 +70,7 @@ function PunchDialog({ person, day, punch, timezone, onClose, onDone }: {
 }
 
 function Corrections({ onChanged }: { onChanged: () => void }) {
+    const canDecide = useCan('hr.attendance', 'approve');
     const { data, reload } = useApi<{ corrections: Correction[] }>('/api/hr/corrections');
     const askText = usePrompt();
     if (!data || data.corrections.length === 0) return null;
@@ -90,7 +92,7 @@ function Corrections({ onChanged }: { onChanged: () => void }) {
                     <li key={c.id} className="rounded-lg border border-amber-200 bg-white p-3 text-sm">
                         <p className="font-semibold text-neutral-900">{c.employee}: {formatDate(c.workDate)}, {c.clockIn} to {c.clockOut ?? '?'}</p>
                         <p className="text-neutral-700">{c.reason}</p>
-                        <div className="mt-2 flex gap-2">
+                        <div className="mt-2 flex gap-2" hidden={!canDecide}>
                             <Button type="button" size="sm" className="h-10" onClick={() => decide(c, 'APPROVE')}>Approve</Button>
                             <Button type="button" size="sm" variant="outline" className="h-10" onClick={() => decide(c, 'REJECT')}>Decline</Button>
                         </div>
@@ -102,6 +104,8 @@ function Corrections({ onChanged }: { onChanged: () => void }) {
 }
 
 export default function AttendancePage() {
+    const canEdit = useCan('hr.attendance', 'change');
+    const canAddRecord = useCan('hr.attendance', 'add');
     const askText = usePrompt();
     const [from, setFrom] = useState(monthStart());
     const [to, setTo] = useState(todayGuess());
@@ -183,8 +187,8 @@ export default function AttendancePage() {
                                                     <div key={pu.id} className="flex flex-wrap items-center justify-between gap-2">
                                                         <span className="text-neutral-800 tabular">{clockText(pu.clockIn, data.timezone)} to {pu.clockOut ? clockText(pu.clockOut, data.timezone) : 'open'}{pu.source !== 'SELF' && <span className="ml-2 rounded bg-neutral-100 px-1.5 py-0.5 text-[11px]">{pu.source === 'HR' ? 'HR edit' : 'correction'}{pu.note ? `: ${pu.note}` : ''}</span>}</span>
                                                         <span className="flex gap-1">
-                                                            <Button type="button" variant="ghost" size="sm" className="h-10 gap-1" onClick={() => setEditing({ person: p, day: d.day, punch: pu })}><Pencil className="h-3.5 w-3.5" aria-hidden /> Edit</Button>
-                                                            <Button type="button" variant="ghost" size="sm" className="h-10 gap-1 text-red-700" onClick={() => removePunch(p, pu.id, d.day)} aria-label={`Delete session on ${dayText(d.day)}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></Button>
+                                                            <Button type="button" variant="ghost" size="sm" className="h-10 gap-1" hidden={!canEdit} onClick={() => setEditing({ person: p, day: d.day, punch: pu })}><Pencil className="h-3.5 w-3.5" aria-hidden /> Edit</Button>
+                                                            <Button type="button" variant="ghost" size="sm" className="h-10 gap-1 text-red-700" hidden={!canEdit} onClick={() => removePunch(p, pu.id, d.day)} aria-label={`Delete session on ${dayText(d.day)}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></Button>
                                                         </span>
                                                     </div>
                                                 ))}
@@ -194,7 +198,7 @@ export default function AttendancePage() {
                                                     {d.earlyLeaveMinutes > 0 && <span className="text-amber-800">left {minutesText(d.earlyLeaveMinutes)} early</span>}
                                                     {d.extraMinutes > 0 && <span>{minutesText(d.extraMinutes)} extra</span>}
                                                     {d.unscheduled && <span>unscheduled</span>}{d.leaveType && <span>{d.leaveType}</span>}{d.holidayName && <span>{d.holidayName}</span>}
-                                                    <Button type="button" variant="ghost" size="sm" className="h-9 gap-1 text-emerald-800" onClick={() => setEditing({ person: p, day: d.day, punch: null })}><Plus className="h-3.5 w-3.5" aria-hidden /> Add session</Button>
+                                                    <Button type="button" variant="ghost" size="sm" className="h-9 gap-1 text-emerald-800" hidden={!canAddRecord} onClick={() => setEditing({ person: p, day: d.day, punch: null })}><Plus className="h-3.5 w-3.5" aria-hidden /> Add session</Button>
                                                 </p>
                                             </li>
                                         ))}

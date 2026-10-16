@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { EmptyState, LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatLKR } from '@/lib/utils';
@@ -30,6 +31,7 @@ interface LabTest {
 }
 
 export default function LabTestsPage() {
+    const canAdd = useCan('lab.tests', 'add');
     const [tests, setTests] = useState<LabTest[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -90,7 +92,7 @@ export default function LabTestsPage() {
                 <PageHeader title="Lab Tests" description="Manage the catalog of available lab tests." />
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-indigo-600 hover:bg-indigo-700">
+                        <Button hidden={!canAdd} className="bg-indigo-600 hover:bg-indigo-700">
                             <Plus className="mr-2 h-4 w-4" /> Add New Test
                         </Button>
                     </DialogTrigger>

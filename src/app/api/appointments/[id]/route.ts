@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireAccess } from '@/lib/api-auth';
+import { requireAccess, userCan } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
 import { hasRxExtras } from '@/lib/schema-features';
 
@@ -37,13 +37,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }
         
         const appointment = appointments[0];
-        if ((user.role === 'PATIENT' && appointment.patient_id !== user.id) || (user.role === 'DOCTOR' && appointment.doctor_id !== user.id)) {
+        // Patients see their own. Staff who can see the whole front desk see any; everyone else (a doctor) sees only their own patients' visits
+        const seesAll = user.role !== 'PATIENT' && await userCan(user, 'reception.appointments', 'view');
+        if ((user.role === 'PATIENT' && appointment.patient_id !== user.id) || (user.role !== 'PATIENT' && !seesAll && appointment.doctor_id !== user.id)) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
         await auditAccess(user, { action: 'VIEW', entity: 'APPOINTMENT', entityId: appointmentId, patientId: appointment.patient_id });
         appointment.timeSlot = appointment.time_slot;
         // Clinical notes are the doctor's private working notes
-        if (user.role !== 'DOCTOR') delete appointment.notes;
+        if (!(appointment.doctor_id === user.id && await userCan(user, 'consultations', 'view'))) delete appointment.notes;
 
         // 2. Billing Info — enriched with itemized line items
         const bills = await query<any[]>(`

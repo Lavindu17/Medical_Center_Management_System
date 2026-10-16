@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { EmptyState, LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
 
@@ -15,6 +16,8 @@ import { Search, Users, UserPlus, Link as LinkIcon, Edit } from 'lucide-react';
 import Link from 'next/link';
 
 export default function PatientDirectory() {
+    const canLink = useCan('reception.patients', 'change');
+    const canRegister = useCan('reception.patients', 'add');
     const [patients, setPatients] = useState<any[]>([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
@@ -98,7 +101,7 @@ export default function PatientDirectory() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <PageHeader title="Patient Directory" description="Manage patient records and accounts." />
-                <Link href="/receptionist/register">
+                <Link href="/receptionist/register" hidden={!canRegister}>
                     <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-5 transition-all duration-200">
                         <UserPlus className="mr-2 h-4 w-4" /> New Patient
                     </Button>
@@ -136,7 +139,7 @@ export default function PatientDirectory() {
                             <div className="col-span-2 text-sm text-neutral-600">{formatDate(patient.date_of_birth)}</div>
                             <div className="col-span-2 text-sm text-neutral-600">{patient.gender}</div>
                             <div className="col-span-2 flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" className="text-emerald-600" onClick={() => openLinkDialog(patient)} title="Link Family">
+                                <Button size="sm" variant="ghost" className="text-emerald-600" hidden={!canLink} onClick={() => openLinkDialog(patient)} title="Link Family">
                                     <LinkIcon className="h-4 w-4" />
                                 </Button>
                                 <Button size="sm" variant="ghost" className="text-emerald-600" title="Edit">

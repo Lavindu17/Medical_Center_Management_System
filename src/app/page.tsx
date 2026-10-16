@@ -8,14 +8,16 @@ interface Doctor {
   specialization: string;
 }
 
+// Patients have their own portal; every member of staff opens the staff app, which sends them to the screen their permissions start with
 const DASHBOARD: Record<Role, string> = {
   PATIENT: '/patient',
-  DOCTOR: '/doctor',
-  PHARMACIST: '/pharmacist',
-  LAB_ASSISTANT: '/lab-assistant',
-  RECEPTIONIST: '/receptionist',
-  ADMIN: '/admin',
-  HR_MANAGER: '/hr',
+  DOCTOR: '/staff',
+  PHARMACIST: '/staff',
+  LAB_ASSISTANT: '/staff',
+  RECEPTIONIST: '/staff',
+  ADMIN: '/staff',
+  HR_MANAGER: '/staff',
+  STAFF: '/staff',
 };
 
 // Reads the visitor's session cookie, so this page is rendered per request (never frozen at build time with

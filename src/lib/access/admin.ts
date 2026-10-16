@@ -53,7 +53,7 @@ export async function profileGrants(profileId: number): Promise<GrantMap> {
 }
 
 /** What a role gets at this site: what is stored, and whether that differs from the starting point it began with. */
-export async function roleGrants(role: StaffRole): Promise<{ grants: GrantMap; customised: boolean; stored: boolean }> {
+export async function roleGrants(role: StaffRole): Promise<{ grants: GrantMap; customised: boolean; stored: boolean; missing: ResourceKey[] }> {
     let rows: any[] = [];
     try {
         rows = await query<any[]>(
@@ -64,17 +64,35 @@ export async function roleGrants(role: StaffRole): Promise<{ grants: GrantMap; c
     }
     const grants = rowsToGrants(Array.isArray(rows) ? rows : []);
     const same = (a: GrantMap, b: GrantMap) => RESOURCE_KEYS.every((k) => JSON.stringify(normalise(k, a[k] ?? {})) === JSON.stringify(normalise(k, b[k] ?? {})));
-    return { grants, stored: rows.length > 0, customised: rows.length > 0 && !same(grants, ROLE_TEMPLATES[role]) };
+    const have = new Set((rows as any[]).map((r) => r.resource));
+    // Screens added after this role was set up have no row, so they are closed to it until someone ticks them (or adds them)
+    const missing = rows.length > 0 ? RESOURCE_KEYS.filter((k) => !have.has(k)) : [];
+    return { grants, stored: rows.length > 0, missing, customised: rows.length > 0 && missing.length === 0 && !same(grants, ROLE_TEMPLATES[role]) };
+}
+
+/** The role's profile row, created if it does not exist yet (safe when two requests race) and locked until the transaction ends. */
+export async function lockRoleProfile(db: { execute: (sql: string, p?: any[]) => Promise<any> }, role: StaffRole): Promise<number> {
+    await db.execute('INSERT IGNORE INTO access_profiles (name, system_role) VALUES (?, ?)', [`Role: ${role}`, role]);
+    const [found]: any = await db.execute('SELECT id FROM access_profiles WHERE system_role = ? FOR UPDATE', [role]);
+    return found[0].id as number;
+}
+
+/** Adds a stored row (with the starting ticks) for each screen the role has none for. Never changes a row that exists. */
+export async function fillMissing(db: { execute: (sql: string, p?: any[]) => Promise<any> }, role: StaffRole): Promise<number> {
+    const [found]: any = await db.execute('SELECT id FROM access_profiles WHERE system_role = ? FOR UPDATE', [role]);
+    if (!found[0]) return (await resetRole(db, role), RESOURCE_KEYS.length);
+    let added = 0;
+    for (const r of templateRows(role)) {
+        const [res]: any = await db.execute('INSERT IGNORE INTO access_grants (profile_id, resource, can_view, can_add, can_change, can_approve) VALUES (?, ?, ?, ?, ?, ?)',
+            [found[0].id, r.resource, r.view, r.add, r.change, r.approve]);
+        added += Number(res.affectedRows ?? 0);
+    }
+    return added;
 }
 
 /** Writes the starting point back for a role (creating its profile if the database has none yet). */
 export async function resetRole(db: { execute: (sql: string, p?: any[]) => Promise<any> }, role: StaffRole): Promise<number> {
-    const [found]: any = await db.execute('SELECT id FROM access_profiles WHERE system_role = ?', [role]);
-    let profileId: number = found[0]?.id;
-    if (!profileId) {
-        const [res]: any = await db.execute('INSERT INTO access_profiles (name, system_role) VALUES (?, ?)', [`Role: ${role}`, role]);
-        profileId = res.insertId;
-    }
+    const profileId = await lockRoleProfile(db, role);
     await db.execute('DELETE FROM access_grants WHERE profile_id = ?', [profileId]);
     for (const r of templateRows(role)) {
         await db.execute('INSERT INTO access_grants (profile_id, resource, can_view, can_add, can_change, can_approve) VALUES (?, ?, ?, ?, ?, ?)',

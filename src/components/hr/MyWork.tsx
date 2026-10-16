@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { CalendarClock, CalendarPlus, ChevronLeft, ChevronRight, Clock, LogIn, LogOut, Pencil } from 'lucide-react';
@@ -63,6 +64,7 @@ function useElapsed(since: string | null) {
 // ------------------------------------------------------------------------------------------------------ Today
 
 function TodayTab() {
+    const canWork = useCan('my.work', 'add');
     const today = useApi<TodayData>('/api/hr/me/today');
     const month = useApi<AttendanceData>('/api/hr/me/attendance');
     const leave = useApi<LeaveData>('/api/hr/me/leave');
@@ -121,7 +123,7 @@ function TodayTab() {
                 </ul>
 
                 <Button
-                    type="button" size="lg" disabled={busy}
+                    type="button" size="lg" disabled={busy || !canWork}
                     onClick={() => clock(d.open ? 'OUT' : 'IN')}
                     className={cn('mt-5 h-14 w-full gap-2 text-base font-bold', d.open ? 'bg-neutral-900 hover:bg-neutral-800' : '')}
                 >
@@ -174,6 +176,7 @@ function TodayTab() {
 // ------------------------------------------------------------------------------------------------------ Leave
 
 function LeaveTab() {
+    const canWork = useCan('my.work', 'add');
     const data = useApi<LeaveData>('/api/hr/me/leave');
     const confirm = useConfirm();
     const [typeId, setTypeId] = useState<number | ''>('');
@@ -222,6 +225,7 @@ function LeaveTab() {
 
     return (
         <div className="space-y-6">
+            <fieldset disabled={!canWork} className="contents">
             <form onSubmit={submit} noValidate className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-[var(--shadow-card)] sm:p-5" aria-label="Request leave">
                 <h2 className="flex items-center gap-2 text-base font-semibold text-neutral-900"><CalendarPlus className="h-5 w-5 text-emerald-700" aria-hidden /> Request leave</h2>
                 {error && <FormAlert>{error}</FormAlert>}
@@ -251,6 +255,7 @@ function LeaveTab() {
                 <Button type="submit" disabled={busy} className="h-11 w-full sm:w-auto">{busy ? 'Sending…' : 'Send request'}</Button>
                 <p className="text-xs text-neutral-500">Public holidays and your days off are not counted. HR decides, and you are notified.</p>
             </form>
+            </fieldset>
 
             <section aria-labelledby="my-req" className="space-y-2">
                 <h2 id="my-req" className="text-base font-semibold text-neutral-900">Your requests</h2>

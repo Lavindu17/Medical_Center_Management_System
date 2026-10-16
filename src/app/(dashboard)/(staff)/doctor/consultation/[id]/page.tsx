@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { useConfirm, usePrompt } from '@/components/ui/confirm-dialog';
@@ -61,6 +62,8 @@ function stockNote(m: Medicine): { text: string; tone: 'ok' | 'low' | 'out' } {
 const STOCK_TONE = { ok: 'text-neutral-500', low: 'text-amber-700 font-medium', out: 'text-red-700 font-medium' } as const;
 
 export default function ConsultationPage() {
+    const canWrite = useCan('consultations', 'add');
+    const canComplete = useCan('consultations', 'approve');
     const askText = usePrompt();
     const confirm = useConfirm();
     const params = useParams();
@@ -540,10 +543,10 @@ export default function ConsultationPage() {
                             <TabsTrigger value="history">Full History</TabsTrigger>
                         </TabsList>
                         <div className="flex gap-3">
-                            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all">
+                            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving || !canWrite} className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 transition-all">
                                 <Save className="mr-2 h-4 w-4" /> Save Draft
                             </Button>
-                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-6 transition-all" onClick={() => setReviewOpen(true)} disabled={saving}>
+                            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 px-6 transition-all" onClick={() => setReviewOpen(true)} disabled={saving || !canWrite} hidden={!canComplete}>
                                 <CheckCircle className="mr-2 h-4 w-4" /> Review and complete
                             </Button>
                         </div>

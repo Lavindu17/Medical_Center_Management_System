@@ -30,7 +30,7 @@ export function shiftText(s: { start: string; end: string }): string {
 }
 
 export const ROLE_LABEL: Record<string, string> = {
-    DOCTOR: 'Doctor', PHARMACIST: 'Pharmacist', LAB_ASSISTANT: 'Lab assistant', RECEPTIONIST: 'Receptionist', ADMIN: 'Administrator', HR_MANAGER: 'HR manager',
+    DOCTOR: 'Doctor', PHARMACIST: 'Pharmacist', LAB_ASSISTANT: 'Lab assistant', RECEPTIONIST: 'Receptionist', ADMIN: 'Administrator', HR_MANAGER: 'HR manager', STAFF: 'Other staff',
 };
 
 /** Adds or subtracts months from "YYYY-MM". */

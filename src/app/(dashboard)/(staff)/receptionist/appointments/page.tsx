@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { PageHeader } from '@/components/ui/page-header';
 
 
@@ -18,6 +19,8 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Clock, User } from 'lucide-react';
 
 export default function ReceptionistAppointments() {
+    const canChange = useCan('reception.appointments', 'change');
+    const canBook = useCan('reception.appointments', 'add');
     const confirm = useConfirm();
     const [appointments, setAppointments] = useState<any[]>([]);
     const [doctors, setDoctors] = useState<any[]>([]);
@@ -140,10 +143,10 @@ export default function ReceptionistAppointments() {
                             <div className="col-span-2 flex justify-end gap-2">
                                 {appt.status === 'PENDING' && (
                                     <>
-                                        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => updateStatus(appt.id, 'CHECKED_IN')} title="Check In">
+                                        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" hidden={!canChange} onClick={() => updateStatus(appt.id, 'CHECKED_IN')} title="Check In">
                                             <CheckCircle className="h-4 w-4 mr-1" /> Check In
                                         </Button>
-                                        <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => updateStatus(appt.id, 'CANCELLED')} title="Cancel">
+                                        <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-600" hidden={!canChange} onClick={() => updateStatus(appt.id, 'CANCELLED')} title="Cancel">
                                             <XCircle className="h-4 w-4" />
                                         </Button>
                                     </>

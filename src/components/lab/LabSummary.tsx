@@ -4,6 +4,7 @@ import { CheckCircle2, Clock, FlaskConical, Timer } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
 import { SkeletonKpiRow } from '@/components/ui/skeleton';
 import { ChartCard, TrendChart } from '@/components/charts';
+import { useCan } from '@/components/access/AccessContext';
 import { useApi } from '@/hooks/useApi';
 import { minutesText } from '@/lib/hr-format';
 
@@ -15,7 +16,10 @@ interface Summary {
 
 /** Workload figures above the request list. `version` changes when the list reloads, so both stay in step. */
 export function LabSummary({ version }: { version: number }) {
-    const { data, loading, error } = useApi<Summary>(`/api/lab-assistant/dashboard?v=${version}`, { refreshMs: 60_000 });
+    const allowed = useCan('lab.dashboard', 'view');
+    // Without the dashboard permission the page is just the request list
+    const { data, loading, error } = useApi<Summary>(allowed ? `/api/lab-assistant/dashboard?v=${version}` : null, { refreshMs: 60_000 });
+    if (!allowed) return null;
     if (error && !data) return <p role="alert" className="text-sm text-red-700">Could not load the lab summary.</p>;
 
     return (

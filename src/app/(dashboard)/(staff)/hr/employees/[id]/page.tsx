@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { use, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { PageHeader } from '@/components/ui/page-header';
@@ -27,6 +28,8 @@ function monthBounds(month: string) {
 }
 
 export default function EmployeePage({ params }: { params: Promise<{ id: string }> }) {
+    const canChange = useCan('hr.employees', 'change');
+    const canAllowance = useCan('hr.settings', 'change');
     const { id } = use(params);
     const askText = usePrompt();
     const { data, loading, error, reload } = useApi<{ employee: Employee; balances: Balance[]; year: number }>(`/api/hr/employees/${id}`);
@@ -73,6 +76,7 @@ export default function EmployeePage({ params }: { params: Promise<{ id: string 
             <PageHeader back={{ href: '/hr/employees', label: 'Employees' }} title={e.name} description={`${ROLE_LABEL[e.role] ?? e.role} · ${e.email}${e.phone ? ` · ${e.phone}` : ''}`} />
 
             <form onSubmit={save} noValidate className="space-y-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-[var(--shadow-card)] sm:p-5" aria-label="HR profile">
+<fieldset disabled={!canChange} className="contents">
                 <h2 className="text-base font-semibold text-neutral-900">HR profile</h2>
                 {formError && <FormAlert>{formError}</FormAlert>}
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -88,7 +92,7 @@ export default function EmployeePage({ params }: { params: Promise<{ id: string 
                     </div>
                 </div>
                 <Button type="submit" disabled={saving} className="h-11 w-full sm:w-auto">{saving ? 'Saving…' : 'Save profile'}</Button>
-            </form>
+            </fieldset></form>
 
             <section aria-labelledby="bal" className="space-y-2">
                 <h2 id="bal" className="text-base font-semibold text-neutral-900">Leave balance, {data.year}</h2>
@@ -98,7 +102,7 @@ export default function EmployeePage({ params }: { params: Promise<{ id: string 
                             <p className="text-sm font-medium text-neutral-700">{bal.name}</p>
                             <p className="mt-1 text-2xl font-bold text-neutral-900 tabular">{bal.unlimited ? 'No limit' : bal.remaining}<span className="text-sm font-normal text-neutral-600">{bal.unlimited ? '' : ` of ${bal.entitled} left`}</span></p>
                             <p className="text-xs text-neutral-600">{bal.used} used{bal.pending ? `, ${bal.pending} pending` : ''}</p>
-                            {!bal.unlimited && <Button type="button" variant="ghost" size="sm" className="-ml-2 mt-1 h-10 text-emerald-800" onClick={() => setAllowance(bal.typeId, bal.entitled)}>Change allowance</Button>}
+                            {!bal.unlimited && <Button type="button" variant="ghost" size="sm" className="-ml-2 mt-1 h-10 text-emerald-800" hidden={!canAllowance} onClick={() => setAllowance(bal.typeId, bal.entitled)}>Change allowance</Button>}
                         </li>
                     ))}
                 </ul>

@@ -205,7 +205,7 @@ describe('editing a role at this site', () => {
     it('the profile list reports every staff role with the number of people', async () => {
         const list = await (await call(profiles, 'GET')).json();
         expect(list.ready).toBe(true);
-        expect(list.roles.map((r: any) => r.role).sort()).toEqual(['ADMIN', 'DOCTOR', 'HR_MANAGER', 'LAB_ASSISTANT', 'PHARMACIST', 'RECEPTIONIST']);
+        expect(list.roles.map((r: any) => r.role).sort()).toEqual(['ADMIN', 'DOCTOR', 'HR_MANAGER', 'LAB_ASSISTANT', 'PHARMACIST', 'RECEPTIONIST', 'STAFF']);
         expect(list.roles.find((r: any) => r.role === 'PHARMACIST').people).toBeGreaterThan(0);
     });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { CalendarPlus, ChevronLeft, ChevronRight, Copy, Plus, Trash2, X } from 'lucide-react';
@@ -235,6 +236,8 @@ function EditShiftDialog({ shift, name, onClose, onDone }: { shift: ShiftRow; na
 // ----------------------------------------------------------------------------------------------- page
 
 export default function RosterPage() {
+    const canAdd = useCan('hr.roster', 'add');
+    const canChange = useCan('hr.roster', 'change');
     const confirm = useConfirm();
     const [monday, setMonday] = useState(() => mondayOf(todayGuess()));
     const [department, setDepartment] = useState('');
@@ -271,7 +274,7 @@ export default function RosterPage() {
                 description="Who works when. Add shifts for one person or many, with as many shifts a day as you need."
                 actions={<>
                     <Button type="button" variant="outline" className="h-11 gap-2" onClick={copyToNext}><Copy className="h-4 w-4" aria-hidden /> Copy to next week</Button>
-                    <Button type="button" className="h-11 gap-2" onClick={() => setAdding(true)}><CalendarPlus className="h-4 w-4" aria-hidden /> Add shifts</Button>
+                    <Button type="button" className="h-11 gap-2" hidden={!canAdd} onClick={() => setAdding(true)}><CalendarPlus className="h-4 w-4" aria-hidden /> Add shifts</Button>
                 </>}
             />
 
@@ -314,7 +317,7 @@ export default function RosterPage() {
                                                 <td key={d} className="space-y-1 px-1.5 py-2">
                                                     {leave && <span className={cn('block rounded px-1.5 py-0.5 text-[11px] font-semibold', leave.status === 'APPROVED' ? 'bg-sky-100 text-sky-900' : 'bg-amber-100 text-amber-900')}>{leave.status === 'APPROVED' ? leave.type : `${leave.type}?`}</span>}
                                                     {shiftsOn(p.id, d).map((s) => (
-                                                        <button key={s.id} type="button" onClick={() => setEditing(s)} className="block min-h-8 w-full rounded border border-emerald-200 bg-emerald-50 px-1.5 text-left text-xs font-medium text-emerald-900 tabular hover:bg-emerald-100" aria-label={`${p.name}, ${dayText(d)}, ${s.start_time} to ${s.end_time}. Edit`}>
+                                                        <button key={s.id} type="button" disabled={!canChange} onClick={() => setEditing(s)} className="block min-h-8 w-full rounded border border-emerald-200 bg-emerald-50 px-1.5 text-left text-xs font-medium text-emerald-900 tabular hover:bg-emerald-100" aria-label={`${p.name}, ${dayText(d)}, ${s.start_time} to ${s.end_time}. Edit`}>
                                                             {s.start_time}-{s.end_time}{s.label ? ` ${s.label}` : ''}
                                                         </button>
                                                     ))}
@@ -340,7 +343,7 @@ export default function RosterPage() {
                                                 <span className="w-20 shrink-0 text-neutral-700">{dayText(d)}</span>
                                                 <span className="flex flex-wrap gap-1">
                                                     {leave && <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-semibold text-sky-900">{leave.type}</span>}
-                                                    {list.map((s) => <button key={s.id} type="button" onClick={() => setEditing(s)} className="min-h-9 rounded border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-900 tabular">{s.start_time}-{s.end_time}</button>)}
+                                                    {list.map((s) => <button key={s.id} type="button" disabled={!canChange} onClick={() => setEditing(s)} className="min-h-9 rounded border border-emerald-200 bg-emerald-50 px-2 text-xs font-medium text-emerald-900 tabular">{s.start_time}-{s.end_time}</button>)}
                                                     {list.length === 0 && !leave && <span className="text-neutral-500">{holidayOn(d) ? holidayOn(d)!.name : 'Off'}</span>}
                                                 </span>
                                             </li>

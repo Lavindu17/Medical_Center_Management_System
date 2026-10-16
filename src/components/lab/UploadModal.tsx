@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +26,7 @@ interface UploadModalProps {
 }
 
 export function UploadModal({ requestId, patientName, testName, onSuccess }: UploadModalProps) {
+    const canUpload = useCan('lab.requests', 'add');
     const [open, setOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -72,6 +74,8 @@ export function UploadModal({ requestId, patientName, testName, onSuccess }: Upl
             setUploading(false);
         }
     };
+
+    if (!canUpload) return <span className="text-xs font-medium text-neutral-600">Waiting for the lab</span>;
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>

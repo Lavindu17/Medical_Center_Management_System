@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, Plus, RotateCcw, Save, Search, Trash2, UserRound } from 'lucide-react';
@@ -20,7 +21,7 @@ import { ROLE_LABEL } from '@/lib/hr-format';
 
 interface StaffUser { id: number; name: string; email: string; role: string; profiles: string[] }
 interface Detail { user: StaffUser; role: GrantMap; assigned: { id: number; name: string }[]; personal: GrantMap; effective: GrantMap; warnings: string[] }
-interface RoleProfile { role: string; grants: GrantMap; customised: boolean; stored: boolean; people: number }
+interface RoleProfile { role: string; grants: GrantMap; customised: boolean; stored: boolean; missing: string[]; people: number }
 interface CustomProfile { id: number; name: string; description: string | null; people: number; grants: GrantMap }
 interface Profiles { roles: RoleProfile[]; custom: CustomProfile[]; ready: boolean }
 
@@ -91,6 +92,7 @@ function PeopleTab({ profiles }: { profiles: CustomProfile[] }) {
 }
 
 function PersonEditor({ id, profiles, onSaved }: { id: number; profiles: CustomProfile[]; onSaved: () => void }) {
+    const canChange = useCan('access.config', 'change');
     const detail = useApi<Detail>(`/api/admin/access/users/${id}`);
     const [profileIds, setProfileIds] = useState<number[]>([]);
     const [personal, setPersonal] = useState<GrantMap>({});
@@ -133,7 +135,7 @@ function PersonEditor({ id, profiles, onSaved }: { id: number; profiles: CustomP
                 </div>
                 <div className="flex items-center gap-3">
                     {dirty && <span className="text-sm font-medium text-amber-800">Unsaved changes</span>}
-                    <Button onClick={save} disabled={saving || !dirty} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : 'Save'}</Button>
+                    <Button onClick={save} disabled={saving || !dirty || !canChange} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : 'Save'}</Button>
                 </div>
             </div>
 
@@ -161,7 +163,7 @@ function PersonEditor({ id, profiles, onSaved }: { id: number; profiles: CustomP
             <div>
                 <h3 className="mb-1 text-sm font-semibold text-neutral-900">This person&apos;s own permissions</h3>
                 <p className="mb-3 text-sm text-neutral-600">Grey ticks come from their role or a profile and are changed there. Tick anything else this person needs on top.</p>
-                <PermissionMatrix value={personal} onChange={setPersonal} inherited={given} inheritedLabel="From role or profile" />
+                <PermissionMatrix value={personal} onChange={setPersonal} inherited={given} inheritedLabel="From role or profile" readOnly={!canChange} />
             </div>
         </div>
     );
@@ -170,6 +172,7 @@ function PersonEditor({ id, profiles, onSaved }: { id: number; profiles: CustomP
 /* -------------------------------------------------------------- Profiles */
 
 function ProfilesTab({ data, reload }: { data: Profiles; reload: () => void }) {
+    const canNew = useCan('access.config', 'change');
     const [pick, setPick] = useState<{ kind: 'role'; role: string } | { kind: 'custom'; id: number } | { kind: 'new' } | null>(null);
     return (
         <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
@@ -190,7 +193,7 @@ function ProfilesTab({ data, reload }: { data: Profiles; reload: () => void }) {
                 </div>
                 <div>
                     <div className="mb-1 flex items-center justify-between"><h2 className="text-sm font-semibold text-neutral-900">Your profiles</h2>
-                        <Button size="sm" variant="outline" onClick={() => setPick({ kind: 'new' })}><Plus className="mr-1 h-4 w-4" aria-hidden /> New</Button></div>
+                        <Button size="sm" variant="outline" onClick={() => setPick({ kind: 'new' })} hidden={!canNew}><Plus className="mr-1 h-4 w-4" aria-hidden /> New</Button></div>
                     <ul className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                         {data.custom.length === 0 && <li className="p-3 text-sm text-neutral-600">None yet.</li>}
                         {data.custom.map((p) => (
@@ -216,6 +219,7 @@ function ProfilesTab({ data, reload }: { data: Profiles; reload: () => void }) {
 }
 
 function RoleEditor({ role, reload }: { role: RoleProfile; reload: () => void }) {
+    const canChange = useCan('access.config', 'change');
     const confirm = useConfirm();
     const [grants, setGrants] = useState<GrantMap>(role.grants);
     const [saving, setSaving] = useState(false);
@@ -226,6 +230,9 @@ function RoleEditor({ role, reload }: { role: RoleProfile; reload: () => void })
         setSaving(true);
         try { await sendJson(`/api/admin/access/roles/${role.role}`, 'PUT', { grants }); toast.success(`Saved. Everyone with the ${ROLE_LABEL[role.role] ?? role.role} role is affected on their next click.`); reload(); }
         catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+    };
+    const addMissing = async () => {
+        try { const res = await sendJson<{ added: number }>(`/api/admin/access/roles/${role.role}`, 'POST'); toast.success(`${res.added} screen${res.added === 1 ? '' : 's'} added with their starting ticks`); reload(); } catch (e: any) { toast.error(e.message); }
     };
     const reset = async () => {
         if (role.stored && !await confirm({ title: `Reset ${ROLE_LABEL[role.role] ?? role.role} to its starting point?`, description: 'Everyone with this role goes back to the standard access for the job.', confirmLabel: 'Reset', cancelLabel: 'Keep my changes' })) return;
@@ -239,17 +246,24 @@ function RoleEditor({ role, reload }: { role: RoleProfile; reload: () => void })
                     <p className="text-sm text-neutral-600">What everyone with this job starts with. {role.people} {role.people === 1 ? 'person has' : 'people have'} it. {role.role === 'ADMIN' && 'Administrators can always change access, so nobody gets locked out.'}</p></div>
                 <div className="flex items-center gap-2">
                     {(role.customised || !role.stored) && <Button variant="outline" onClick={reset}><RotateCcw className="mr-2 h-4 w-4" aria-hidden /> {role.stored ? 'Reset to starting point' : 'Write the starting permissions'}</Button>}
-                    <Button onClick={save} disabled={saving || !dirty} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : 'Save'}</Button>
+                    <Button onClick={save} disabled={saving || !dirty || !canChange} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : 'Save'}</Button>
                 </div>
             </div>
+            {role.stored && role.missing.length > 0 && (
+                <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    <span className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {role.missing.length} screen{role.missing.length === 1 ? ' was' : 's were'} added to the system after this role was set up, so {role.missing.length === 1 ? 'it is' : 'they are'} closed to it.</span>
+                    <Button size="sm" variant="outline" onClick={addMissing}>Add {role.missing.length === 1 ? 'it' : 'them'} with the starting ticks</Button>
+                </div>
+            )}
             {!role.stored && <p role="alert" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> Nothing is stored for this role, so {role.people === 1 ? 'the person with it cannot' : 'people with it cannot'} open anything yet. Tick what the job needs and save, or write the starting permissions.</p>}
             {warnings.length > 0 && <ul role="status" className="list-disc space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 pl-8 text-sm text-amber-900">{warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
-            <PermissionMatrix value={grants} onChange={setGrants} />
+            <PermissionMatrix value={grants} onChange={setGrants} readOnly={!canChange} />
         </div>
     );
 }
 
 function ProfileEditor({ profile, reload, onGone, onCreated }: { profile: CustomProfile | null; reload: () => void; onGone: () => void; onCreated?: (id: number) => void }) {
+    const canChange = useCan('access.config', 'change');
     const confirm = useConfirm();
     const [name, setName] = useState(profile?.name ?? '');
     const [description, setDescription] = useState(profile?.description ?? '');
@@ -276,13 +290,13 @@ function ProfileEditor({ profile, reload, onGone, onCreated }: { profile: Custom
                 <div className="space-y-1"><Label htmlFor="p-name">Name</Label><Input id="p-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Pharmacist with billing" /></div>
                 <div className="space-y-1"><Label htmlFor="p-desc">Description (optional)</Label><Input id="p-desc" value={description} maxLength={255} onChange={(e) => setDescription(e.target.value)} placeholder="Handles payments at the pharmacy counter" /></div>
                 <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-                    <Button onClick={save} disabled={saving || !dirty || name.trim().length < 2} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : profile ? 'Save' : 'Create profile'}</Button>
+                    <Button onClick={save} disabled={saving || !dirty || name.trim().length < 2 || !canChange} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : profile ? 'Save' : 'Create profile'}</Button>
                     {profile && <Button variant="outline" onClick={remove} className="text-red-700"><Trash2 className="mr-2 h-4 w-4" aria-hidden /> Delete</Button>}
                     {profile && <span className="text-sm text-neutral-600">{profile.people} {profile.people === 1 ? 'person has' : 'people have'} this profile</span>}
                 </div>
             </div>
             {warnings.length > 0 && <ul role="status" className="list-disc space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 pl-8 text-sm text-amber-900">{warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
-            <PermissionMatrix value={grants} onChange={setGrants} />
+            <PermissionMatrix value={grants} onChange={setGrants} readOnly={!canChange} />
         </div>
     );
 }

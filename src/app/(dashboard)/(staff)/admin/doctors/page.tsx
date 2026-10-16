@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { EmptyState, LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ interface DoctorData {
 }
 
 export default function DoctorManagementPage() {
+    const canChange = useCan('admin.doctors', 'change');
     const [doctors, setDoctors] = useState<DoctorData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -137,7 +139,7 @@ export default function DoctorManagementPage() {
                                         <Button asChild variant="ghost" size="sm">
                                             <Link href={`/admin/doctors/${doc.id}`}><CalendarClock className="mr-1 h-4 w-4" aria-hidden /> Schedule</Link>
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(doc)} aria-label="Edit">
+                                        <Button variant="ghost" size="icon" hidden={!canChange} onClick={() => handleEditClick(doc)} aria-label="Edit">
                                             <Edit className="h-4 w-4" aria-hidden />
                                         </Button>
                                     </TableCell>

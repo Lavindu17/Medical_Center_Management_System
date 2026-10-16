@@ -29,7 +29,7 @@ const createUserSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
     password: z.string().min(6),
-    role: z.enum(['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER']),
+    role: z.enum(['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER', 'STAFF']),
     phone: z.string().optional(),
     // Doctor specific
     specialization: z.string().optional(),
@@ -115,7 +115,7 @@ const updateUserSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
     phone: z.string().optional(),
-    role: z.enum(['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER', 'PATIENT']),
+    role: z.enum(['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER', 'STAFF', 'PATIENT']),
 });
 
 /**

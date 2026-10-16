@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { LoadingState } from '@/components/ui/state-views';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatDate } from '@/lib/dates';
@@ -21,6 +22,7 @@ import {
 type StatusFilter = 'PENDING' | 'PAID';
 
 export default function BillingPage() {
+    const canPay = useCan('billing', 'approve');
     const [bills, setBills] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
@@ -211,7 +213,7 @@ export default function BillingPage() {
                                                 <Button
                                                     size="sm"
                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-100 h-8 px-4 text-xs font-bold transition-all"
-                                                    onClick={(e) => openPay(bill, e)}
+                                                    hidden={!canPay} onClick={(e) => openPay(bill, e)}
                                                 >
                                                     <Banknote className="h-3.5 w-3.5 mr-1.5" /> PAY
                                                 </Button>
@@ -368,12 +370,12 @@ export default function BillingPage() {
                                                         </div>
                                                     </div>
 
-                                                    {statusFilter === 'PENDING' && (
+                                                    {statusFilter === 'PENDING' && canPay && (
                                                         <div className="space-y-3">
                                                             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest px-1">Quick Actions</p>
                                                             <Button
                                                                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 h-12 font-black transition-all active:scale-95"
-                                                                onClick={(e) => openPay(bill, e)}
+                                                                hidden={!canPay} onClick={(e) => openPay(bill, e)}
                                                             >
                                                                 <Banknote className="h-5 w-5 mr-2" /> COLLECT PAYMENT
                                                             </Button>

@@ -8,7 +8,7 @@ import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
 import { prescriptionStatus } from '@/lib/prescription';
-import { notify, usersWithRole } from '@/lib/notify';
+import { notify, usersWithPermission } from '@/lib/notify';
 import { hasRxExtras } from '@/lib/schema-features';
 
 export async function GET(
@@ -249,7 +249,7 @@ export async function POST(
                 }
             }
             if (lowStock) {
-                await notify(connection, await usersWithRole(connection, 'PHARMACIST'), {
+                await notify(connection, await usersWithPermission(connection, 'pharmacy.inventory', 'view'), {
                     type: 'LOW_STOCK', title: 'Low stock',
                     body: `${lowStock.name} is down to ${lowStock.stock} units.`, link: '/pharmacist/alerts',
                 });

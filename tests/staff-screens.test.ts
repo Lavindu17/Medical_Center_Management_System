@@ -38,6 +38,23 @@ describe('every permission has a screen or is a widget of one', () => {
     }
 });
 
+describe('pages that need more than viewing', () => {
+    it('booking an appointment needs "add", not just "view", on the front desk appointments', () => {
+        expect(mayOpen({ 'reception.appointments': { view: true } }, '/receptionist/appointments')).toBe(true);
+        expect(mayOpen({ 'reception.appointments': { view: true } }, '/receptionist/appointments/book')).toBe(false);
+        expect(mayOpen({ 'reception.appointments': { view: true, add: true } }, '/receptionist/appointments/book')).toBe(true);
+    });
+    it('a detail page opens with the permission of its list', () => {
+        expect(mayOpen({ consultations: { view: true } }, '/doctor/consultation/42')).toBe(true);
+        expect(mayOpen({ 'pharmacy.dispensing': { view: true } }, '/pharmacist/dispense/7')).toBe(true);
+        expect(mayOpen({ 'hr.employees': { view: true } }, '/hr/employees/9')).toBe(true);
+    });
+    it('a section root only matches itself (the pages beneath are separate screens)', () => {
+        expect(mayOpen({ 'doctor.dashboard': { view: true } }, '/doctor')).toBe(true);
+        expect(mayOpen({ 'doctor.dashboard': { view: true } }, '/doctor/earnings')).toBe(false);
+    });
+});
+
 describe('unlisted pages are closed', () => {
     it('a page that is not a screen opens for nobody', () => {
         const everything = Object.fromEntries(RESOURCE_KEYS.map((k) => [k, { view: true, add: true, change: true, approve: true }]));

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { query } from '@/lib/db';
-import { requireAccess } from '@/lib/api-auth';
+import { requireAccess, userCan } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
 import { isSafeStoredName, mimeForStoredName, reportDir } from '@/lib/lab-reports';
 
@@ -27,7 +27,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         if (!report || !report.result_file || !isSafeStoredName(report.result_file)) {
             return NextResponse.json({ message: 'Report not found' }, { status: 404 });
         }
-        if ((user.role === 'PATIENT' && report.patient_id !== user.id) || (user.role === 'DOCTOR' && report.doctor_id !== user.id)) {
+        // A patient reads their own; the lab reads any; a doctor reads only reports for their own patients' visits
+        const readsAll = user.role !== 'PATIENT' && await userCan(user, 'lab.requests', 'view');
+        if ((user.role === 'PATIENT' && report.patient_id !== user.id) || (user.role !== 'PATIENT' && !readsAll && report.doctor_id !== user.id)) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
 

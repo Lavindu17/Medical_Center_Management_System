@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { CalendarOff, Check, X } from 'lucide-react';
@@ -135,6 +136,7 @@ function WhoIsOff() {
 }
 
 export default function HrLeavePage() {
+    const canApprove = useCan('hr.leave', 'approve');
     const [tab, setTab] = useState('PENDING');
     const [deciding, setDeciding] = useState<{ r: Request; decision: 'APPROVE' | 'REJECT' } | null>(null);
     const pending = useApi<{ requests: Request[] }>('/api/hr/leave?status=PENDING');
@@ -150,13 +152,13 @@ export default function HrLeavePage() {
             {tab === 'PENDING' && (pending.loading && !pending.data ? <LoadingState label="Loading requests…" /> : pending.error || !pending.data ? <ErrorState title="Could not load requests" description={pending.error ?? undefined} onRetry={pending.reload} /> : pending.data.requests.length === 0 ? (
                 <EmptyState icon={CalendarOff} title="Nothing waiting" description="New leave requests from staff appear here, and you are notified." />
             ) : (
-                <ul className="space-y-3">{pending.data.requests.map((r) => <RequestCard key={r.id} r={r} onDecide={(d) => setDeciding({ r, decision: d })} />)}</ul>
+                <ul className="space-y-3">{pending.data.requests.map((r) => <RequestCard key={r.id} r={r} onDecide={canApprove ? (d) => setDeciding({ r, decision: d }) : undefined} />)}</ul>
             ))}
 
             {tab === 'HISTORY' && (history.loading && !history.data ? <LoadingState label="Loading…" /> : history.error || !history.data ? <ErrorState title="Could not load requests" description={history.error ?? undefined} onRetry={history.reload} /> : history.data.requests.length === 0 ? (
                 <EmptyState icon={CalendarOff} title="No leave requests yet" />
             ) : (
-                <ul className="space-y-3">{history.data.requests.map((r) => <RequestCard key={r.id} r={r} onDecide={r.status === 'PENDING' ? (d) => setDeciding({ r, decision: d }) : undefined} />)}</ul>
+                <ul className="space-y-3">{history.data.requests.map((r) => <RequestCard key={r.id} r={r} onDecide={r.status === 'PENDING' && canApprove ? (d) => setDeciding({ r, decision: d }) : undefined} />)}</ul>
             ))}
 
             {tab === 'OFF' && <WhoIsOff />}

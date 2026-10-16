@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { rxExtraNotes } from '@/lib/rx-extras';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
@@ -296,6 +297,7 @@ function RejectModal({ item, onClose, onConfirm, isProcessing }: {
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
 export default function DispensePage(props: { params: Promise<{ id: string }> }) {
+    const canDispense = useCan('pharmacy.dispensing', 'approve');
     const params = use(props.params);
     const router = useRouter();
     const [data, setData] = useState<any>(null);
@@ -665,7 +667,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                                                 ) : (
                                                     <div className="flex gap-2">
                                                         <Button
-                                                            onClick={() => setBatchModal(item)}
+                                                            hidden={!canDispense} onClick={() => setBatchModal(item)}
                                                             disabled={isProcessing || loading || nonExpiredStock === 0}
                                                             size="sm"
                                                             className="h-10 px-3 font-medium bg-emerald-600 hover:bg-emerald-700 shadow-sm"
@@ -674,7 +676,7 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                                                             Dispense
                                                         </Button>
                                                         <Button
-                                                            onClick={() => setRejectModal(item)}
+                                                            hidden={!canDispense} onClick={() => setRejectModal(item)}
                                                             disabled={isProcessing || loading}
                                                             size="sm"
                                                             variant="outline"

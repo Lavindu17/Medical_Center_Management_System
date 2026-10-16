@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -42,6 +43,7 @@ function problem(sessions: Session[]): string | null {
 }
 
 export default function DoctorSchedulePage() {
+    const canChange = useCan('admin.doctors', 'change');
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
     const confirm = useConfirm();
@@ -145,6 +147,8 @@ export default function DoctorSchedulePage() {
                 </select>
             </div>
 
+            {!canChange && <p role="status" className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">You can view this schedule but not change it.</p>}
+            <fieldset disabled={!canChange} className="contents">
             <Card>
                 <CardHeader>
                     <CardTitle>Weekly hours</CardTitle>
@@ -262,6 +266,7 @@ export default function DoctorSchedulePage() {
                     </div>
                 </CardContent>
             </Card>
+            </fieldset>
         </div>
     );
 }

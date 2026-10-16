@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import { requireAccess } from '@/lib/api-auth';
+import { requireAccess, userCan } from '@/lib/api-auth';
 import { bookAppointment, BookingError } from '@/lib/booking';
 
 const appointmentSchema = z.object({
@@ -62,7 +62,8 @@ export async function GET(req: Request) {
                 return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
             }
             patientId = String(user.id);
-        } else if (user.role === 'DOCTOR') {
+        } else if (!(await userCan(user, 'reception.appointments', 'view'))) {
+            // Not the front desk: this is a doctor's own list
             if (patientId || (doctorId && Number(doctorId) !== user.id)) {
                 return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
             }

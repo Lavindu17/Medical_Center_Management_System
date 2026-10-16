@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Download, ScrollText, ShieldCheck, ShieldAlert, Filter } from 'lucide-react';
@@ -57,6 +58,7 @@ function who(r: Row) {
 }
 
 export default function AuditLogPage() {
+    const canVerify = useCan('admin.audit', 'approve');
     const [filters, setFilters] = useState({ from: '', to: '', action: '', entity: '', outcome: '', patient: '', actor: '' });
     const [applied, setApplied] = useState(filters);
     const [rows, setRows] = useState<Row[]>([]);
@@ -118,7 +120,7 @@ export default function AuditLogPage() {
                 description="Who did what to which record, and when. Rows cannot be edited or deleted, and the whole trail can be checked for tampering."
                 actions={
                     <>
-                        <Button variant="outline" onClick={verify} disabled={verifying} className="gap-2">
+                        <Button variant="outline" onClick={verify} disabled={verifying} hidden={!canVerify} className="gap-2">
                             <ShieldCheck className="h-4 w-4" aria-hidden /> {verifying ? 'Checking…' : 'Check integrity'}
                         </Button>
                         <Button asChild variant="outline" className="gap-2">

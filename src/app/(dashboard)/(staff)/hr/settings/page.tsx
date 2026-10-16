@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
@@ -202,15 +203,19 @@ function Holidays() {
 }
 
 export default function HrSettingsPage() {
+    const canChange = useCan('hr.settings', 'change');
     const [tab, setTab] = useState('general');
     return (
         <div className="space-y-5">
             <PageHeader title="HR settings" description="Rules for attendance, shift presets, leave types and public holidays." />
             <SegmentedTabs label="Settings sections" value={tab} onChange={setTab} items={[{ value: 'general', label: 'Attendance rules' }, { value: 'presets', label: 'Shift presets' }, { value: 'leave', label: 'Leave types' }, { value: 'holidays', label: 'Holidays' }]} />
-            {tab === 'general' && <General />}
-            {tab === 'presets' && <Presets />}
-            {tab === 'leave' && <LeaveTypes />}
-            {tab === 'holidays' && <Holidays />}
+            {!canChange && <p role="status" className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700">You can view these settings but not change them.</p>}
+            <fieldset disabled={!canChange} className="contents">
+                {tab === 'general' && <General />}
+                {tab === 'presets' && <Presets />}
+                {tab === 'leave' && <LeaveTypes />}
+                {tab === 'holidays' && <Holidays />}
+            </fieldset>
         </div>
     );
 }

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { AppShell, type NavItem } from '@/components/app-shell';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views';
+import { AccessProvider } from '@/components/access/AccessContext';
 import { useApi } from '@/hooks/useApi';
 import { homeFor, mayOpen, screensFor } from '@/lib/access/screens';
 import type { GrantMap } from '@/lib/access/defaults';
@@ -51,7 +52,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
 
     return (
         <AppShell navItems={navItems} roleName="Staff" roleHref="/staff">
-            {content}
+            <AccessProvider value={data?.grants ?? null}>{content}</AccessProvider>
         </AppShell>
     );
 }

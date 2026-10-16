@@ -55,11 +55,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, putSchema);
     if ('error' in body) return body.error;
+    const user0 = await staffUser((await params).id).catch((err) => err as AccessError);
+    if (user0 instanceof AccessError) return accessFailure(user0, 'Access user save');
+    const user = user0;
+    const { profileIds, personal } = body.data;
+
+    // Two administrators saving the same person at once take turns (the person's row is the lock); a rare lost race is retried
+    for (let attempt = 1; ; attempt++) {
     const connection = await pool.getConnection();
     try {
-        const user = await staffUser((await params).id);
-        const { profileIds, personal } = body.data;
         await connection.beginTransaction();
+        await connection.execute('SELECT id FROM users WHERE id = ? FOR UPDATE', [user.id]);
 
         if (profileIds.length > 0) {
             const [found]: any = await connection.query(
@@ -92,8 +98,10 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ message: 'Saved' });
     } catch (err) {
         await connection.rollback().catch(() => {});
+        if (((err as any)?.errno === 1213 || (err as any)?.errno === 1205) && attempt < 4) continue;
         return accessFailure(err, 'Access user save');
     } finally {
         connection.release();
+    }
     }
 }

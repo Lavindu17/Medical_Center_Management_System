@@ -29,8 +29,8 @@ Everyone gets **in-app notifications** (bell in the sidebar): new appointments, 
 2. `npm install --legacy-peer-deps`
 3. Copy `.env.example` to `.env.local` and fill it in. `JWT_SECRET` is mandatory.
 4. **Create the database.** In `mydocumentations/databas_setup_querries/`:
-   - new install: run `full_setup.sql` (**it drops and recreates the `sethro_medical` tables**), then `18_schema_sync.sql`, `19_audit_log.sql`, `20_hr.sql`, `21_orders.sql`, `22_access_control.sql` and `23_access_seed.sql`;
-   - existing install: run `18_schema_sync.sql`, `19_audit_log.sql` (the audit trail; see `mydocumentations/audit-trail.md`) `20_hr.sql` (HR module; see `mydocumentations/hr-module-plan.md`) and `21_orders.sql` (prescription instructions, lab priority and notes, favourites, lab panels; optional, the app works without it) `22_access_control.sql` and `23_access_seed.sql` (configurable staff permissions: required. Staff can open only what is stored there, and `23` stores each role's starting permissions). It is idempotent and adds everything the code needs (item dispensed amounts, lab report storage, auth attempt counters, rate limits, session revocation, notifications).
+   - new install: run `full_setup.sql` (**it drops and recreates the `sethro_medical` tables**), then `18_schema_sync.sql`, `19_audit_log.sql`, `20_hr.sql`, `21_orders.sql`, `22_access_control.sql`, `23_access_seed.sql` and `24_staff_role.sql`;
+   - existing install: run `18_schema_sync.sql`, `19_audit_log.sql` (the audit trail; see `mydocumentations/audit-trail.md`) `20_hr.sql` (HR module; see `mydocumentations/hr-module-plan.md`) and `21_orders.sql` (prescription instructions, lab priority and notes, favourites, lab panels; optional, the app works without it) `22_access_control.sql` and `23_access_seed.sql` (configurable staff permissions: required. Staff can open only what is stored there, and `23` stores each role's starting permissions; `24` adds the "Other staff" role). It is idempotent and adds everything the code needs (item dispensed amounts, lab report storage, auth attempt counters, rate limits, session revocation, notifications).
 5. `npm run dev` → http://localhost:3000
 
 The seeded demo accounts in `full_setup.sql` use the password documented there; change them before any real use.
@@ -45,7 +45,7 @@ npm run test:integration  # real MySQL: flows, rules, concurrency
 ```
 
 - **Security matrix** (`tests/security-matrix.test.ts`) discovers every route in `src/app/api` and checks that anonymous, wrong-role and forged-token callers are refused. New routes are covered automatically; routes that are meant to be public must be added to its `PUBLIC` list.
-- **Integration tests** build an isolated `sethro_medical_test` schema from `full_setup.sql` + `18_schema_sync.sql` + `19_audit_log.sql` + `20_hr.sql` + `21_orders.sql` + `22_access_control.sql` + `23_access_seed.sql` on the server named in `.env.local` / the environment, and drop it again on the next run. They refuse any database name not ending in `_test` and any non-local host, and never touch the application schema.
+- **Integration tests** build an isolated `sethro_medical_test` schema from `full_setup.sql` + `18_schema_sync.sql` + `19_audit_log.sql` + `20_hr.sql` + `21_orders.sql` + `22_access_control.sql` + `23_access_seed.sql` + `24_staff_role.sql` on the server named in `.env.local` / the environment, and drop it again on the next run. They refuse any database name not ending in `_test` and any non-local host, and never touch the application schema.
 - CI (`.github/workflows/ci.yml`) runs type check, unit and integration tests against a MySQL 8 service.
 
 ## Security notes

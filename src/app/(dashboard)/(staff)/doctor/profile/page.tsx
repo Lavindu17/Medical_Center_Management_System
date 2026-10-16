@@ -1,4 +1,5 @@
 'use client';
+import { useCan } from '@/components/access/AccessContext';
 import { PageHeader } from '@/components/ui/page-header';
 import { toast } from 'sonner';
 import { friendlyDay } from '@/lib/dates';
@@ -15,6 +16,7 @@ import { DOCTOR_SPECIALIZATIONS } from '@/lib/constants';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function DoctorProfilePage() {
+    const canChange = useCan('doctor.profile', 'change');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState({ name: '', phone: '', specialization: '', consultation_fee: '', license_number: '' });
@@ -112,7 +114,7 @@ export default function DoctorProfilePage() {
                                 </div>
                             </div>
                             <div className="pt-4">
-                                <Button onClick={handleSaveProfile} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
+                                <Button onClick={handleSaveProfile} disabled={saving || !canChange} className="bg-emerald-600 hover:bg-emerald-700">
                                     <Save className="mr-2 h-4 w-4" /> Save Changes
                                 </Button>
                             </div>

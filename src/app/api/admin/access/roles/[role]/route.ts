@@ -5,7 +5,7 @@ import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { requirePermission } from '@/lib/api-auth';
 import { ALWAYS_ADMIN, STAFF_ROLES, isStaffRole, type StaffRole } from '@/lib/access/defaults';
-import { AccessError, describeChange, grantsSchema, resetRole, roleGrants, writeGrants } from '@/lib/access/admin';
+import { AccessError, describeChange, fillMissing, grantsSchema, lockRoleProfile, resetRole, roleGrants, writeGrants } from '@/lib/access/admin';
 import { accessFailure } from '@/lib/access/http';
 
 const roleOf = (text: string): StaffRole => {
@@ -30,12 +30,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ role: st
         const grants = role === 'ADMIN' ? { ...body.data.grants, [ALWAYS_ADMIN]: { view: true, change: true } } : body.data.grants;
 
         await connection.beginTransaction();
-        const [found]: any = await connection.execute('SELECT id FROM access_profiles WHERE system_role = ?', [role]);
-        let profileId: number = found[0]?.id;
-        if (!profileId) {
-            const [res]: any = await connection.execute('INSERT INTO access_profiles (name, system_role) VALUES (?, ?)', [`Role: ${role}`, role]);
-            profileId = res.insertId;
-        }
+        const profileId = await lockRoleProfile(connection, role);
         await writeGrants(connection, profileId, grants);          // a row for every screen, so "nothing" stays nothing
         await connection.commit();
         await audit(auth.user, { action: 'UPDATE', entity: 'ACCESS', entityId: profileId, details: { role, changes: describeChange(before, grants) } });
@@ -43,6 +38,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ role: st
     } catch (err) {
         await connection.rollback().catch(() => {});
         return accessFailure(err, 'Access role save');
+    } finally {
+        connection.release();
+    }
+}
+
+/** Add the screens a role has no row for (new screens after an upgrade), with their starting ticks. Changes nothing that already exists. */
+export async function POST(_req: Request, { params }: { params: Promise<{ role: string }> }) {
+    const auth = await requirePermission('access.config', 'change');
+    if ('error' in auth) return auth.error;
+    const connection = await pool.getConnection();
+    try {
+        const role = roleOf((await params).role);
+        await connection.beginTransaction();
+        const added = await fillMissing(connection, role);
+        await connection.commit();
+        if (added > 0) await audit(auth.user, { action: 'UPDATE', entity: 'ACCESS', entityId: role, details: { role, screensAdded: added } });
+        return NextResponse.json({ added });
+    } catch (err) {
+        await connection.rollback().catch(() => {});
+        return accessFailure(err, 'Access role fill');
     } finally {
         connection.release();
     }

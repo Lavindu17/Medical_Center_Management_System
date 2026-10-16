@@ -1,5 +1,6 @@
 'use client';
 
+import { useCan } from '@/components/access/AccessContext';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { UserRound } from 'lucide-react';
@@ -17,6 +18,7 @@ import { AccessHistoryCard } from '@/components/auth/AccessHistoryCard';
  * Role-specific information (a doctor's fee and schedule, a patient's medical history) lives on that role's own page.
  */
 export function AccountPanel() {
+    const canEditAccount = useCan('my.account', 'change');
     const { refresh, user } = useAuth();
     const [state, setState] = useState<'loading' | 'error' | 'ready'>('loading');
     const [email, setEmail] = useState('');
@@ -84,6 +86,7 @@ export function AccountPanel() {
                     <CardDescription>This is how you appear to your colleagues and patients.</CardDescription>
                 </CardHeader>
                 <form onSubmit={save} noValidate>
+                    <fieldset disabled={!canEditAccount} className="contents">
                     <CardContent className="max-w-md space-y-4">
                         {error && <FormAlert>{error}</FormAlert>}
                         <TextField
@@ -104,6 +107,7 @@ export function AccountPanel() {
                     <CardFooter className="border-t pt-4">
                         <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save details'}</Button>
                     </CardFooter>
+                    </fieldset>
                 </form>
             </Card>
 

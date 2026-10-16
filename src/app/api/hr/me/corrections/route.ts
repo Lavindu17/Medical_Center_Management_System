@@ -56,7 +56,7 @@ export async function POST(req: Request) {
         const res: any = await query(
             `INSERT INTO attendance_corrections (user_id, work_date, record_id, requested_in, requested_out, reason) VALUES (?, ?, ?, ?, ?, ?)`,
             [auth.user.id, workDate, recordId ?? null, clockIn, clockOut ?? null, reason]);
-        await notifyHr(null, 'Attendance correction', `${auth.user.name} asked to correct ${formatDate(workDate)}.`, '/hr/attendance', 'ATTENDANCE_CORRECTION');
+        await notifyHr(null, 'Attendance correction', `${auth.user.name} asked to correct ${formatDate(workDate)}.`, '/hr/attendance', 'ATTENDANCE_CORRECTION', 'attendance');
         await audit(auth.user, { action: 'CREATE', entity: 'CORRECTION', entityId: res.insertId, details: { workDate } });
         return NextResponse.json({ id: res.insertId }, { status: 201 });
     } catch (err) {

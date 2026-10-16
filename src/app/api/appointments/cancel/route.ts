@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import { requireAccess } from '@/lib/api-auth';
+import { requireAccess, userCan } from '@/lib/api-auth';
 import { nameOf, notify, when } from '@/lib/notify';
 
 const cancelSchema = z.object({
@@ -30,7 +30,9 @@ export async function PUT(req: Request) {
             return NextResponse.json({ message: 'Appointment not found' }, { status: 404 });
         }
         const appt = rows[0];
-        if ((user.role === 'PATIENT' && appt.patient_id !== user.id) || (user.role === 'DOCTOR' && appt.doctor_id !== user.id)) {
+        // A patient cancels their own; the front desk cancels any; a doctor cancels only their own patients' visits
+        const cancelsAny = user.role !== 'PATIENT' && await userCan(user, 'reception.appointments', 'change');
+        if ((user.role === 'PATIENT' && appt.patient_id !== user.id) || (user.role !== 'PATIENT' && !cancelsAny && appt.doctor_id !== user.id)) {
             return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
         }
         if (!['PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED'].includes(appt.status)) {

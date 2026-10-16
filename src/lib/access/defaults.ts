@@ -4,7 +4,7 @@ export type Grant = Partial<Record<Level, boolean>>;
 export type GrantMap = Partial<Record<ResourceKey, Grant>>;
 
 /** Roles whose default profile exists. PATIENT is the customer side and gets nothing here. */
-export const STAFF_ROLES = ['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'HR_MANAGER', 'ADMIN'] as const;
+export const STAFF_ROLES = ['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'HR_MANAGER', 'ADMIN', 'STAFF'] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 const on = (...levels: Level[]): Grant => Object.fromEntries(levels.map((l) => [l, true]));
@@ -18,6 +18,8 @@ const all = (key: ResourceKey): Grant => on(...levelsOf(key));
  * nobody can open anything. They equal the rules that were fixed in code before access became configurable.
  */
 export const ROLE_TEMPLATES: Record<StaffRole, GrantMap> = {
+    // "Other staff": no duties of its own, only their own work and account pages. Everything else comes from profiles.
+    STAFF: {},
     RECEPTIONIST: {
         'reception.dashboard': on('view'),
         'reception.appointments': on('view', 'add', 'change'),

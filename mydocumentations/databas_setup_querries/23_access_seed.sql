@@ -218,3 +218,38 @@ SELECT p.`id`, v.`resource`, v.`can_view`, v.`can_add`, v.`can_change`, v.`can_a
   UNION ALL SELECT 'my.work' AS `resource`, 1 AS `can_view`, 1 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
   UNION ALL SELECT 'my.account' AS `resource`, 1 AS `can_view`, 0 AS `can_add`, 1 AS `can_change`, 0 AS `can_approve`
 ) v WHERE p.`system_role` = 'ADMIN';
+
+INSERT IGNORE INTO `access_profiles` (`name`, `system_role`) VALUES ('Role: STAFF', 'STAFF');
+INSERT IGNORE INTO `access_grants` (`profile_id`, `resource`, `can_view`, `can_add`, `can_change`, `can_approve`)
+SELECT p.`id`, v.`resource`, v.`can_view`, v.`can_add`, v.`can_change`, v.`can_approve` FROM `access_profiles` p JOIN (
+        SELECT 'reception.dashboard' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'reception.appointments' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'reception.patients' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'doctor.dashboard' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'consultations' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'doctor.patients' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'doctor.earnings' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'doctor.profile' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'pharmacy.dashboard' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'pharmacy.dispensing' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'pharmacy.inventory' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'pharmacy.alerts' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'lab.dashboard' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'lab.requests' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'lab.tests' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'billing' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'hr.overview' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'hr.roster' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'hr.attendance' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'hr.leave' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'hr.employees' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'hr.settings' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'admin.dashboard' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'admin.revenue' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'admin.users' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'admin.doctors' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'admin.audit' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'access.config' AS `resource`, 0 AS `can_view`, 0 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'my.work' AS `resource`, 1 AS `can_view`, 1 AS `can_add`, 0 AS `can_change`, 0 AS `can_approve`
+  UNION ALL SELECT 'my.account' AS `resource`, 1 AS `can_view`, 0 AS `can_add`, 1 AS `can_change`, 0 AS `can_approve`
+) v WHERE p.`system_role` = 'STAFF';

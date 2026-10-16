@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import type { Role } from '@/types';
+import type { Level, ResourceKey } from '@/lib/access/registry';
 import { asDoctor } from '@/lib/names';
 
 export { asDoctor };
@@ -36,11 +36,19 @@ export async function notify(db: Executor, recipients: number | number[], n: Not
     }
 }
 
-/** Ids of everyone with a staff role (for example all pharmacists). */
-export async function usersWithRole(db: Executor, role: Role): Promise<number[]> {
+/**
+ * Ids of the staff who may do something on a screen (for example everyone who can dispense), whatever their job title:
+ * a pharmacist whose dispensing was taken away is not told about new prescriptions, and a person given dispensing through a
+ * profile is. "view" means any level; the others mean that level.
+ */
+export async function usersWithPermission(db: Executor, resource: ResourceKey, level: Level): Promise<number[]> {
     try {
-        const sql = 'SELECT id FROM users WHERE role = ?';
-        const rows: any[] = db ? (await db.execute(sql, [role]))[0] : await query<any[]>(sql, [role]);
+        const flag = { view: '(g.can_view + g.can_add + g.can_change + g.can_approve) > 0', add: 'g.can_add = 1', change: 'g.can_change = 1', approve: 'g.can_approve = 1' }[level];
+        const sql = `SELECT DISTINCT u.id FROM users u
+             JOIN access_profiles p ON (p.system_role = u.role OR p.id IN (SELECT uap.profile_id FROM user_access_profiles uap WHERE uap.user_id = u.id))
+             JOIN access_grants g ON g.profile_id = p.id
+             WHERE u.role <> 'PATIENT' AND g.resource = ? AND ${flag}`;
+        const rows: any[] = db ? (await db.execute(sql, [resource]))[0] : await query<any[]>(sql, [resource]);
         return rows.map((r) => r.id);
     } catch (err) {
         console.error('Could not look up recipients:', err);

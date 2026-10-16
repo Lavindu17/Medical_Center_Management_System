@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import { asDoctor, nameOf, notify, usersWithRole, when } from '@/lib/notify';
+import { asDoctor, nameOf, notify, usersWithPermission, when } from '@/lib/notify';
 
 const ACTIVE = "('PENDING', 'CONFIRMED', 'CHECKED_IN', 'ARRIVED')";
 
@@ -34,7 +34,7 @@ export async function blockDoctorDay(
             type: 'DOCTOR_LEAVE', title: 'Your appointment needs rescheduling',
             body: `${asDoctor(doctorName)} is on leave on ${when(date)}. Please book another time.`, link: '/patient/book',
         });
-        await notify(null, await usersWithRole(null, 'RECEPTIONIST'), {
+        await notify(null, await usersWithPermission(null, 'reception.appointments', 'view'), {
             type: 'DOCTOR_LEAVE', title: 'Doctor on leave',
             body: `${asDoctor(doctorName)} is on leave on ${when(date)} with ${affected} booked appointment${affected === 1 ? '' : 's'} to reschedule.`,
             link: '/receptionist/appointments',

@@ -13,7 +13,7 @@ export class HrError extends Error {
     constructor(public status: number, message: string) { super(message); }
 }
 
-export const STAFF_ROLES = ['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER'] as const;
+export const STAFF_ROLES = ['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER', 'STAFF'] as const;
 const STAFF_SQL = STAFF_ROLES.map((r) => `'${r}'`).join(',');
 
 // SQL fragments that hand dates and times back as plain strings (mysql2 would otherwise build Date objects in server time)
@@ -442,9 +442,10 @@ export async function validateLeave(input: LeaveInput, opts: { ignoreRequestId?:
     return { days, dates: charged.dates, type };
 }
 
-export async function notifyHr(db: null, title: string, body: string, link: string, type: string): Promise<void> {
-    const { notify, usersWithRole } = await import('@/lib/notify');
-    const ids = [...(await usersWithRole(db, 'HR_MANAGER')), ...(await usersWithRole(db, 'ADMIN'))];
+/** Tells the people who decide (leave requests: those who can approve leave; corrections: those who can approve attendance changes). */
+export async function notifyHr(db: null, title: string, body: string, link: string, type: string, decides: 'leave' | 'attendance' = 'leave'): Promise<void> {
+    const { notify, usersWithPermission } = await import('@/lib/notify');
+    const ids = await usersWithPermission(db, decides === 'leave' ? 'hr.leave' : 'hr.attendance', 'approve');
     await notify(db, ids, { type, title, body, link });
 }
 

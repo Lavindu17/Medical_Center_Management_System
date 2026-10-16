@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { requirePermission } from '@/lib/api-auth';
 import { parseBody } from '@/lib/validate';
 import { itemStatus, prescriptionStatus } from '@/lib/prescription';
-import { nameOf, notify, usersWithRole } from '@/lib/notify';
+import { nameOf, notify, usersWithPermission } from '@/lib/notify';
 import { allergyMatches } from '@/lib/allergy';
 import { hasLabExtras, hasRxExtras } from '@/lib/schema-features';
 import { userCan } from '@/lib/api-auth';
@@ -257,7 +257,7 @@ export async function POST(req: Request) {
             // In-app notifications (written in this transaction, so a rollback sends none)
             const patientName = (newPrescription || newItems > 0 || newLabs > 0 || billCreated) ? await nameOf(connection, appt.patient_id) : '';
             if (newPrescription || newItems > 0) {
-                await notify(connection, await usersWithRole(connection, 'PHARMACIST'), {
+                await notify(connection, await usersWithPermission(connection, 'pharmacy.dispensing', 'view'), {
                     type: 'PRESCRIPTION_ISSUED', title: 'New prescription',
                     body: `A prescription for ${patientName} is ready to dispense.`, link: '/pharmacist/prescriptions',
                 });
@@ -269,7 +269,7 @@ export async function POST(req: Request) {
                 });
             }
             if (newLabs > 0) {
-                await notify(connection, await usersWithRole(connection, 'LAB_ASSISTANT'), {
+                await notify(connection, await usersWithPermission(connection, 'lab.requests', 'view'), {
                     type: 'LAB_REQUESTED', title: urgentNew > 0 ? 'Urgent lab request' : 'New lab request',
                     body: `${newLabs} lab test${newLabs === 1 ? '' : 's'} requested for ${patientName}${urgentNew > 0 ? `, ${urgentNew} urgent` : ''}.`, link: '/lab-assistant',
                 });
@@ -285,7 +285,7 @@ export async function POST(req: Request) {
                 });
             }
             if (billCreated) {
-                await notify(connection, await usersWithRole(connection, 'RECEPTIONIST'), {
+                await notify(connection, await usersWithPermission(connection, 'billing', 'view'), {
                     type: 'BILL_READY', title: 'Bill ready',
                     body: `A bill was generated for ${patientName}.`, link: '/receptionist/billing',
                 });
