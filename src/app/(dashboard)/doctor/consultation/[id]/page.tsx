@@ -429,9 +429,9 @@ export default function ConsultationPage() {
     if (!appointment) return <div role="alert" className="py-16 text-center text-neutral-600">Appointment not found</div>;
 
     return (
-        <div className="max-w-[1600px] mx-auto grid grid-cols-12 gap-6 lg:h-[calc(100vh-8rem)] overflow-hidden">
+        <div className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
             {/* LEFT COLUMN: Patient & Vitals */}
-            <div className="col-span-12 md:col-span-4 lg:col-span-3 space-y-4 overflow-y-auto pr-2">
+            <div className="space-y-4 lg:col-span-4 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start lg:overflow-y-auto lg:pr-1 xl:col-span-3">
                 {allergies.length > 0 && (
                     <div role="alert" className="rounded-xl border-2 border-red-300 bg-red-50 p-3 text-red-900">
                         <p className="flex items-center gap-2 text-sm font-bold"><ShieldAlert className="h-4 w-4" aria-hidden /> Allergies</p>
@@ -510,7 +510,7 @@ export default function ConsultationPage() {
                 </Card>
 
                 {/* History Quick View */}
-                <Card className="flex-1">
+                <Card className="hidden lg:block">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-base">
                             <History className="h-4 w-4 text-neutral-500" /> Past Visits
@@ -532,9 +532,9 @@ export default function ConsultationPage() {
             </div>
 
             {/* RIGHT COLUMN: Workbench */}
-            <div className="col-span-12 md:col-span-8 lg:col-span-9 flex flex-col h-full overflow-hidden">
-                <Tabs defaultValue="consultation" className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+            <div className="min-w-0 lg:col-span-8 xl:col-span-9">
+                <Tabs defaultValue="consultation" className="w-full">
+                    <div className="sticky top-14 z-20 -mx-1 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-neutral-200 bg-background/95 px-1 py-2 backdrop-blur md:top-0">
                         <TabsList>
                             <TabsTrigger value="consultation">Current Consultation</TabsTrigger>
                             <TabsTrigger value="history">Full History</TabsTrigger>
@@ -549,7 +549,7 @@ export default function ConsultationPage() {
                         </div>
                     </div>
 
-                    <TabsContent value="consultation" className="flex-1 overflow-y-auto space-y-6 pb-20">
+                    <TabsContent value="consultation" className="space-y-6 pb-8">
                         {/* Doctor Notes */}
                         <Card>
                             <CardHeader>
@@ -565,7 +565,7 @@ export default function ConsultationPage() {
                             </CardContent>
                         </Card>
 
-                        <div className="grid lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 gap-6">
                             {/* Prescription */}
                             <Card className="border-emerald-100">
                                 <CardHeader className="bg-emerald-50/50 pb-3">
@@ -669,7 +669,8 @@ export default function ConsultationPage() {
                                         </div>
 
                                         {selectedMed && (
-                                            <div className="space-y-3 border-t pt-2 mt-2">
+                                            <div className="mt-2 grid gap-4 border-t pt-3 md:grid-cols-2">
+                                                <div className="space-y-3">
                                                 {/* Frequency Quick Select */}
                                                 <div>
                                                     <div className="flex items-center justify-between mb-1.5">
@@ -712,6 +713,8 @@ export default function ConsultationPage() {
                                                     })}
                                                 </div>
 
+                                                </div>
+                                                <div className="space-y-3">
                                                 {/* Dynamic Dose & Duration */}
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div>
@@ -769,7 +772,8 @@ export default function ConsultationPage() {
                                                         </div>
                                                     </div>
                                                 )}
-                                                <div aria-live="polite" className="mt-4 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/40 p-3 text-sm">
+                                                </div>
+                                                <div aria-live="polite" className="rounded-lg border border-dashed border-emerald-300 bg-emerald-50/40 p-3 text-sm md:col-span-2">
                                                     <p className="text-[11px] font-bold uppercase tracking-tight text-neutral-500">How the patient will read it</p>
                                                     <p className="mt-1 font-medium text-neutral-900">{draftText}</p>
                                                     {medicine && hasSlots(selectedTimes) && usable(medicine) < draftQuantity && (
@@ -1017,7 +1021,7 @@ export default function ConsultationPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="history" className="flex-1 overflow-y-auto space-y-4">
+                    <TabsContent value="history" className="space-y-4 pb-8">
                         <Tabs defaultValue="appointments" className="w-full">
                             <TabsList className="grid w-full grid-cols-3 mb-4">
                                 <TabsTrigger value="appointments">Appointments</TabsTrigger>
