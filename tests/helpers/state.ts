@@ -8,3 +8,6 @@ export const currentToken = () => (identity.getStore() ?? state.token);
 
 // Cookies the code under test tried to set (login, change-password), newest last.
 export const setCookies: { name: string; value: string; options: Record<string, unknown> }[] = [];
+
+// Request headers the code under test can read through next/headers (for example x-forwarded-for).
+export const requestHeaders: Record<string, string> = {};

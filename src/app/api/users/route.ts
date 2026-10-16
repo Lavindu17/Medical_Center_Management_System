@@ -3,7 +3,9 @@ import { audit, changedFields } from '@/lib/audit';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { z } from 'zod';
-import { requirePermission } from '@/lib/api-auth';
+import { passwordField } from '@/lib/password';
+import { requirePermission, userCan } from '@/lib/api-auth';
+import { grantsFor, allows } from '@/lib/access/resolve';
 
 /**
  * API route for managing users in the Sethro Medical Center system.
@@ -25,10 +27,18 @@ export async function GET(req: Request) {
     }
 }
 
+const PRIVILEGE_MESSAGE = 'Only someone who can change access control may create, change or delete an administrator.';
+
+/** Whether an account can change what everyone else may do (an administrator, or anyone given the access-control permission). */
+async function holdsAccessControl(id: number, role: string): Promise<boolean> {
+    if (role === 'ADMIN') return true;
+    return allows(await grantsFor({ id, role }), 'access.config', 'change');
+}
+
 const createUserSchema = z.object({
     name: z.string().min(2),
     email: z.string().email(),
-    password: z.string().min(6),
+    password: passwordField(),
     role: z.enum(['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONIST', 'ADMIN', 'HR_MANAGER', 'STAFF']),
     phone: z.string().optional(),
     // Doctor specific
@@ -53,6 +63,10 @@ export async function POST(req: Request) {
         }
 
         const { name, email, password, role, phone, specialization, licenseNumber } = validation.data;
+        // Being able to add users must not be a way to create an administrator
+        if (role === 'ADMIN' && !(await userCan(auth.user, 'access.config', 'change'))) {
+            return NextResponse.json({ message: PRIVILEGE_MESSAGE }, { status: 403 });
+        }
 
         const existingUser = await AuthService.findUserByEmail(email);
         if (existingUser) {
@@ -141,6 +155,10 @@ export async function PUT(req: Request) {
         if (existingUser.length === 0) {
             return NextResponse.json({ message: 'User not found' }, { status: 404 });
         }
+        // Managing accounts is not a way to take over an administrator (change their email, then reset their password) or to become one
+        if ((role === 'ADMIN' || await holdsAccessControl(id, existingUser[0].role)) && !(await userCan(admin, 'access.config', 'change'))) {
+            return NextResponse.json({ message: PRIVILEGE_MESSAGE }, { status: 403 });
+        }
         // Doctors and patients have a profile row; changing to or from those roles would orphan or invent it
         if (existingUser[0].role !== role && [existingUser[0].role, role].some((r) => r === 'DOCTOR' || r === 'PATIENT')) {
             return NextResponse.json({ message: 'Roles cannot be changed to or from Doctor or Patient. Create a new account instead.' }, { status: 400 });
@@ -190,6 +208,9 @@ export async function DELETE(req: Request) {
 
         const target = await query<any[]>('SELECT role FROM users WHERE id = ?', [id]);
         if (target.length === 0) return NextResponse.json({ message: 'User not found' }, { status: 404 });
+        if (await holdsAccessControl(id, target[0].role) && !(await userCan(admin, 'access.config', 'change'))) {
+            return NextResponse.json({ message: PRIVILEGE_MESSAGE }, { status: 403 });
+        }
         if (target[0].role === 'ADMIN') {
             const admins = await query<any[]>("SELECT COUNT(*) AS n FROM users WHERE role = 'ADMIN'");
             if (Number(admins[0].n) <= 1) {

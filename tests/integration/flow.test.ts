@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { pool, query } from '@/lib/db';
 import {
     DOCTOR, ALICE, BOB, PHARMACIST, RECEPTIONIST, FBC_LAB_TEST,
-    as, post, ctx, isoDate, daysFromNow, rows, one, makeAppointment, addMedicine, consult, dispense, rx,
+    as, post, ctx, isoDate, daysFromNow, rows, one, makeAppointment, addMedicine, consult, dispense, rx, runSqlFile,
 } from './helpers';
 
 // Plan section 13, step 3: book -> check-in -> consult/complete -> dispense -> bill reconciled.
@@ -28,8 +28,7 @@ describe('schema (full_setup.sql + 18_schema_sync.sql)', () => {
     it('18_schema_sync.sql is idempotent', async () => {
         const fs = await import('fs'); const path = await import('path');
         const sql = fs.readFileSync(path.resolve(__dirname, '../../mydocumentations/databas_setup_querries/18_schema_sync.sql'), 'utf8');
-        const conn = await pool.getConnection();
-        try { await conn.query(sql); await conn.query(sql); } finally { conn.release(); }
+        await runSqlFile(sql, 2);
     });
 
     it('seeded demo accounts are verified so they can log in', async () => {

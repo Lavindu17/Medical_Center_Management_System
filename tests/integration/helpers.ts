@@ -74,3 +74,13 @@ export async function restoreRole(role: string) {
 export const rx = (medicineId: number, quantity: number) =>
     [{ medicineId, dosage: '1', frequency: '1-0-0-0', duration: '5 days', quantity }];
 
+
+/** Runs a whole SQL file (several statements). The app's own connection refuses that on purpose, so this opens its own. */
+export async function runSqlFile(sql: string, times = 1) {
+    const mysql = (await import('mysql2/promise')).default;
+    const conn = await mysql.createConnection({
+        host: process.env.MYSQL_HOST, user: process.env.MYSQL_USER, password: process.env.MYSQL_PASSWORD,
+        database: process.env.MYSQL_DATABASE, port: Number(process.env.MYSQL_PORT) || 3306, multipleStatements: true,
+    });
+    try { for (let i = 0; i < times; i++) await conn.query(sql); } finally { await conn.end(); }
+}

@@ -14,7 +14,8 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  multipleStatements: true // Enable for transactions if needed inline, but pool.execute works fine.
+  // One statement per query: if an injection ever slipped through, it could not append a second, destructive one
+  multipleStatements: false,
 });
 
 export async function query<T>(sql: string, params: any[] = []): Promise<T> {

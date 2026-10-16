@@ -5,6 +5,7 @@ import { clearLimit, limiterKey, rateLimited } from '@/lib/rate-limit';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { audit } from '@/lib/audit';
+import { requestIp } from '@/lib/request-ip';
 
 const loginSchema = z.object({
     email: z.string().email(),
@@ -30,6 +31,13 @@ export async function POST(req: Request) {
         const key = limiterKey('login', email);
         if (await rateLimited(key, MAX_ATTEMPTS, WINDOW_SECONDS)) {
             await audit(null, { action: 'LOGIN_FAILED', entity: 'SESSION', outcome: 'DENIED', details: { email, reason: 'rate_limited' } });
+            return NextResponse.json({ message: 'Too many sign-in attempts. Please try again in a few minutes.' }, { status: 429 });
+        }
+
+        // One caller trying many accounts (password spraying) is slowed down as well
+        const ip = await requestIp();
+        if (ip && await rateLimited(limiterKey('login-ip', ip), 100, WINDOW_SECONDS)) {
+            await audit(null, { action: 'LOGIN_FAILED', entity: 'SESSION', outcome: 'DENIED', details: { reason: 'rate_limited_ip' } });
             return NextResponse.json({ message: 'Too many sign-in attempts. Please try again in a few minutes.' }, { status: 429 });
         }
 

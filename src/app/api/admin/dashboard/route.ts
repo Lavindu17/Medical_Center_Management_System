@@ -6,6 +6,8 @@ import { loadSettings } from '@/lib/hr';
 import { addDays, localDay } from '@/lib/hr-time';
 import { dayLabel, fillDays, monthComparison, pctChange, recentDays } from '@/lib/dashboard-range';
 
+/** The hash every demo account was seeded with (full_setup.sql): a known password, so any account still holding it is open to anyone */
+const DEMO_PASSWORD_HASH = '$2b$10$xQtcNhKLC5JMmuvx0ail/uJDuUGU5UBKr5wMho7B/CCrGeN5ZVKU2';
 /** Walking the whole audit chain is only done on every dashboard load while it is small */
 const CHAIN_CHECK_LIMIT = 20_000;
 
@@ -30,6 +32,8 @@ export async function GET() {
         const month = monthComparison(today);
         const since30 = addDays(today, -29);
 
+        // Accounts still using the password the demo data was created with (everyone who set their own is different)
+        const demoPasswords = await query<any[]>('SELECT COUNT(*) AS n FROM users WHERE password_hash = ?', [DEMO_PASSWORD_HASH]);
         const [patients, staff, perDay, statusToday, topDoctors, paid, lowStock, expiring, pendingLeave, pendingCorrections, onLeaveToday, auditCount] = await Promise.all([
             query<any[]>(`SELECT COUNT(*) AS n FROM users WHERE role = 'PATIENT'`),
             query<any[]>(`SELECT COUNT(*) AS n FROM users WHERE role <> 'PATIENT'`),
@@ -83,7 +87,7 @@ export async function GET() {
                 expiringBatches: Number(expiring[0].n),
                 doctorsOnLeave: Number(onLeaveToday[0].n),
             },
-            health: { database: 'ok', audit },
+            health: { database: 'ok', audit, demoPasswordAccounts: Number(demoPasswords[0]?.n ?? 0) },
         });
     } catch (error) {
         console.error('Admin dashboard error:', error);

@@ -19,7 +19,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             FROM users u
             JOIN patients p ON u.id = p.user_id
             WHERE u.id = ? AND u.role = 'PATIENT'
-        `, [id]);
+              AND EXISTS (SELECT 1 FROM appointments own WHERE own.patient_id = u.id AND own.doctor_id = ?)
+        `, [id, user.id]);   // only a doctor's own patients: another patient's chart is "not found"
 
         if (patientRows.length === 0) return NextResponse.json({ message: 'Not found' }, { status: 404 });
 
@@ -27,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
         // 2. Fetch History (Completed appointments only)
         const historyRows = await query<any[]>(`
-            SELECT id, date, time_slot, notes, status 
+            SELECT id, date, time_slot, notes, status, doctor_id 
             FROM appointments 
             WHERE patient_id = ? AND status IN ('COMPLETED', 'ONGOING') 
             ORDER BY date DESC
@@ -48,7 +49,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                     WHERE pi.prescription_id = ?
                  `, [pId]);
             }
-            return { ...visit, prescriptions };
+            // Another doctor's private working notes stay with that doctor
+            const { doctor_id, ...rest } = visit;
+            return { ...rest, notes: doctor_id === user.id ? visit.notes : null, prescriptions };
         }));
 
         return NextResponse.json({

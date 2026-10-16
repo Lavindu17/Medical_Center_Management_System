@@ -6,13 +6,15 @@ import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 import { query } from '@/lib/db';
 import { clearLimit, limiterKey, rateLimited } from '@/lib/rate-limit';
+import { passwordProblem } from '@/lib/password';
 
 const required = 'Missing required fields';
 const changePasswordSchema = z.object({
     currentPassword: z.string({ message: required }).min(1, required),
-    newPassword: z.string({ message: required }).min(1, required)
-        .min(6, 'New password must be at least 6 characters')
-        .refine((v) => Buffer.byteLength(v) <= 72, 'Password is too long (72 bytes maximum)'),
+    newPassword: z.string({ message: required }).min(1, required).superRefine((v, ctx) => {
+        const problem = passwordProblem(v);
+        if (problem) ctx.addIssue({ code: 'custom', message: problem });
+    }),
 }).refine((v) => v.newPassword !== v.currentPassword, {
     path: ['newPassword'], message: 'The new password must be different from the current one',
 });

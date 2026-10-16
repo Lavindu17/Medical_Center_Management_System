@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { AuthService } from '@/services/auth.service';
 import { limiterKey, rateLimited } from '@/lib/rate-limit';
+import { passwordProblem } from '@/lib/password';
 import { z } from 'zod';
 
 const resetSchema = z.object({
     email: z.string().email(),
     code: z.string().trim().min(1).max(32),
-    // bcrypt only uses the first 72 bytes, so longer passwords would silently be truncated
-    newPassword: z.string().min(6).refine((p) => Buffer.byteLength(p) <= 72, 'Password is too long (72 bytes maximum)'),
+    newPassword: z.string(),
 });
 
 export async function POST(req: Request) {
@@ -20,6 +20,8 @@ export async function POST(req: Request) {
         }
 
         const { email, code, newPassword } = validation.data;
+        const weak = passwordProblem(newPassword, [email]);
+        if (weak) return NextResponse.json({ message: weak }, { status: 400 });
 
         if (await rateLimited(limiterKey('reset', email), 30, 60 * 60)) {
             return NextResponse.json({ message: 'Too many attempts. Please try again later.' }, { status: 429 });

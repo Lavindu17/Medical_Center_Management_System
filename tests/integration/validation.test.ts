@@ -109,7 +109,7 @@ describe('change password validation', () => {
     it.each([
         [{}, /Missing required fields/],
         [{ currentPassword: 'old-pass' }, /Missing required fields/],
-        [{ currentPassword: 'old-pass', newPassword: 'abc' }, /at least 6/],
+        [{ currentPassword: 'old-pass', newPassword: 'abc' }, /at least 8/],
         [{ currentPassword: 'same-pass', newPassword: 'same-pass' }, /different/],
         [{ currentPassword: 'old-pass', newPassword: 'x'.repeat(80) }, /too long/],
     ])('rejects %j', async (body, message) => {

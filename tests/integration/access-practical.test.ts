@@ -222,7 +222,7 @@ describe('shared routes follow permissions, not roles', () => {
 describe('"Other staff": a role with no duties of its own', () => {
     it('can be created and starts with only My Work and Account', async () => {
         await as('ADMIN', ADMIN);
-        const res = await (await import('@/app/api/users/route')).POST(post('/x', { name: 'New Clerk', email: `clerk.${uniq()}@access.test`, password: 'password123', role: 'STAFF' }));
+        const res = await (await import('@/app/api/users/route')).POST(post('/x', { name: 'New Clerk', email: `clerk.${uniq()}@access.test`, password: 'Correct-Horse-1', role: 'STAFF' }));
         expect(res.status).toBe(201);
         const clerk = await one(`SELECT id FROM users WHERE name = 'New Clerk' ORDER BY id DESC LIMIT 1`);
         created.push(clerk.id);

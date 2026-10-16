@@ -4,13 +4,15 @@ import { AuthService } from '@/services/auth.service';
 import { pool } from '@/lib/db';
 import { handleError } from '@/lib/errors';
 import { z } from 'zod';
+import { passwordProblem } from '@/lib/password';
+import { limiterKey, rateLimited } from '@/lib/rate-limit';
+import { requestIp } from '@/lib/request-ip';
 
 const registerSchema = z.object({
     firstName: z.string().trim().min(2).max(100),
     lastName: z.string().trim().min(1).max(100),
     email: z.string().email().max(255),
-    // bcrypt only uses the first 72 bytes, so longer passwords would silently be truncated
-    password: z.string().min(6).refine((p) => Buffer.byteLength(p) <= 72, 'Password is too long (72 bytes maximum)'),
+    password: z.string(),
     dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((d) => {
         const date = new Date(d + 'T00:00:00Z');
         return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(d) && date <= new Date() && date.getUTCFullYear() >= 1900;
@@ -30,6 +32,14 @@ export async function POST(req: Request) {
         }
 
         const { firstName, lastName, email, password, dob, gender, address } = validation.data;
+        const weak = passwordProblem(password, [email, firstName, lastName]);
+        if (weak) return NextResponse.json({ message: weak, errors: { fieldErrors: { password: [weak] } } }, { status: 400 });
+
+        // Registration sends an email to whatever address is typed, so it is limited per caller and per address
+        const ip = await requestIp();
+        if ((ip && await rateLimited(limiterKey('register-ip', ip), 10, 60 * 60)) || await rateLimited(limiterKey('register', email), 5, 60 * 60)) {
+            return NextResponse.json({ message: 'Too many sign-up attempts. Please try again later.' }, { status: 429 });
+        }
         const name = `${firstName} ${lastName}`;
 
         // 2. Check if user exists

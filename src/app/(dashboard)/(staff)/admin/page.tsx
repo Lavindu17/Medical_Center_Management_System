@@ -17,7 +17,7 @@ interface Dashboard {
     topDoctors: { name: string; value: number }[];
     revenue: { thisMonth: number; lastMonth: number; change: number | null };
     attention: { pendingLeave: number; pendingCorrections: number; lowStock: number; expiringBatches: number; doctorsOnLeave: number };
-    health: { database: string; audit: { status: 'ok' | 'broken' | 'skipped' | 'unavailable'; checked?: number } };
+    health: { database: string; demoPasswordAccounts?: number; audit: { status: 'ok' | 'broken' | 'skipped' | 'unavailable'; checked?: number } };
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -96,6 +96,9 @@ export default function AdminDashboard() {
                     {data && (
                         <ul className="space-y-2 text-sm">
                             <li className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden /> Database responding</li>
+                            {(data.health.demoPasswordAccounts ?? 0) > 0 && (
+                                <li className="flex items-start gap-2 font-medium text-red-800"><span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-red-600" aria-hidden /> <Link href="/admin/users" className="underline">{data.health.demoPasswordAccounts} account{data.health.demoPasswordAccounts === 1 ? ' still uses' : 's still use'} the demo password. Anyone can sign in to {data.health.demoPasswordAccounts === 1 ? 'it' : 'them'}.</Link></li>
+                            )}
                             <li className="flex items-center gap-2">
                                 <span className={`h-2 w-2 rounded-full ${data.health.audit.status === 'ok' ? 'bg-emerald-600' : data.health.audit.status === 'broken' ? 'bg-red-600' : 'bg-neutral-400'}`} aria-hidden />
                                 {data.health.audit.status === 'ok' && `Audit trail intact (${data.health.audit.checked} entries checked)`}

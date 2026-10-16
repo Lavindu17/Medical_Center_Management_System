@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { pool, query } from '@/lib/db';
 import { audit, verifyChain } from '@/lib/audit';
-import { one, rows } from './helpers';
+import { one, rows, runSqlFile } from './helpers';
 
 // The audit trail itself: appending, the hash chain, concurrency, and the append-only guarantee.
 
@@ -14,8 +14,7 @@ const doctor = { id: 2, role: 'DOCTOR', name: 'Dr. John Smith' };
 const marker = () => `t${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
 
 beforeAll(async () => {
-    const c = await pool.getConnection();
-    try { await c.query(SQL); } finally { c.release(); }   // idempotent: proves the migration can run twice
+    await runSqlFile(SQL);   // idempotent: proves the migration can run twice
 });
 
 describe('audit()', () => {
@@ -76,7 +75,7 @@ describe('append-only', () => {
     // The chain is what makes that visible. This test acts as that administrator, then puts everything back.
     describe('tamper detection (as a database administrator)', () => {
         const dropTriggers = async () => { await pool.query('DROP TRIGGER IF EXISTS audit_log_no_update'); await pool.query('DROP TRIGGER IF EXISTS audit_log_no_delete'); };
-        const restoreTriggers = async () => { const c = await pool.getConnection(); try { await c.query(SQL); } finally { c.release(); } };
+        const restoreTriggers = async () => { await runSqlFile(SQL); };
 
         it('detects an edited row', async () => {
             const id = marker();

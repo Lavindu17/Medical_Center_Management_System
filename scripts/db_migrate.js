@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 const config = {
     host: 'localhost',
     user: 'root',
-    password: 'Ttlshiwwya2002#',
+    password: process.env.MYSQL_PASSWORD,
     database: 'sethro_medical'
 };
 
