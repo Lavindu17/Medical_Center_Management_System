@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { loadSettings } from '@/lib/hr';
 import { addDays, localDay } from '@/lib/hr-time';
 import { dayLabel, recentDays } from '@/lib/dashboard-range';
 
 /** Workload for the lab: what is waiting, what was finished today, how long tests take, and a 14-day requested/completed trend. */
 export async function GET() {
-    const auth = await requireRole('LAB_ASSISTANT');
+    const auth = await requirePermission('lab.dashboard', 'view');
     if ('error' in auth) return auth.error;
 
     try {

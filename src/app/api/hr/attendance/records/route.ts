@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, STAFF_ROLES, savePunch } from '@/lib/hr';
 import { isDay, isTime } from '@/lib/hr-time';
 import { query } from '@/lib/db';
@@ -19,7 +20,7 @@ const punchSchema = z.object({
 
 /** HR adds a missing session for someone. A reason is required, and it is audited. You cannot edit your own attendance. */
 export async function POST(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.attendance', 'add');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, punchSchema);
     if ('error' in body) return body.error;

@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query, pool } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { positiveId } from '@/lib/medicine-schema';
 
 // GET endpoint to fetch batches for a specific medicine
 export async function GET(req: Request) {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'view');
     if ('error' in auth) return auth.error;
 
     try {
@@ -59,7 +59,7 @@ class StockError extends Error {
 }
 
 export async function POST(req: Request) {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'add');
     if ('error' in auth) return auth.error;
 
     try {

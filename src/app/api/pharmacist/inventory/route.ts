@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { medicineSchema } from '@/lib/medicine-schema';
 
 export async function GET() {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'view');
     if ('error' in auth) return auth.error;
 
     try {
@@ -31,7 +31,7 @@ export async function GET() {
 
 // Register a medicine (master data only). Stock is added later as batches.
 export async function POST(req: Request) {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'add');
     if ('error' in auth) return auth.error;
 
     try {

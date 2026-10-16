@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, savePunch } from '@/lib/hr';
 import { isDay, isTime } from '@/lib/hr-time';
 import { notify } from '@/lib/notify';
@@ -27,7 +28,7 @@ async function target(params: Promise<{ id: string }>, actorId: number) {
 
 /** HR changes a session. The reason is kept with the record and in the audit trail. */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.attendance', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;
@@ -44,7 +45,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
 /** Delete a session recorded by mistake. A reason is required (?reason=...). */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.attendance', 'change');
     if ('error' in auth) return auth.error;
     try {
         const reason = (new URL(req.url).searchParams.get('reason') ?? '').trim();

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { audit } from '@/lib/audit';
 import { listAudit, parseFilters, toCsv } from '@/lib/audit-query';
 
@@ -7,7 +7,7 @@ const MAX_ROWS = 10_000;
 
 /** CSV export of the filtered trail (at most 10,000 rows). The export is recorded: who took a copy, and what they asked for. */
 export async function GET(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.audit', 'view');
     if ('error' in auth) return auth.error;
 
     try {

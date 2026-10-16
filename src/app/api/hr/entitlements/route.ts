@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, STAFF_ROLES, balances } from '@/lib/hr';
 
 const schema = z.object({
@@ -16,7 +17,7 @@ const schema = z.object({
 
 /** One person's balances for a year (?userId=&year=). */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'view');
     if ('error' in auth) return auth.error;
     try {
         const p = new URL(req.url).searchParams;
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
 
 /** Set one person's yearly allowance for one leave type (or clear it back to the default). */
 export async function PUT(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

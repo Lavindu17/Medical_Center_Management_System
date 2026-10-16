@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { audit } from '@/lib/audit';
 import { listAudit, parseFilters } from '@/lib/audit-query';
 
@@ -7,7 +7,7 @@ const PAGE = 50;
 
 /** The audit trail, newest first, filterable. Administrators only; looking at it is itself recorded. */
 export async function GET(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.audit', 'view');
     if ('error' in auth) return auth.error;
 
     try {

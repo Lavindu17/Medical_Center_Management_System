@@ -1,9 +1,9 @@
-import { requireRole } from '@/lib/api-auth';
+import { requireAccess } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 export async function GET() {
-    const auth = await requireRole('ADMIN', 'DOCTOR');
+    const auth = await requireAccess(['consultations', 'add'], ['pharmacy.inventory', 'view']);
     if ('error' in auth) return auth.error;
 
     try {

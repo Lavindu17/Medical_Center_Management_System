@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 
 /** Correction requests, newest first. Default: the ones waiting for a decision (?status=ALL for everything). */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.attendance', 'view');
     if ('error' in auth) return auth.error;
     try {
         const all = new URL(req.url).searchParams.get('status') === 'ALL';

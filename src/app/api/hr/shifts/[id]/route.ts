@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, checkShiftTimes, loadSettings, loadShifts, toShift } from '@/lib/hr';
 import { addDays, isTime, normTime } from '@/lib/hr-time';
 import { overlaps } from '@/lib/hr-rules';
@@ -16,7 +17,7 @@ const schema = z.object({
 
 /** Change the times of one shift. */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.roster', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

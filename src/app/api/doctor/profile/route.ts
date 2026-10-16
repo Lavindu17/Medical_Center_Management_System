@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query, pool } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 
 // Working hours, slot length and time off are managed by the administrator (/api/admin/doctors/[id]/schedule)
 
@@ -15,7 +15,7 @@ const profileSchema = z.object({
 });
 
 export async function GET() {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('doctor.profile', 'view');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 
@@ -39,7 +39,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('doctor.profile', 'change');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

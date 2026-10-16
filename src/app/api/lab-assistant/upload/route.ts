@@ -4,13 +4,13 @@ import { randomUUID } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { nameOf, notify } from '@/lib/notify';
 import { MAX_REPORT_BYTES, detectReportType, reportDir } from '@/lib/lab-reports';
 
 // POST Upload Result
 export async function POST(req: Request) {
-    const auth = await requireRole('LAB_ASSISTANT');
+    const auth = await requirePermission('lab.requests', 'add');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

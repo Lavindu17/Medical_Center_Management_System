@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomInt } from 'crypto';
 import { z } from 'zod';
 import { pool } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { audit } from '@/lib/audit';
 import { AuthService } from '@/services/auth.service';
 import { escapeLike } from '@/lib/html';
@@ -27,7 +27,7 @@ function temporaryPassword() {
 }
 
 export async function POST(req: Request) {
-    const auth = await requireRole('RECEPTIONIST', 'ADMIN');
+    const auth = await requirePermission('reception.patients', 'add');
     if ('error' in auth) return auth.error;
 
     try {
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-    const auth = await requireRole('RECEPTIONIST', 'ADMIN');
+    const auth = await requirePermission('reception.patients', 'view');
     if ('error' in auth) return auth.error;
 
     try {

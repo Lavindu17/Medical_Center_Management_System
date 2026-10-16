@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -9,7 +9,7 @@ import { hasLabExtras } from '@/lib/schema-features';
 // GET Pending Lab Requests
 export async function GET(req: Request) {
     try {
-        const auth = await requireRole('LAB_ASSISTANT');
+        const auth = await requirePermission('lab.requests', 'view');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 

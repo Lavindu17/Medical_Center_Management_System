@@ -3,7 +3,7 @@ import { audit, changedFields } from '@/lib/audit';
 import { query, pool } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 
 /**
  * API route for managing users in the Sethro Medical Center system.
@@ -12,7 +12,7 @@ import { requireRole } from '@/lib/api-auth';
 
 // Fetch all users
 export async function GET(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.users', 'view');
     if ('error' in auth) return auth.error;
 
     try {
@@ -41,7 +41,7 @@ const createUserSchema = z.object({
  * Validates input, checks for existing user, and handles doctor-specific fields.
  */
 export async function POST(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.users', 'add');
     if ('error' in auth) return auth.error;
 
     try {
@@ -123,7 +123,7 @@ const updateUserSchema = z.object({
  * Validates input and updates the user record in the database.
  */
 export async function PUT(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.users', 'change');
     if ('error' in auth) return auth.error;
     const { user: admin } = auth;
 
@@ -177,7 +177,7 @@ export async function PUT(req: Request) {
  * Uses DELETE CASCADE in schema to handle related records.
  */
 export async function DELETE(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.users', 'change');
     if ('error' in auth) return auth.error;
     const { user: admin } = auth;
 

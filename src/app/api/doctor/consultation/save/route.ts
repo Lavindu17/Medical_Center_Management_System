@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { pool } from '@/lib/db';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { parseBody } from '@/lib/validate';
 import { itemStatus, prescriptionStatus } from '@/lib/prescription';
 import { nameOf, notify, usersWithRole } from '@/lib/notify';
 import { allergyMatches } from '@/lib/allergy';
 import { hasLabExtras, hasRxExtras } from '@/lib/schema-features';
+import { userCan } from '@/lib/api-auth';
 
 const SERVICE_CHARGE = 500.0;
 const CLOSED_STATUSES = ['CANCELLED', 'ABSENT', 'NO_SHOW'];
@@ -86,7 +87,7 @@ async function checkAllergy(
 }
 
 export async function POST(req: Request) {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('consultations', 'add');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 
@@ -102,6 +103,10 @@ export async function POST(req: Request) {
         // The optional columns from 21_orders.sql: used when present, so saving keeps working before it is applied
         const [rxExtras, labExtras] = await Promise.all([hasRxExtras(), hasLabExtras()]);
         const { weight, temperature, pulse, blood_pressure: bloodPressure } = body.data.vitals;
+        // Completing the consultation creates the bill: it is its own permission, separate from writing notes
+        if (status === 'COMPLETED' && !(await userCan(user, 'consultations', 'approve'))) {
+            return NextResponse.json({ message: 'You can save notes, but you are not allowed to complete a consultation.' }, { status: 403 });
+        }
 
         const connection = await pool.getConnection();
         try {

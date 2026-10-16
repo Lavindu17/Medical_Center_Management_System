@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { audit, verifyChain } from '@/lib/audit';
 
 /**
@@ -7,7 +7,7 @@ import { audit, verifyChain } from '@/lib/audit';
  * Keep the returned `head` somewhere outside the database: it is what would reveal rows cut off the end.
  */
 export async function POST() {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.audit', 'approve');
     if ('error' in auth) return auth.error;
 
     try {

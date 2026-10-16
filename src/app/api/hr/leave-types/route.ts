@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, leaveTypes } from '@/lib/hr';
 
 const schema = z.object({
@@ -19,7 +20,7 @@ const schema = z.object({
 });
 
 export async function GET() {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'view');
     if ('error' in auth) return auth.error;
     try {
         return NextResponse.json({ types: await leaveTypes(false) });
@@ -30,7 +31,7 @@ export async function GET() {
 
 /** Create a leave type, or change one (send its id). Types are never deleted, only switched off, so history keeps its meaning. */
 export async function POST(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

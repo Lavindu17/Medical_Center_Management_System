@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { balances, loadLeave } from '@/lib/hr';
 import { bookedAppointments } from '@/lib/doctor-leave';
 import { eachDay } from '@/lib/hr-time';
@@ -10,7 +11,7 @@ import { eachDay } from '@/lib/hr-time';
  * off on those days, and (for doctors) how many booked appointments fall on them.
  */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.leave', 'view');
     if ('error' in auth) return auth.error;
     try {
         const params = new URL(req.url).searchParams;

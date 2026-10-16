@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { query, pool } from '@/lib/db';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 
 // GET all doctors with their financial settings
 export async function GET(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.doctors', 'view');
     if ('error' in auth) return auth.error;
 
     try {
@@ -43,7 +43,7 @@ const updateDoctorSchema = z.object({
 
 // Update Doctor Fees
 export async function PUT(req: Request) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.doctors', 'change');
     if ('error' in auth) return auth.error;
 
     try {

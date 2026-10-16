@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { parseBody } from '@/lib/validate';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -11,7 +11,7 @@ import { AuthService } from '@/services/auth.service';
 // GET All Lab Tests
 export async function GET(req: Request) {
     try {
-        const auth = await requireRole('LAB_ASSISTANT', 'DOCTOR');
+        const auth = await requirePermission('lab.tests', 'view');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 
@@ -32,7 +32,7 @@ const labTestSchema = z.object({
 // POST Create New Lab Test
 export async function POST(req: Request) {
     try {
-        const auth = await requireRole('LAB_ASSISTANT', 'DOCTOR', 'ADMIN');
+        const auth = await requirePermission('lab.tests', 'add');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 

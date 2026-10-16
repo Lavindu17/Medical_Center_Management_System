@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, createShifts, loadHolidays, loadLeave, loadSettings, loadShifts } from '@/lib/hr';
 import { eachDay, isDay, isTime, weekday } from '@/lib/hr-time';
 import { notify } from '@/lib/notify';
@@ -11,7 +12,7 @@ import { formatDate } from '@/lib/dates';
 
 /** The roster for a date range (default one week), with approved leave and holidays so the grid can show them. */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.roster', 'view');
     if ('error' in auth) return auth.error;
     try {
         const p = new URL(req.url).searchParams;
@@ -49,7 +50,7 @@ const schema = z.object({
 
 /** Add shifts for one or several people. Anything that cannot be added is skipped and reported. */
 export async function POST(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.roster', 'add');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;
@@ -79,7 +80,7 @@ const deleteSchema = z.object({ ids: z.array(z.number().int().positive()).min(1)
 
 /** Remove shifts (for example a whole week of one person). */
 export async function DELETE(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.roster', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, deleteSchema);
     if ('error' in body) return body.error;

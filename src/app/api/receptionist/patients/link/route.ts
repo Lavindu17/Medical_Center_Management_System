@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { pool } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 
 const schema = z.object({
     primary_patient_id: z.coerce.number().int().positive(),
@@ -12,7 +12,7 @@ const schema = z.object({
 
 // Reception links two patients whose identity and relationship they have checked in person.
 export async function POST(req: Request) {
-    const auth = await requireRole('RECEPTIONIST', 'ADMIN');
+    const auth = await requirePermission('reception.patients', 'change');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

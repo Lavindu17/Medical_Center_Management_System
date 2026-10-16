@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { STAFF_ROLES, evaluateRange, loadSettings } from '@/lib/hr';
 import { localDay } from '@/lib/hr-time';
 
 /** All staff with their HR profile and what they are doing today. */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.employees', 'view');
     if ('error' in auth) return auth.error;
     try {
         const params = new URL(req.url).searchParams;

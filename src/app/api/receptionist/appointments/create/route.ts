@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { bookAppointment, BookingError } from '@/lib/booking';
 
 const schema = z.object({
@@ -13,7 +13,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-    const auth = await requireRole('RECEPTIONIST', 'ADMIN');
+    const auth = await requirePermission('reception.appointments', 'add');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

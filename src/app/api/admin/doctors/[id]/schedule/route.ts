@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { notify } from '@/lib/notify';
 import { findOverlap, saveSchedule, scheduleSchema } from '@/lib/doctor-schedule';
 import { loadSettings } from '@/lib/hr';
@@ -15,7 +15,7 @@ async function doctorId(params: Promise<{ id: string }>): Promise<number | null>
 
 /** One doctor's weekly hours, slot length and upcoming time off (admin only). */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.doctors', 'view');
     if ('error' in auth) return auth.error;
     try {
         const id = await doctorId(params);
@@ -55,7 +55,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 /** Replace a doctor's weekly hours and slot length. Bookings already made are kept; the response says how many no longer fit. */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.doctors', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, scheduleSchema);
     if ('error' in body) return body.error;

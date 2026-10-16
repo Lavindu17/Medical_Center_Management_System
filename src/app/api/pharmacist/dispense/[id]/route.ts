@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { audit, auditAccess } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { query, pool } from '@/lib/db';
@@ -17,7 +17,7 @@ export async function GET(
 ) {
     const params = await props.params;
     try {
-        const auth = await requireRole('PHARMACIST');
+        const auth = await requirePermission('pharmacy.dispensing', 'view');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 
@@ -125,7 +125,7 @@ export async function POST(
 ) {
     const params = await props.params;
     try {
-        const auth = await requireRole('PHARMACIST');
+        const auth = await requirePermission('pharmacy.dispensing', 'approve');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 

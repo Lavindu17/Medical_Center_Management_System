@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, loadHolidays } from '@/lib/hr';
 import { isDay } from '@/lib/hr-time';
 
@@ -14,7 +15,7 @@ const schema = z.object({
 
 /** Public holidays for a year (?year=). Holidays are not charged as leave and are not absences. */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'view');
     if ('error' in auth) return auth.error;
     try {
         const year = Number(new URL(req.url).searchParams.get('year')) || new Date().getFullYear();
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
 
 /** Add a holiday, or rename one on the same date. */
 export async function POST(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'change');
     if ('error' in auth) return auth.error;
     try {
         const date = new URL(req.url).searchParams.get('date') ?? '';

@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { loadSettings } from '@/lib/hr';
 import { addDays, localDay } from '@/lib/hr-time';
 import { dayLabel, recentDays } from '@/lib/dashboard-range';
 
 /** The pharmacy dashboard's working lists: what is about to expire, what is running low, what sells most, and how busy the queue is. */
 export async function GET() {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.dashboard', 'view');
     if ('error' in auth) return auth.error;
 
     try {

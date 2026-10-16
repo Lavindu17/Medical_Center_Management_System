@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requireAccess } from '@/lib/api-auth';
 import { nameOf, notify, when } from '@/lib/notify';
 
 const cancelSchema = z.object({
@@ -11,7 +11,7 @@ const cancelSchema = z.object({
 });
 
 export async function PUT(req: Request) {
-    const auth = await requireRole('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN');
+    const auth = await requireAccess('PATIENT', ['reception.appointments', 'change'], ['consultations', 'change']);
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 
 const DAYS = 30;
 
 export async function GET() {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.dashboard', 'view');
     if ('error' in auth) return auth.error;
 
     try {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { medicineSchema, positiveId } from '@/lib/medicine-schema';
 
 async function parseId(props: { params: Promise<{ id: string }> }) {
@@ -10,7 +10,7 @@ async function parseId(props: { params: Promise<{ id: string }> }) {
 }
 
 export async function GET(_req: Request, props: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'view');
     if ('error' in auth) return auth.error;
 
     try {
@@ -28,7 +28,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
 
 // Edit master data only. Stock and expiry change through batches and dispensing, never through this form.
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'change');
     if ('error' in auth) return auth.error;
 
     try {
@@ -66,7 +66,7 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 }
 
 export async function DELETE(_req: Request, props: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('PHARMACIST');
+    const auth = await requirePermission('pharmacy.inventory', 'change');
     if ('error' in auth) return auth.error;
 
     try {

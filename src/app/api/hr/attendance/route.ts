@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { audit } from '@/lib/audit';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { employeesFor, evaluateRange, loadSettings, rangeFrom } from '@/lib/hr';
 import { summariseDays } from '@/lib/hr-rules';
 import { localDay } from '@/lib/hr-time';
 
 /** Attendance for a date range: a status for every person and day, with totals per person. */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.attendance', 'view');
     if ('error' in auth) return auth.error;
     try {
         const params = new URL(req.url).searchParams;

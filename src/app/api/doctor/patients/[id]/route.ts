@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     try {
         const id = (await params).id;
 
-        const auth = await requireRole('DOCTOR');
+        const auth = await requirePermission('doctor.patients', 'view');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 

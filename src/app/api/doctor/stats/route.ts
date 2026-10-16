@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { loadSettings } from '@/lib/hr';
 import { localDay } from '@/lib/hr-time';
 
 export async function GET() {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('doctor.dashboard', 'view');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

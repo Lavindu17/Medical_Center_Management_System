@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, STAFF_ROLES, balances, loadSettings } from '@/lib/hr';
 import { isDay, localDay } from '@/lib/hr-time';
 
@@ -22,7 +23,7 @@ async function profile(id: number) {
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.employees', 'view');
     if ('error' in auth) return auth.error;
     try {
         const id = await idOf(params);
@@ -48,7 +49,7 @@ const schema = z.object({
 
 /** HR edits an employee's profile (employee number, department, designation, join date, active or not). */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.employees', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

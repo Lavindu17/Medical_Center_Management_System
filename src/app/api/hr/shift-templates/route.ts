@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, checkShiftTimes } from '@/lib/hr';
 import { isTime, normTime } from '@/lib/hr-time';
 
@@ -19,7 +20,7 @@ const list = () => query<any[]>(`SELECT id, name, TIME_FORMAT(start_time, '%H:%i
 
 /** Shift presets: quick-fill buttons for the roster form. */
 export async function GET() {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.roster', 'view');
     if ('error' in auth) return auth.error;
     try {
         return NextResponse.json({ templates: await list() });
@@ -30,7 +31,7 @@ export async function GET() {
 
 /** Create a preset, or change one (send its id). Presets are never deleted, only switched off. */
 export async function POST(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.roster', 'add');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

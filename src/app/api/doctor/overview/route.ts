@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { loadSettings } from '@/lib/hr';
 import { addDays, localDay } from '@/lib/hr-time';
 import { dayLabel, daysAround } from '@/lib/dashboard-range';
@@ -10,7 +10,7 @@ import { dayLabel, daysAround } from '@/lib/dashboard-range';
  * a past-and-upcoming appointment chart with the fee earned on paid bills, and how the last 30 days went.
  */
 export async function GET() {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('doctor.dashboard', 'view');
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

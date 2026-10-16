@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { loadSettings } from '@/lib/hr';
 import { localDay } from '@/lib/hr-time';
 
 /** Today at the front desk: counts, each doctor's live queue, bookings per hour and the bills still to collect. */
 export async function GET() {
-    const auth = await requireRole('RECEPTIONIST');
+    const auth = await requirePermission('reception.dashboard', 'view');
     if ('error' in auth) return auth.error;
 
     try {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { verifyChain } from '@/lib/audit';
 import { loadSettings } from '@/lib/hr';
 import { addDays, localDay } from '@/lib/hr-time';
@@ -21,7 +21,7 @@ async function countOrZero(sql: string, params: any[] = []): Promise<number> {
 
 /** Everything the admin overview shows, in one call. Operations first; money is this month against last. */
 export async function GET() {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.dashboard', 'view');
     if ('error' in auth) return auth.error;
 
     try {

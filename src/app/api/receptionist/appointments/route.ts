@@ -1,13 +1,13 @@
 
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
 
 export async function GET(req: Request) {
     try {
-        const auth = await requireRole('RECEPTIONIST');
+        const auth = await requirePermission('reception.appointments', 'view');
         if ('error' in auth) return auth.error;
 
         const { searchParams } = new URL(req.url);

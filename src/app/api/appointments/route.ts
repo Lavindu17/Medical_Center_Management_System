@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-import { requireRole } from '@/lib/api-auth';
+import { requireAccess } from '@/lib/api-auth';
 import { bookAppointment, BookingError } from '@/lib/booking';
 
 const appointmentSchema = z.object({
@@ -14,7 +14,7 @@ const appointmentSchema = z.object({
 });
 
 export async function POST(req: Request) {
-    const auth = await requireRole('PATIENT', 'RECEPTIONIST', 'ADMIN');
+    const auth = await requireAccess('PATIENT', ['reception.appointments', 'add']);
     if ('error' in auth) return auth.error;
     const { user } = auth;
 
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
 
 // Fetch Appointments (for Patient or Doctor)
 export async function GET(req: Request) {
-    const auth = await requireRole('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN');
+    const auth = await requireAccess('PATIENT', ['reception.appointments', 'view'], ['consultations', 'view']);
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

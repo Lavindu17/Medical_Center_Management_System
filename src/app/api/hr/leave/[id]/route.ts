@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, validateLeave } from '@/lib/hr';
 import { blockDoctorDay } from '@/lib/doctor-leave';
 import { notify } from '@/lib/notify';
@@ -21,7 +22,7 @@ const schema = z.object({
  * for a doctor blocks those days for patient bookings. Nobody can decide their own request.
  */
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.leave', 'approve');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

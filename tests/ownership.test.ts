@@ -96,7 +96,8 @@ describe('admin safeguards', () => {
     });
 
     it('cannot demote self', async () => {
-        vi.mocked(query).mockResolvedValueOnce([{ role: 'ADMIN' }]);
+        // The permission lookup also queries: answer only the route's own lookup of the user's current role
+        vi.mocked(query).mockImplementation((async (sql: string) => (/FROM users/i.test(sql) ? [{ role: 'ADMIN' }] : [])) as any);
         const { PUT } = await import('@/app/api/users/route');
         const res = await PUT(new Request('http://x', { ...json({ id: 1, name: 'Admin', email: 'a@b.co', role: 'RECEPTIONIST' }), method: 'PUT' }));
         expect(res.status).toBe(400);

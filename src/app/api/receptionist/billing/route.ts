@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { parseBody } from '@/lib/validate';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { query, pool } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { AuthService } from '@/services/auth.service';
@@ -10,7 +10,7 @@ import { AuthService } from '@/services/auth.service';
 // GET Pending Bills — enriched with itemized breakdown
 export async function GET(req: Request) {
     try {
-        const auth = await requireRole('RECEPTIONIST');
+        const auth = await requirePermission('billing', 'view');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 
@@ -85,7 +85,7 @@ const payBillSchema = z.object({
 
 export async function POST(req: Request) {
     try {
-        const auth = await requireRole('RECEPTIONIST');
+        const auth = await requirePermission('billing', 'approve');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 

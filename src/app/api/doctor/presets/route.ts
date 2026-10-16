@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { pool, query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { parseBody } from '@/lib/validate';
 import { audit } from '@/lib/audit';
 import { hasPresets, hasRxExtras } from '@/lib/schema-features';
@@ -13,7 +13,7 @@ const NOT_READY = { message: 'Favourites and test sets need the 21_orders.sql up
  * recently, and their saved sets of lab tests. Everything is the signed-in doctor's own.
  */
 export async function GET() {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('consultations', 'view');
     if ('error' in auth) return auth.error;
     const { user } = auth;
     try {
@@ -77,7 +77,7 @@ const schema = z.discriminatedUnion('type', [favouriteSchema, panelSchema]);
 
 /** Save a favourite medicine (replaces the previous line for it) or a named set of lab tests (replaces one with the same name). */
 export async function POST(req: Request) {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('consultations', 'add');
     if ('error' in auth) return auth.error;
     const { user } = auth;
     const body = await parseBody(req, schema);
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
 
 /** Remove a favourite (?type=favourite&medicineId=) or a test set (?type=panel&id=). Only the doctor's own. */
 export async function DELETE(req: Request) {
-    const auth = await requireRole('DOCTOR');
+    const auth = await requirePermission('consultations', 'add');
     if ('error' in auth) return auth.error;
     const { user } = auth;
     try {

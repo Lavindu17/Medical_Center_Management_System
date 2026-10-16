@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { notify } from '@/lib/notify';
 import { blockDoctorDay } from '@/lib/doctor-leave';
 import { bookingsOn, dateSchema } from '@/lib/doctor-schedule';
@@ -24,7 +24,7 @@ const schema = z.object({
  * (days to block, days already blocked, bookings affected) so the admin sees the impact before saving.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.doctors', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;
@@ -73,7 +73,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
 /** Remove one blocked day. Days that came from approved HR leave are removed by cancelling that leave instead. */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('ADMIN');
+    const auth = await requirePermission('admin.doctors', 'change');
     if ('error' in auth) return auth.error;
     try {
         const doctorId = Number((await params).id);

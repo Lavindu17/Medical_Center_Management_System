@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit } from '@/lib/audit';
 import { z } from 'zod';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { nameOf, notify, when } from '@/lib/notify';
 
 const schema = z.object({ status: z.enum(['CHECKED_IN', 'CANCELLED', 'ABSENT', 'NO_SHOW']) });
@@ -16,7 +16,7 @@ const ALLOWED_FROM: Record<string, string[]> = {
 };
 
 export async function PUT(req: Request, props: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('RECEPTIONIST', 'ADMIN');
+    const auth = await requirePermission('reception.appointments', 'change');
     if ('error' in auth) return auth.error;
 
     try {

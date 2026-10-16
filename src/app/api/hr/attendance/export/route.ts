@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { audit } from '@/lib/audit';
 import { toCsvText } from '@/lib/csv';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { employeesFor, evaluateRange, loadSettings, rangeFrom } from '@/lib/hr';
 import { localDay, localTime } from '@/lib/hr-time';
 
@@ -11,7 +12,7 @@ const STATUS: Record<string, string> = {
 
 /** One row per person per day, in clinic time. The export is recorded in the audit trail. */
 export async function GET(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.attendance', 'view');
     if ('error' in auth) return auth.error;
     try {
         const params = new URL(req.url).searchParams;

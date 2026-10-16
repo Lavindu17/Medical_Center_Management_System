@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requireAccess } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
 import { isSafeStoredName, mimeForStoredName, reportDir } from '@/lib/lab-reports';
 
 // GET a lab report. Reports are private: only the lab team, the patient they belong to and the
 // doctor who requested them can open one.
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireRole('PATIENT', 'DOCTOR', 'LAB_ASSISTANT', 'ADMIN');
+    const auth = await requireAccess('PATIENT', ['lab.requests', 'view'], ['consultations', 'view']);
     if ('error' in auth) return auth.error;
     const { user } = auth;
 

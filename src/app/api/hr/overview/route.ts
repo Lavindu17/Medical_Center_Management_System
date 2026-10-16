@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { employeesFor, evaluateRange, loadSettings } from '@/lib/hr';
 import { addDays, localDay } from '@/lib/hr-time';
 import { dayLabel } from '@/lib/dashboard-range';
 
 /** The HR landing page: where everyone is today, and what is waiting for a decision. */
 export async function GET() {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.overview', 'view');
     if ('error' in auth) return auth.error;
     try {
         const settings = await loadSettings();

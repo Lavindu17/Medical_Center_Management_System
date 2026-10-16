@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireHr, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { loadSettings } from '@/lib/hr';
 
 const validZone = (tz: string) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } };
@@ -16,7 +17,7 @@ const schema = z.object({
 });
 
 export async function GET() {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'view');
     if ('error' in auth) return auth.error;
     try {
         return NextResponse.json({ settings: await loadSettings() });
@@ -26,7 +27,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-    const auth = await requireHr();
+    const auth = await requirePermission('hr.settings', 'change');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { requireRole } from '@/lib/api-auth';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
 
 export async function GET(request: Request) {
     try {
-        const auth = await requireRole('PHARMACIST');
+        const auth = await requirePermission('pharmacy.dispensing', 'view');
         if ('error' in auth) return auth.error;
         const user = auth.user;
 
