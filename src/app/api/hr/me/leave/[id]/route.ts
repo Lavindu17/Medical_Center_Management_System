@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
-import { requireStaff, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, loadSettings, notifyHr } from '@/lib/hr';
 import { localDay } from '@/lib/hr-time';
 import { unblockForLeave } from '@/lib/doctor-leave';
 
 /** Withdraw your own request: while it is pending, or after approval as long as it has not started. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'add');
     if ('error' in auth) return auth.error;
     try {
         const id = Number((await params).id);

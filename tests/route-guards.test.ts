@@ -19,7 +19,7 @@ describe('every route is guarded', () => {
         const r = rel(file);
         if (PUBLIC.includes(r)) continue;
         it(`/api/${r}`, () => {
-            const guarded = /requirePermission\(|requireAccess\(|requireStaff\(|requireStaffMember\(|requireRole\(\s*'PATIENT'\s*\)|requireRole\(\s*\)|requireRole\(\.\.\.ALL_ROLES\)/.test(text);
+            const guarded = /requirePermission\(|requireAccess\(|requireRole\(\s*'PATIENT'\s*\)|requireRole\(\s*\)|requireRole\(\.\.\.ALL_ROLES\)/.test(text);
             expect(guarded, 'no guard found').toBe(true);
         });
     }

@@ -10,7 +10,7 @@ import {
 import { AppShell, type NavItem } from '@/components/app-shell';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/state-views';
 import { useApi } from '@/hooks/useApi';
-import { SELF_SERVICE, homeFor, mayOpen, screensFor } from '@/lib/access/screens';
+import { homeFor, mayOpen, screensFor } from '@/lib/access/screens';
 import type { GrantMap } from '@/lib/access/defaults';
 
 const ICONS: Record<string, LucideIcon> = {
@@ -30,12 +30,10 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
 
     const navItems: NavItem[] = useMemo(() => {
         if (!data) return [];
-        const screens = screensFor(data.grants).map((s) => ({ icon: ICONS[s.icon] ?? LayoutDashboard, label: s.label, href: s.href, section: s.section }));
-        const self = SELF_SERVICE.map((s) => ({ icon: ICONS[s.icon] ?? User, label: s.label, href: s.href, section: s.section }));
-        return [...screens, ...self];
+        return screensFor(data.grants).map((s) => ({ icon: ICONS[s.icon] ?? LayoutDashboard, label: s.label, href: s.href, section: s.section }));
     }, [data]);
 
-    const home = data ? homeFor(data.role, data.grants) : '/staff';
+    const home = (data && homeFor(data.role, data.grants)) || '/staff';
 
     let content: React.ReactNode = children;
     if (loading && !data) content = <LoadingState label="Loading your menu…" />;

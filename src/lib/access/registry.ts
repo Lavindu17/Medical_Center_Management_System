@@ -14,7 +14,7 @@
 export const LEVELS = ['view', 'add', 'change', 'approve'] as const;
 export type Level = (typeof LEVELS)[number];
 
-export const MODULES = ['Front desk', 'Clinical', 'Pharmacy', 'Laboratory', 'Billing', 'HR', 'Administration'] as const;
+export const MODULES = ['Front desk', 'Clinical', 'Pharmacy', 'Laboratory', 'Billing', 'HR', 'Administration', 'Me'] as const;
 export type ModuleName = (typeof MODULES)[number];
 
 export interface ResourceDef {
@@ -73,6 +73,9 @@ export const RESOURCE_LIST = [
     def('admin.doctors', 'Administration', 'Doctor management', "Doctors' fees, commission, working hours and time off.", { view: 'See doctors', change: 'Change fees, hours and time off' }),
     def('admin.audit', 'Administration', 'Audit log', 'Who did what, and verifying the log.', { view: 'See and export the log', approve: 'Verify the log' }),
     def('access.config', 'Administration', 'Access control', 'This configuration window: who can do what.', { view: 'See permissions', change: 'Change permissions' }),
+    // Self-service: every screen is a permission, including these
+    def('my.work', 'Me', 'My Work', 'Own shifts, clock in and out, attendance history and leave.', { view: 'See own shifts, attendance and leave', add: 'Clock in and out, request leave and corrections' }),
+    def('my.account', 'Me', 'My account', 'Own name, phone and password.', { view: 'See own account', change: 'Change own details and password' }),
 ] as const;
 
 export type ResourceKey = (typeof RESOURCE_LIST)[number]['key'];

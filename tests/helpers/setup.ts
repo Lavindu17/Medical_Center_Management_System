@@ -19,6 +19,28 @@ vi.mock('@/lib/db', () => {
     };
 });
 
+// Permissions: by default every role has what a freshly seeded site gives it (the starting profiles), so the route tests can
+// exercise their own behaviour without a database. Tests of the lookup itself set state.realAccess to use the real one.
+vi.mock('@/lib/access/resolve', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/lib/access/resolve')>();
+    const defaults = await import('@/lib/access/defaults');
+    const registry = await import('@/lib/access/registry');
+    return {
+        ...actual,
+        grantsFor: async (user: { id: number; role: string }) => {
+            if (state.realAccess) return actual.grantsFor(user);
+            if (!defaults.isStaffRole(user.role)) return {};
+            const out: Record<string, unknown> = {};
+            for (const key of registry.RESOURCE_KEYS) {
+                const g = defaults.normalise(key, defaults.ROLE_TEMPLATES[user.role][key] ?? {});
+                if (Object.keys(g).length > 0) out[key] = g;
+            }
+            if (user.role === 'ADMIN') out[defaults.ALWAYS_ADMIN] = { view: true, change: true };
+            return out;
+        },
+    };
+});
+
 vi.mock('@/lib/session-check', () => ({ isSessionCurrent: vi.fn(async () => true) }));
 
 vi.mock('next/headers', () => ({

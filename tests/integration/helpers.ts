@@ -54,6 +54,23 @@ export async function dispense(prescriptionId: number, body: Record<string, unkn
     return POST(post(`/api/pharmacist/dispense/${prescriptionId}`, body), ctx(prescriptionId));
 }
 
+/** Sets the stored ticks of one screen on a role's profile (the way the access window does), so a test can take a permission away. */
+export async function setRoleTicks(role: string, resource: string, levels: string[]) {
+    await query(
+        `UPDATE access_grants g JOIN access_profiles p ON p.id = g.profile_id
+         SET g.can_view = ?, g.can_add = ?, g.can_change = ?, g.can_approve = ? WHERE p.system_role = ? AND g.resource = ?`,
+        [+levels.includes('view'), +levels.includes('add'), +levels.includes('change'), +levels.includes('approve'), role, resource]);
+}
+/** Writes a role's starting profile back (what the "Reset to defaults" button does). */
+export async function restoreRole(role: string) {
+    const { pool } = await import('@/lib/db');
+    const { resetRole } = await import('@/lib/access/admin');
+    const connection = await pool.getConnection();
+    try { await connection.beginTransaction(); await resetRole(connection, role as any); await connection.commit(); }
+    catch (err) { await connection.rollback(); throw err; }
+    finally { connection.release(); }
+}
+
 export const rx = (medicineId: number, quantity: number) =>
     [{ medicineId, dosage: '1', frequency: '1-0-0-0', duration: '5 days', quantity }];
 

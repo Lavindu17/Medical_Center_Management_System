@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { audit, changedFields } from '@/lib/audit';
 import { z } from 'zod';
 import { query } from '@/lib/db';
-import { requireRole } from '@/lib/api-auth';
+import { requireAccess } from '@/lib/api-auth';
 
 /** Details every signed-in person can see and edit about themselves, whatever their role. Email is read-only. */
 const updateSchema = z.object({
@@ -13,7 +13,7 @@ const updateSchema = z.object({
 });
 
 export async function GET() {
-    const auth = await requireRole();
+    const auth = await requireAccess('PATIENT', ['my.account', 'view']);
     if ('error' in auth) return auth.error;
 
     const rows = await query<any[]>('SELECT name, email, phone, role FROM users WHERE id = ?', [auth.user.id]);
@@ -22,7 +22,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-    const auth = await requireRole();
+    const auth = await requireAccess('PATIENT', ['my.account', 'change']);
     if ('error' in auth) return auth.error;
 
     const parsed = updateSchema.safeParse(await req.json().catch(() => null));

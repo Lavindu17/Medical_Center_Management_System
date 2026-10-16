@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { requireStaff, hrFailure } from '@/lib/hr-auth';
+import { requirePermission } from '@/lib/api-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { evaluateRange, loadSettings } from '@/lib/hr';
 import { summariseDays } from '@/lib/hr-rules';
 import { localDay, monthRange } from '@/lib/hr-time';
 
 /** Your attendance for one month (default: this month), a status for every day, and the totals. */
 export async function GET(req: Request) {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'view');
     if ('error' in auth) return auth.error;
     try {
         const settings = await loadSettings();

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { LEVELS, RESOURCE_KEYS, RESOURCES, isResource, levelsOf, type Level, type ResourceKey } from './registry';
-import { ROLE_DEFAULTS, isStaffRole, normalise, type Grant, type GrantMap, type StaffRole } from './defaults';
+import { ROLE_TEMPLATES, isStaffRole, normalise, type Grant, type GrantMap, type StaffRole } from './defaults';
+import { templateRows } from './seed';
 
 /** Used by the configuration window: reading and writing profiles. The checks that decide access are in resolve.ts. */
 
@@ -51,9 +52,8 @@ export async function profileGrants(profileId: number): Promise<GrantMap> {
     return rowsToGrants(await query<any[]>('SELECT resource, can_view, can_add, can_change, can_approve FROM access_grants WHERE profile_id = ?', [profileId]));
 }
 
-/** What a role gets: the site's stored copy where it has one (over the built-in defaults, screen by screen), else the defaults. */
-export async function roleGrants(role: StaffRole): Promise<{ grants: GrantMap; customised: boolean }> {
-    const base: GrantMap = { ...ROLE_DEFAULTS[role] };
+/** What a role gets at this site: what is stored, and whether that differs from the starting point it began with. */
+export async function roleGrants(role: StaffRole): Promise<{ grants: GrantMap; customised: boolean; stored: boolean }> {
     let rows: any[] = [];
     try {
         rows = await query<any[]>(
@@ -62,8 +62,25 @@ export async function roleGrants(role: StaffRole): Promise<{ grants: GrantMap; c
     } catch (err: any) {
         if (err?.errno !== 1146) throw err;
     }
-    const stored = rowsToGrants(rows);
-    return { grants: { ...base, ...stored }, customised: rows.length > 0 };
+    const grants = rowsToGrants(Array.isArray(rows) ? rows : []);
+    const same = (a: GrantMap, b: GrantMap) => RESOURCE_KEYS.every((k) => JSON.stringify(normalise(k, a[k] ?? {})) === JSON.stringify(normalise(k, b[k] ?? {})));
+    return { grants, stored: rows.length > 0, customised: rows.length > 0 && !same(grants, ROLE_TEMPLATES[role]) };
+}
+
+/** Writes the starting point back for a role (creating its profile if the database has none yet). */
+export async function resetRole(db: { execute: (sql: string, p?: any[]) => Promise<any> }, role: StaffRole): Promise<number> {
+    const [found]: any = await db.execute('SELECT id FROM access_profiles WHERE system_role = ?', [role]);
+    let profileId: number = found[0]?.id;
+    if (!profileId) {
+        const [res]: any = await db.execute('INSERT INTO access_profiles (name, system_role) VALUES (?, ?)', [`Role: ${role}`, role]);
+        profileId = res.insertId;
+    }
+    await db.execute('DELETE FROM access_grants WHERE profile_id = ?', [profileId]);
+    for (const r of templateRows(role)) {
+        await db.execute('INSERT INTO access_grants (profile_id, resource, can_view, can_add, can_change, can_approve) VALUES (?, ?, ?, ?, ?, ?)',
+            [profileId, r.resource, r.view, r.add, r.change, r.approve]);
+    }
+    return profileId;
 }
 
 /** Writes a full set of ticks (a row for every screen, so "nothing" is stored as nothing rather than falling back to a default). */

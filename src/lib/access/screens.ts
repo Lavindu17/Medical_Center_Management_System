@@ -55,12 +55,9 @@ export const SCREENS: Screen[] = [
     { section: 'Administration', label: 'Doctors', href: '/admin/doctors', icon: 'HeartPulse', resource: 'admin.doctors', level: 'view' },
     { section: 'Administration', label: 'Audit log', href: '/admin/logs', icon: 'FileText', resource: 'admin.audit', level: 'view' },
     { section: 'Administration', label: 'Access control', href: '/admin/access', icon: 'ShieldCheck', resource: 'access.config', level: 'view' },
-];
-
-/** Pages every member of staff has, whatever their permissions. */
-export const SELF_SERVICE: Pick<Screen, 'label' | 'href' | 'icon' | 'section'>[] = [
-    { section: 'Me', label: 'My Work', href: '/staff/work', icon: 'Clock' },
-    { section: 'Me', label: 'Account', href: '/staff/account', icon: 'UserCog' },
+    // Self-service
+    { section: 'Me', label: 'My Work', href: '/staff/work', icon: 'Clock', resource: 'my.work', level: 'view' },
+    { section: 'Me', label: 'Account', href: '/staff/account', icon: 'UserCog', resource: 'my.account', level: 'view' },
 ];
 
 const allows = (grants: GrantMap, s: Pick<Screen, 'resource' | 'level'>) => Boolean(grants[s.resource]?.[s.level]);
@@ -68,7 +65,8 @@ const allows = (grants: GrantMap, s: Pick<Screen, 'resource' | 'level'>) => Bool
 /** The screens a person's permissions open, in menu order. */
 export const screensFor = (grants: GrantMap): Screen[] => SCREENS.filter((s) => allows(grants, s));
 
-const underPath = (pathname: string, base: string) => pathname === base || pathname.startsWith(base + '/');
+// A section root such as /doctor is only that page itself: pages beneath it are their own screens (or closed)
+const underPath = (pathname: string, base: string) => pathname === base || (base.split('/').length > 2 && pathname.startsWith(base + '/'));
 
 /** The screen a path belongs to (the most specific match), or null for pages that are open to every member of staff. */
 export function screenAt(pathname: string): Screen | null {
@@ -81,19 +79,26 @@ export function screenAt(pathname: string): Screen | null {
     return best;
 }
 
-/** Whether a person may open this path. Paths that are not a configured screen (My Work, Account) are open to staff. */
+/** The one staff page that is not a screen: it only sends people to their start screen (or says they have none). */
+const HOME_PATH = '/staff';
+
+/**
+ * Whether a person may open this path. Every staff page is a screen in the list above, so a page that is not in the list
+ * is closed to everyone (a new page cannot be forgotten and left open).
+ */
 export function mayOpen(grants: GrantMap, pathname: string): boolean {
+    if (pathname === HOME_PATH) return true;
     const screen = screenAt(pathname);
-    return screen ? allows(grants, screen) : true;
+    return screen ? allows(grants, screen) : false;
 }
 
-/** Where a person lands after signing in: the dashboard that suits their role, else the first screen they can open. */
-export function homeFor(role: string, grants: GrantMap): string {
+/** Where a person lands after signing in: the dashboard that suits their role, else the first screen they can open, else null. */
+export function homeFor(role: string, grants: GrantMap): string | null {
     const first: Record<string, string[]> = {
         RECEPTIONIST: ['/receptionist'], DOCTOR: ['/doctor'], PHARMACIST: ['/pharmacist'], LAB_ASSISTANT: ['/lab-assistant'],
         HR_MANAGER: ['/hr'], ADMIN: ['/admin'],
     };
     const open = screensFor(grants);
     for (const href of first[role] ?? []) if (open.some((s) => s.href === href)) return href;
-    return (open.find((s) => s.section === 'Dashboards') ?? open[0])?.href ?? '/staff/account';
+    return (open.find((s) => s.section === 'Dashboards') ?? open[0])?.href ?? null;
 }

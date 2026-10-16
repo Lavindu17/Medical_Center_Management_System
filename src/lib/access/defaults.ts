@@ -8,14 +8,16 @@ export const STAFF_ROLES = ['DOCTOR', 'PHARMACIST', 'LAB_ASSISTANT', 'RECEPTIONI
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 const on = (...levels: Level[]): Grant => Object.fromEntries(levels.map((l) => [l, true]));
+/** Every member of staff starts with their own work and account pages */
+const ME: GrantMap = { 'my.work': { view: true, add: true }, 'my.account': { view: true, change: true } };
 const all = (key: ResourceKey): Grant => on(...levelsOf(key));
 
 /**
- * What each role could do before access control became configurable. A site starts from these; the configuration window
- * edits copies stored in the database. Keeping them exactly equal to the old fixed rules is what lets the switch to
- * configurable permissions change nothing until someone configures something.
+ * The starting point for each role: the ticks a site begins with. They are written into the database (23_access_seed.sql, or
+ * "Reset to defaults" in the access window) and the database is the only thing that decides access: with nothing stored,
+ * nobody can open anything. They equal the rules that were fixed in code before access became configurable.
  */
-export const ROLE_DEFAULTS: Record<StaffRole, GrantMap> = {
+export const ROLE_TEMPLATES: Record<StaffRole, GrantMap> = {
     RECEPTIONIST: {
         'reception.dashboard': on('view'),
         'reception.appointments': on('view', 'add', 'change'),
@@ -54,6 +56,9 @@ export const ROLE_DEFAULTS: Record<StaffRole, GrantMap> = {
         'lab.requests': on('view'),
     },
 };
+
+// Everyone in staff has their own work and account pages
+for (const role of STAFF_ROLES) ROLE_TEMPLATES[role] = { ...ROLE_TEMPLATES[role], ...ME };
 
 /** Whoever holds this can always change access, so a site can never lock itself out of the configuration window. */
 export const ALWAYS_ADMIN: ResourceKey = 'access.config';

@@ -77,17 +77,6 @@ export async function requireAccess(...rules: AccessRule[]): Promise<{ user: Ses
 
 export const requirePermission = (resource: ResourceKey, level: Level) => requireAccess([resource, level]);
 
-/** Any signed-in member of staff (everyone but patients): self-service pages such as My Work. */
-export async function requireStaffMember(): Promise<{ user: SessionUser } | { error: NextResponse }> {
-    const user = await getSessionUser();
-    if (!user) return { error: NextResponse.json({ message: 'Unauthorized' }, { status: 401 }) };
-    if (user.role === 'PATIENT') {
-        await audit(user, { action: 'ACCESS_DENIED', outcome: 'DENIED', details: { required: 'staff' } });
-        return { error: NextResponse.json({ message: 'Forbidden' }, { status: 403 }) };
-    }
-    return { user };
-}
-
 /** For pages and menus: what this person may do on a screen. */
 export async function userCan(user: { id: number; role: string }, resource: ResourceKey, level: Level): Promise<boolean> {
     if (user.role === 'PATIENT') return false;

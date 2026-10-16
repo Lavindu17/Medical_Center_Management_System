@@ -20,7 +20,7 @@ import { ROLE_LABEL } from '@/lib/hr-format';
 
 interface StaffUser { id: number; name: string; email: string; role: string; profiles: string[] }
 interface Detail { user: StaffUser; role: GrantMap; assigned: { id: number; name: string }[]; personal: GrantMap; effective: GrantMap; warnings: string[] }
-interface RoleProfile { role: string; grants: GrantMap; customised: boolean; people: number }
+interface RoleProfile { role: string; grants: GrantMap; customised: boolean; stored: boolean; people: number }
 interface CustomProfile { id: number; name: string; description: string | null; people: number; grants: GrantMap }
 interface Profiles { roles: RoleProfile[]; custom: CustomProfile[]; ready: boolean }
 
@@ -36,7 +36,7 @@ export default function AccessControlPage() {
             <PageHeader title="Access control" description="Choose what each person can see and do. Tick View, Add, Change or Approve for each screen. Changes apply on the person's next click." />
             {profiles.data && !profiles.data.ready && (
                 <p role="alert" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> Saving needs the 22_access_control.sql update on the database. Until it is applied, everyone keeps the built-in access for their role.
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> The permission tables are missing (22_access_control.sql). Until they exist nobody on staff can open anything except what an administrator is given here.
                 </p>
             )}
             <SegmentedTabs label="Access control sections" value={tab} onChange={setTab} items={[{ value: 'people', label: 'People' }, { value: 'profiles', label: 'Profiles and roles' }, { value: 'screens', label: 'Who can use a screen' }]} />
@@ -175,14 +175,14 @@ function ProfilesTab({ data, reload }: { data: Profiles; reload: () => void }) {
         <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
             <section aria-label="Profiles" className="space-y-4">
                 <div>
-                    <h2 className="mb-1 text-sm font-semibold text-neutral-900">Roles (what each job starts with)</h2>
+                    <h2 className="mb-1 text-sm font-semibold text-neutral-900">Roles (what each job has)</h2>
                     <ul className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white">
                         {data.roles.map((r) => (
                             <li key={r.role}>
                                 <button type="button" onClick={() => setPick({ kind: 'role', role: r.role })} aria-pressed={pick?.kind === 'role' && pick.role === r.role}
                                     className={`flex min-h-12 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm ${pick?.kind === 'role' && pick.role === r.role ? 'bg-emerald-50' : 'hover:bg-neutral-50'}`}>
                                     <span><span className="font-semibold">{ROLE_LABEL[r.role] ?? r.role}</span><span className="block text-xs text-neutral-600">{r.people} {r.people === 1 ? 'person' : 'people'}</span></span>
-                                    {r.customised && <Badge variant="outline">Customised</Badge>}
+                                    {!r.stored ? <Badge variant="outline" className="border-amber-400 text-amber-800">Nothing stored</Badge> : r.customised ? <Badge variant="outline">Customised</Badge> : null}
                                 </button>
                             </li>
                         ))}
@@ -228,8 +228,8 @@ function RoleEditor({ role, reload }: { role: RoleProfile; reload: () => void })
         catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
     };
     const reset = async () => {
-        if (!await confirm({ title: `Reset ${ROLE_LABEL[role.role] ?? role.role} to the built-in defaults?`, description: 'Everyone with this role goes back to the standard access for the job.', confirmLabel: 'Reset', cancelLabel: 'Keep my changes' })) return;
-        try { await sendJson(`/api/admin/access/roles/${role.role}`, 'DELETE'); toast.success('Back to the defaults'); reload(); } catch (e: any) { toast.error(e.message); }
+        if (role.stored && !await confirm({ title: `Reset ${ROLE_LABEL[role.role] ?? role.role} to its starting point?`, description: 'Everyone with this role goes back to the standard access for the job.', confirmLabel: 'Reset', cancelLabel: 'Keep my changes' })) return;
+        try { await sendJson(`/api/admin/access/roles/${role.role}`, 'DELETE'); toast.success(role.stored ? 'Back to the starting point' : 'Starting permissions written'); reload(); } catch (e: any) { toast.error(e.message); }
     };
 
     return (
@@ -238,10 +238,11 @@ function RoleEditor({ role, reload }: { role: RoleProfile; reload: () => void })
                 <div><h2 className="text-lg font-bold text-neutral-900">{ROLE_LABEL[role.role] ?? role.role}</h2>
                     <p className="text-sm text-neutral-600">What everyone with this job starts with. {role.people} {role.people === 1 ? 'person has' : 'people have'} it. {role.role === 'ADMIN' && 'Administrators can always change access, so nobody gets locked out.'}</p></div>
                 <div className="flex items-center gap-2">
-                    {role.customised && <Button variant="outline" onClick={reset}><RotateCcw className="mr-2 h-4 w-4" aria-hidden /> Reset to defaults</Button>}
+                    {(role.customised || !role.stored) && <Button variant="outline" onClick={reset}><RotateCcw className="mr-2 h-4 w-4" aria-hidden /> {role.stored ? 'Reset to starting point' : 'Write the starting permissions'}</Button>}
                     <Button onClick={save} disabled={saving || !dirty} className="bg-emerald-600 hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" aria-hidden /> {saving ? 'Saving…' : 'Save'}</Button>
                 </div>
             </div>
+            {!role.stored && <p role="alert" className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> Nothing is stored for this role, so {role.people === 1 ? 'the person with it cannot' : 'people with it cannot'} open anything yet. Tick what the job needs and save, or write the starting permissions.</p>}
             {warnings.length > 0 && <ul role="status" className="list-disc space-y-1 rounded-lg border border-amber-300 bg-amber-50 p-3 pl-8 text-sm text-amber-900">{warnings.map((w) => <li key={w}>{w}</li>)}</ul>}
             <PermissionMatrix value={grants} onChange={setGrants} />
         </div>

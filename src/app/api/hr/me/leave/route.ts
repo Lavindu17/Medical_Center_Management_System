@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireStaff, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { balances, leaveTypes, loadSettings, notifyHr, validateLeave } from '@/lib/hr';
 import { isDay, localDay } from '@/lib/hr-time';
 import { formatDate } from '@/lib/dates';
@@ -18,7 +19,7 @@ const schema = z.object({
 
 /** Your leave balances for the year and your requests. */
 export async function GET(req: Request) {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'view');
     if ('error' in auth) return auth.error;
     try {
         const settings = await loadSettings();
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
 
 /** Ask for leave. Rules: no overlap, enough balance, half days only where the type allows, holidays are not charged. */
 export async function POST(req: Request) {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'add');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

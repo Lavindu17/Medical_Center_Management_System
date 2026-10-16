@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { z } from 'zod';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
-import { requireStaff, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError, loadSettings, notifyHr, punchInstants } from '@/lib/hr';
 import { addDays, isDay, isTime, localDay } from '@/lib/hr-time';
 import { formatDate } from '@/lib/dates';
@@ -17,7 +18,7 @@ const schema = z.object({
 });
 
 export async function GET() {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'view');
     if ('error' in auth) return auth.error;
     try {
         const rows = await query<any[]>(
@@ -32,7 +33,7 @@ export async function GET() {
 
 /** Ask HR to fix a day: a missing clock-out, a forgotten clock-in, or wrong times. HR approves it; the original stays on record. */
 export async function POST(req: Request) {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'add');
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, schema);
     if ('error' in body) return body.error;

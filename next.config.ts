@@ -24,6 +24,15 @@ const nextConfig: NextConfig = {
     // the page reloads in an endless loop. Cold starts are a few seconds slower without it; the loop cannot happen.
     turbopackFileSystemCacheForDev: false,
   },
+  // My Work and Account are one page each for all staff now; the old per-role addresses still work
+  async redirects() {
+    const roles = "doctor|admin|hr|lab-assistant|pharmacist|receptionist";
+    return [
+      { source: `/:role(${roles})/work`, destination: "/staff/work", permanent: true },
+      { source: `/:role(${roles})/account`, destination: "/staff/account", permanent: true },
+      { source: `/:role(${roles})/settings`, destination: "/staff/account", permanent: true },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/api-auth';
 import { query } from '@/lib/db';
 import { audit } from '@/lib/audit';
-import { requireStaff, hrFailure } from '@/lib/hr-auth';
+import { hrFailure } from '@/lib/hr-auth';
 import { HrError } from '@/lib/hr';
 
 /** Withdraw your own pending correction. */
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const auth = await requireStaff();
+    const auth = await requirePermission('my.work', 'add');
     if ('error' in auth) return auth.error;
     try {
         const id = Number((await params).id);

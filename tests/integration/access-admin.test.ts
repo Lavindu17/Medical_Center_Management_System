@@ -118,11 +118,10 @@ describe('profiles', () => {
         await call(profile, 'DELETE', { id });
     });
 
-    it('role profiles and personal profiles are not edited as ordinary profiles', async () => {
-        const r: any = await query(`INSERT INTO access_profiles (name, system_role) VALUES (?, 'DOCTOR')`, [uniq()]);
-        expect((await call(profile, 'PUT', { body: { name: 'Renamed', grants: {} }, id: r.insertId })).status).toBe(404);
-        expect((await call(profile, 'DELETE', { id: r.insertId })).status).toBe(404);
-        await query(`DELETE FROM access_profiles WHERE id = ?`, [r.insertId]);
+    it('role profiles are not edited as ordinary profiles', async () => {
+        const r = await one(`SELECT id FROM access_profiles WHERE system_role = 'DOCTOR'`);
+        expect((await call(profile, 'PUT', { body: { name: 'Renamed', grants: {} }, id: r.id })).status).toBe(404);
+        expect((await call(profile, 'DELETE', { id: r.id })).status).toBe(404);
     });
 });
 
@@ -182,6 +181,11 @@ describe('editing a role at this site', () => {
         expect((await call(roles, 'DELETE', { id: 'PHARMACIST' })).status).toBe(200);
         expect(await dispense()).toBe(200);
         expect((await (await call(profiles, 'GET')).json()).roles.find((r: any) => r.role === 'PHARMACIST').customised).toBe(false);
+    });
+
+    it('every role has its starting profile stored, and the starting point is not shown as customised', async () => {
+        const list = await (await call(profiles, 'GET')).json();
+        for (const r of list.roles) { expect(r.stored, r.role).toBe(true); expect(r.customised, r.role).toBe(false); }
     });
 
     it('the administrator role always keeps access control, however it is edited', async () => {
