@@ -44,31 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const login = (userData: User) => {
         setUser(userData);
         // Redirect based on role
-        switch (userData.role) {
-            case 'PATIENT':
-                router.push('/patient');
-                break;
-            case 'DOCTOR':
-                router.push('/doctor');
-                break;
-            case 'ADMIN':
-                router.push('/admin');
-                break;
-            case 'PHARMACIST':
-                router.push('/pharmacist');
-                break;
-            case 'LAB_ASSISTANT':
-                router.push('/lab-assistant');
-                break;
-            case 'HR_MANAGER':
-                router.push('/hr');
-                break;
-            case 'RECEPTIONIST':
-                router.push('/receptionist');
-                break;
-            default:
-                router.push('/');
-        }
+        router.push(userData.role === 'PATIENT' ? '/patient' : '/staff');   // staff land on the start screen their permissions open
     };
 
     const logout = async () => {

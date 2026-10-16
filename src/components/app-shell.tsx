@@ -17,6 +17,8 @@ export interface NavItem {
     icon: LucideIcon;
     label: string;
     href: string;
+    /** Menu heading this item sits under (shown when it changes from the item before) */
+    section?: string;
 }
 
 export interface BottomTab extends NavItem {
@@ -64,9 +66,12 @@ function SidebarNav({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?
     const pathname = usePathname();
     return (
         <nav aria-label="Main" className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
                 const active = isActivePath(pathname, item.href);
+                const heading = item.section && item.section !== navItems[index - 1]?.section ? item.section : null;
                 return (
+                    <div key={item.href}>
+                    {heading && <p className={cn('px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-500', index > 0 && 'pt-4')}>{heading}</p>}
                     <Link
                         key={item.href}
                         href={item.href}
@@ -92,6 +97,7 @@ function SidebarNav({ navItems, onNavigate }: { navItems: NavItem[]; onNavigate?
                         />
                         <span className="truncate">{item.label}</span>
                     </Link>
+                    </div>
                 );
             })}
         </nav>

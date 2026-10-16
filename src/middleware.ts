@@ -32,26 +32,14 @@ export async function middleware(request: NextRequest) {
         const role = payload.role as string;
 
         // 3. Role-Based Access Control
+        // The customer side is for patients. Everything else is the staff app: it needs a staff account, and what a person can
+        // open inside it is decided by their permissions (each screen and every data route check them).
+        const STAFF_PATHS = ['/doctor', '/admin', '/pharmacist', '/lab-assistant', '/receptionist', '/hr', '/staff'];
+        const isStaffPath = STAFF_PATHS.some((p) => path === p || path.startsWith(p + '/'));
         if (path.startsWith('/patient') && role !== 'PATIENT') {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
         }
-        if (path.startsWith('/doctor') && role !== 'DOCTOR') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (path.startsWith('/admin') && role !== 'ADMIN') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (path.startsWith('/pharmacist') && role !== 'PHARMACIST') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (path.startsWith('/lab-assistant') && role !== 'LAB_ASSISTANT') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        if (path.startsWith('/receptionist') && role !== 'RECEPTIONIST') {
-            return NextResponse.redirect(new URL('/unauthorized', request.url));
-        }
-        // The HR portal is for the HR manager, and administrators see it too
-        if (path.startsWith('/hr') && role !== 'HR_MANAGER' && role !== 'ADMIN') {
+        if (isStaffPath && role === 'PATIENT') {
             return NextResponse.redirect(new URL('/unauthorized', request.url));
         }
 

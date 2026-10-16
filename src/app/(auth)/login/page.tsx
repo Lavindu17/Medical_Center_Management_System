@@ -9,14 +9,10 @@ import { FormAlert, PasswordField, TextField } from '@/components/ui/text-field'
 import { AuthShell } from '@/components/auth/AuthShell';
 
 const HOME_BY_ROLE: Record<string, string> = {
-    ADMIN: '/admin',
-    DOCTOR: '/doctor',
     PATIENT: '/patient',
-    PHARMACIST: '/pharmacist',
-    LAB_ASSISTANT: '/lab-assistant',
-    RECEPTIONIST: '/receptionist',
-    HR_MANAGER: '/hr',
 };
+// Everyone who is not a patient opens the staff app, which sends them to the right starting screen for their permissions
+const homeFor = (role: string) => HOME_BY_ROLE[role] ?? '/staff';
 
 const NOTICES: Record<string, string> = {
     verified: 'Your email is verified. You can sign in now.',
@@ -55,7 +51,7 @@ function LoginForm() {
                 throw new Error(data.message || 'Sign-in failed. Please try again.');
             }
 
-            router.push(HOME_BY_ROLE[data.user.role] ?? '/');
+            router.push(homeFor(data.user.role));
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
             setIsLoading(false);
