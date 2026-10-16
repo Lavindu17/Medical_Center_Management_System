@@ -20,11 +20,11 @@ export interface Screen {
 
 export const SCREENS: Screen[] = [
     // Dashboards
+    { section: 'Dashboards', label: 'Clinic overview', href: '/admin', icon: 'LayoutDashboard', resource: 'admin.dashboard', level: 'view' },
+    { section: 'Dashboards', label: 'HR overview', href: '/hr', icon: 'LayoutDashboard', resource: 'hr.overview', level: 'view' },
     { section: 'Dashboards', label: 'Reception', href: '/receptionist', icon: 'LayoutDashboard', resource: 'reception.dashboard', level: 'view' },
     { section: 'Dashboards', label: 'Doctor', href: '/doctor', icon: 'LayoutDashboard', resource: 'doctor.dashboard', level: 'view' },
     { section: 'Dashboards', label: 'Pharmacy', href: '/pharmacist', icon: 'LayoutDashboard', resource: 'pharmacy.dashboard', level: 'view' },
-    { section: 'Dashboards', label: 'HR overview', href: '/hr', icon: 'LayoutDashboard', resource: 'hr.overview', level: 'view' },
-    { section: 'Dashboards', label: 'Clinic overview', href: '/admin', icon: 'LayoutDashboard', resource: 'admin.dashboard', level: 'view' },
     // Front desk
     { section: 'Front desk', label: 'Appointments', href: '/receptionist/appointments', icon: 'CalendarCheck', resource: 'reception.appointments', level: 'view', also: ['/receptionist/appointments/book'] },
     { section: 'Front desk', label: 'Register patient', href: '/receptionist/register', icon: 'UserPlus', resource: 'reception.patients', level: 'add' },
