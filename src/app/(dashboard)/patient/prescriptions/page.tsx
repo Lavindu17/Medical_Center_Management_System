@@ -1,4 +1,5 @@
 'use client';
+import { rxExtraNotes } from '@/lib/rx-extras';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { toast } from 'sonner';
 import { EmptyState, LoadingState } from '@/components/ui/state-views';
@@ -116,6 +117,7 @@ export default function PrescriptionsPage() {
                                                         </div>
                                                     ))}
                                                 </dl>
+                                                {rxExtraNotes(item).length > 0 && <p className="mt-2 rounded-md bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-900">{rxExtraNotes(item).join('. ')}.</p>}
                                             </li>
                                         ))}
                                     </ul>

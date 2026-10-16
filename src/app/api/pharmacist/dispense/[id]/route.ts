@@ -9,6 +9,7 @@ import { AuthService } from '@/services/auth.service';
 import { cookies } from 'next/headers';
 import { prescriptionStatus } from '@/lib/prescription';
 import { notify, usersWithRole } from '@/lib/notify';
+import { hasRxExtras } from '@/lib/schema-features';
 
 export async function GET(
     request: Request,
@@ -46,7 +47,8 @@ export async function GET(
         const prescription = presRows[0];
         await auditAccess(user, { action: 'VIEW', entity: 'PRESCRIPTION', entityId: id, patientId: prescription.patient_id });
 
-        // 2. Fetch Items
+        // 2. Fetch Items (instructions, food timing and as-needed come from 21_orders.sql once applied)
+        const extras = await hasRxExtras();
         const items: any = await query(
             `SELECT 
                 pi.id as item_id, 
@@ -54,7 +56,7 @@ export async function GET(
                 pi.quantity as prescribed_quantity, 
                 pi.dispensed_quantity,
                 pi.rejection_reason,
-                pi.dosage, pi.frequency, pi.duration,
+                pi.dosage, pi.frequency, pi.duration, ${extras ? 'pi.instructions, pi.food_timing AS food_timing, pi.as_needed AS as_needed' : "NULL AS instructions, NULL AS food_timing, 0 AS as_needed"},
                 m.name as medicine_name, 
                 m.generic_name,
                 m.manufacturer,

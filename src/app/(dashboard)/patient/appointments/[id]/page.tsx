@@ -1,4 +1,5 @@
 'use client';
+import { rxExtraNotes } from '@/lib/rx-extras';
 import { PageHeader } from '@/components/ui/page-header';
 import { formatDate, shortTime } from '@/lib/dates';
 import { asDoctor } from '@/lib/names';
@@ -216,6 +217,7 @@ export default function AppointmentDetailPage() {
                                                     <p><span className="font-medium text-neutral-400 block w-16 inline-block">Dose:</span> {item.dosage} ({item.frequency})</p>
                                                     <p><span className="font-medium text-neutral-400 block w-16 inline-block">Duration:</span> {item.duration}</p>
                                                     <p><span className="font-medium text-neutral-400 block w-16 inline-block">Dispense:</span> {item.quantity} units</p>
+                                                    {rxExtraNotes(item).length > 0 && <p className="font-medium text-amber-800">{rxExtraNotes(item).join('. ')}.</p>}
                                                 </div>
                                             </div>
                                         ))}

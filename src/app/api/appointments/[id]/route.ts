@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
+import { hasRxExtras } from '@/lib/schema-features';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const auth = await requireRole('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN');
@@ -94,8 +95,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         let prescriptionDetails = null;
         if (prescriptions.length > 0) {
             const prescriptionId = prescriptions[0].prescriptionId;
+            const extras = await hasRxExtras();
             const items = await query<any[]>(`
-                SELECT pi.id, pi.status, pi.dosage, pi.frequency, pi.duration, pi.quantity, pi.dispensed_quantity, m.name as medicineName
+                SELECT pi.id, pi.status, pi.dosage, pi.frequency, pi.duration, pi.quantity, pi.dispensed_quantity, ${extras ? 'pi.instructions, pi.food_timing AS food_timing, pi.as_needed AS as_needed' : "NULL AS instructions, NULL AS food_timing, 0 AS as_needed"}, m.name as medicineName
                 FROM prescription_items pi
                 JOIN medicines m ON pi.medicine_id = m.id
                 WHERE pi.prescription_id = ?

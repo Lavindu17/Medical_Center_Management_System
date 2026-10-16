@@ -4,7 +4,9 @@ import { toast } from 'sonner';
 import { useConfirm, usePrompt } from '@/components/ui/confirm-dialog';
 import { medicineForm } from '@/lib/medicine-form';
 import { allergyMatches } from '@/lib/allergy';
-import { NONE, describeLine, hasSlots, quantityFor } from '@/lib/prescription-calc';
+import { FOOD_TEXT, NONE, describeLine, frequencyLabel, hasSlots, quantityFor, type FoodTiming } from '@/lib/prescription-calc';
+import { RxQuickAdd } from '@/components/doctor/RxQuickAdd';
+import { draftFromPreset, type LabPanel, type LineDraft, type Medicine, type PresetLine } from '@/components/doctor/rx-types';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -19,21 +21,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon, Check, ChevronsUpDown, Search, ShieldAlert, AlertTriangle, Lock } from 'lucide-react';
+import { Save, CheckCircle, Plus, Trash2, Pencil, X, History, Activity, Pill, FlaskConical, FileText, Sunrise, Sun, Sunset, Moon, Check, ChevronsUpDown, Search, ShieldAlert, AlertTriangle, Lock, Star, BookmarkPlus, Zap } from 'lucide-react';
 import { formatLKR, cn } from '@/lib/utils';
 
 // Interfaces
-interface Medicine {
-    id: number;
-    name: string;
-    generic_name?: string | null;
-    strength?: string | null;
-    stock: number;
-    usable_stock?: number | string;
-    unit: string;
-    dosage_form?: string | null;
-}
-
 interface LabTest {
     id: number;
     name: string;
@@ -49,10 +40,14 @@ interface PrescriptionItem {
     quantity: number;
     /** How much the pharmacist has already handed out: that part of the line can no longer be removed */
     dispensedQuantity?: number;
+    instructions?: string | null;
+    foodTiming?: FoodTiming | null;
+    asNeeded?: boolean;
 }
 
 interface Allergy { name: string; severity: string | null }
-interface CurrentLab { id: number; testId: number; name: string; status: string; resultUrl: string | null }
+interface CurrentLab { id: number; testId: number; name: string; status: string; resultUrl: string | null; priority?: string; note?: string | null }
+interface LabDetail { priority: 'ROUTINE' | 'URGENT'; note: string }
 
 const usable = (m: Medicine) => Number(m.usable_stock ?? m.stock ?? 0);
 
@@ -108,6 +103,13 @@ export default function ConsultationPage() {
     const [selectedDuration, setSelectedDuration] = useState<string>('3 days');
     /** Medicines the doctor confirmed despite an allergy warning (sent with the save) */
     const [acknowledged, setAcknowledged] = useState<number[]>([]);
+    const [asNeeded, setAsNeeded] = useState(false);
+    const [foodTiming, setFoodTiming] = useState<FoodTiming | null>(null);
+    const [instructions, setInstructions] = useState('');
+    const [presets, setPresets] = useState<{ available: boolean; favourites: PresetLine[]; recent: PresetLine[]; panels: LabPanel[] }>({ available: false, favourites: [], recent: [], panels: [] });
+    const [features, setFeatures] = useState({ rxExtras: false, labExtras: false });
+    /** Priority and note per requested test, keyed by test id */
+    const [labDetails, setLabDetails] = useState<Record<number, LabDetail>>({});
 
     // Form State - Labs
     const [selectedLabs, setSelectedLabs] = useState<number[]>([]); // Lab Test IDs
@@ -144,19 +146,24 @@ export default function ConsultationPage() {
                 }
                 // What was already saved for this visit: reopening a draft must show it, because saving sends the whole list
                 if (data.current) {
+                    setFeatures(data.features ?? { rxExtras: false, labExtras: false });
                     setCurrentPrescription((data.current.prescription ?? []).map((r: any) => ({
                         medicineId: r.medicineId, medicineName: r.medicineName, dosage: r.dosage, frequency: r.frequency,
                         duration: r.duration, quantity: Number(r.quantity), dispensedQuantity: Number(r.dispensedQuantity ?? 0),
+                        instructions: r.instructions ?? null, foodTiming: r.foodTiming ?? null, asNeeded: Boolean(r.asNeeded),
                     })));
+                    setLabDetails(Object.fromEntries((data.current.labs ?? []).map((l: CurrentLab) => [l.testId, { priority: l.priority === 'URGENT' ? 'URGENT' : 'ROUTINE', note: l.note ?? '' }])));
                     setCurrentLabs(data.current.labs ?? []);
                     setSelectedLabs((data.current.labs ?? []).map((l: CurrentLab) => l.testId));
                 }
 
                 // 2. Fetch Medicines & Tests
-                const [medRes, labRes] = await Promise.all([
+                const [medRes, labRes, presetRes] = await Promise.all([
                     fetch('/api/admin/medicines'),
-                    fetch('/api/admin/lab-tests') // Need to ensure these endpoints exist or create them
+                    fetch('/api/admin/lab-tests'),
+                    fetch('/api/doctor/presets'),
                 ]);
+                if (presetRes.ok) setPresets(await presetRes.json());
 
                 if (medRes.ok) setMedicines(await medRes.json());
                 if (labRes.ok) setLabTests(await labRes.json());
@@ -176,19 +183,17 @@ export default function ConsultationPage() {
 
     // The line being built, worked out the same way it will be saved
     const draftQuantity = medicine ? quantityFor({ form: selectedMedForm === 'Other' ? 'Pill' : selectedMedForm, times: selectedTimes, duration: selectedDuration, unit: medicine.unit }) : 0;
-    const draftText = describeLine({ form: selectedMedForm === 'Other' ? 'Pill' : selectedMedForm, times: selectedTimes, duration: selectedDuration, quantity: draftQuantity });
+    const draftText = describeLine({ form: selectedMedForm === 'Other' ? 'Pill' : selectedMedForm, times: selectedTimes, duration: selectedDuration, quantity: draftQuantity, asNeeded, foodTiming, instructions });
     const alreadyListed = Boolean(medicine) && editingIndex === null && currentPrescription.some(p => p.medicineId === medicine!.id);
     const draftAllergy = medicine ? allergyMatches(medicine, allergies) : [];
 
     // Handlers
-    const handleAddMedicine = async () => {
-        if (!selectedMed) return;
-        const med = medicines.find(m => m.id.toString() === selectedMed);
-        if (!med) return;
-
-        if (!hasSlots(selectedTimes)) {
+    /** Adds (or, when editing, replaces) a line. Asks about an allergy first. Returns whether the line went in. */
+    const commitDraft = async (draft: LineDraft, replaceIndex: number | null = null): Promise<boolean> => {
+        const med = draft.med;
+        if (!hasSlots(draft.times)) {
             toast.error('Choose when the patient takes it: tap Morning, Noon, Evening or Night, or a preset such as BD.');
-            return;
+            return false;
         }
 
         // Allergy: ask once; the doctor's confirmation travels with the save and is recorded
@@ -201,13 +206,13 @@ export default function ConsultationPage() {
                 cancelLabel: 'Choose another medicine',
                 destructive: true,
             });
-            if (!ok) return;
+            if (!ok) return false;
             setAcknowledged(list => [...list, med.id]);
         }
 
-        const form = selectedMedForm === 'Other' ? 'Pill' : selectedMedForm;
-        let qty = quantityFor({ form, times: selectedTimes, duration: selectedDuration, unit: med.unit });
-        const dispensed = editingIndex !== null ? currentPrescription[editingIndex]?.dispensedQuantity ?? 0 : 0;
+        const form = medicineForm(med) === 'Syrup' ? 'Syrup' : medicineForm(med) === 'Cream' ? 'Cream' : 'Pill';
+        let qty = quantityFor({ form, times: draft.times, duration: draft.duration, unit: med.unit });
+        const dispensed = replaceIndex !== null ? currentPrescription[replaceIndex]?.dispensedQuantity ?? 0 : 0;
         if (qty < dispensed) {
             qty = dispensed;
             toast.message(`The quantity stays at ${dispensed}: that much was already dispensed.`);
@@ -216,25 +221,90 @@ export default function ConsultationPage() {
         const newItem: PrescriptionItem = {
             medicineId: med.id,
             medicineName: med.name,
-            dosage: selectedDose || '1',
-            frequency: selectedTimes.join('-'), // e.g. "½-0-0-1"
-            duration: selectedDuration,
+            dosage: draft.dose || '1',
+            frequency: draft.times.join('-'), // e.g. "½-0-0-1"
+            duration: draft.duration,
             quantity: qty,
             dispensedQuantity: dispensed,
+            instructions: draft.instructions.trim() || null,
+            foodTiming: draft.foodTiming,
+            asNeeded: draft.asNeeded,
         };
+        setCurrentPrescription(list => {
+            if (replaceIndex === null) return [...list, newItem];
+            const next = [...list];
+            next[replaceIndex] = newItem;
+            return next;
+        });
+        return true;
+    };
 
-        if (editingIndex !== null) {
-            const newList = [...currentPrescription];
-            newList[editingIndex] = newItem;
-            setCurrentPrescription(newList);
-            setEditingIndex(null);
-        } else {
-            setCurrentPrescription([...currentPrescription, newItem]);
-        }
-
+    const resetForm = () => {
+        setEditingIndex(null);
         setSelectedMed('');
         setSelectedTimes(['0', '0', '0', '0']);
         setSelectedDose('1');
+        setAsNeeded(false);
+        setFoodTiming(null);
+        setInstructions('');
+    };
+
+    const handleAddMedicine = async () => {
+        if (!medicine) return;
+        const ok = await commitDraft({ med: medicine, dose: selectedDose || '1', times: selectedTimes, duration: selectedDuration, asNeeded, foodTiming, instructions }, editingIndex);
+        if (ok) resetForm();
+    };
+
+    /** The quick-add line understood the medicine but not everything: fill the form with what it did understand. */
+    const prefillForm = (draft: LineDraft) => {
+        setSelectedMed(String(draft.med.id));
+        setSelectedMedForm(medicineForm(draft.med));
+        setSelectedDose(draft.dose);
+        setSelectedTimes(draft.times);
+        setSelectedDuration(draft.duration);
+        setAsNeeded(draft.asNeeded);
+        setFoodTiming(draft.foodTiming);
+        setInstructions(draft.instructions);
+        setEditingIndex(null);
+        document.getElementById('add-med-form')?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // Lines from the patient's most recent past prescription (one visit, newest)
+    const lastVisitLines = useMemo(() => {
+        const past: any[] = history.prescriptions ?? [];
+        if (past.length === 0) return [] as any[];
+        const newest = past[0].appointment_id;
+        return past.filter(p => p.appointment_id === newest && p.medicineId && medicines.some(m => m.id === p.medicineId));
+    }, [history.prescriptions, medicines]);
+    const repeatable = lastVisitLines.filter(l => !currentPrescription.some(c => c.medicineId === l.medicineId));
+
+    const repeatLastVisit = async () => {
+        let added = 0;
+        for (const l of repeatable) {
+            const med = medicines.find(m => m.id === l.medicineId)!;
+            const draft = draftFromPreset(med, { medicineId: med.id, dosage: l.dosage, frequency: l.frequency, duration: l.duration, instructions: l.instructions, foodTiming: l.foodTiming, asNeeded: Boolean(Number(l.asNeeded)) });
+            if (await commitDraft(draft)) added++;
+        }
+        if (added > 0) toast.success(`Added ${added} medicine${added === 1 ? '' : 's'} from the last visit. Check each line, as the patient may need something different today.`);
+    };
+
+    const saveFavourite = async (item: PrescriptionItem) => {
+        try {
+            const res = await fetch('/api/doctor/presets', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'favourite', medicineId: item.medicineId, dosage: item.dosage, frequency: item.frequency, duration: item.duration, instructions: item.instructions ?? null, foodTiming: item.foodTiming ?? null, asNeeded: Boolean(item.asNeeded) }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Could not save');
+            toast.success(`${item.medicineName} saved as a favourite`);
+            const fresh = await fetch('/api/doctor/presets');
+            if (fresh.ok) setPresets(await fresh.json());
+        } catch (err: any) { toast.error(err.message); }
+    };
+
+    const removeFavourite = async (medicineId: number) => {
+        const res = await fetch(`/api/doctor/presets?type=favourite&medicineId=${medicineId}`, { method: 'DELETE' });
+        if (res.ok) setPresets(p => ({ ...p, favourites: p.favourites.filter(f => f.medicineId !== medicineId) }));
+        else toast.error('Could not remove the favourite');
     };
 
     const handleEditMedicine = (index: number) => {
@@ -247,6 +317,9 @@ export default function ConsultationPage() {
         const times = item.frequency.split('-') as [string, string, string, string];
         setSelectedTimes(times);
         setSelectedDuration(item.duration);
+        setAsNeeded(Boolean(item.asNeeded));
+        setFoodTiming(item.foodTiming ?? null);
+        setInstructions(item.instructions ?? '');
 
         // Set form type for UI helpers
         const med = medicines.find(m => m.id === item.medicineId);
@@ -259,12 +332,7 @@ export default function ConsultationPage() {
         if (form) form.scrollIntoView({ behavior: 'smooth' });
     };
 
-    const handleCancelEdit = () => {
-        setEditingIndex(null);
-        setSelectedMed('');
-        setSelectedTimes(['0', '0', '0', '0']);
-        setSelectedDose('1');
-    };
+    const handleCancelEdit = resetForm;
 
     const handleRemoveMedicine = (index: number) => {
         if ((currentPrescription[index]?.dispensedQuantity ?? 0) > 0) {
@@ -283,8 +351,8 @@ export default function ConsultationPage() {
                 appointmentId: Number(appointmentId),
                 vitals,
                 notes,
-                prescription: currentPrescription.map(({ dispensedQuantity: _d, ...line }) => line),
-                labRequestIds: selectedLabs,
+                prescription: currentPrescription.map(({ dispensedQuantity: _d, ...line }) => ({ ...line, instructions: line.instructions ?? null, foodTiming: line.foodTiming ?? null, asNeeded: Boolean(line.asNeeded) })),
+                labOrders: selectedLabs.map(testId => ({ testId, priority: labDetails[testId]?.priority ?? 'ROUTINE', note: labDetails[testId]?.note?.trim() || null })),
                 allergyAcknowledged: acknowledged,
                 status: complete ? 'COMPLETED' : 'ONGOING'
             };
@@ -324,6 +392,38 @@ export default function ConsultationPage() {
         return found ? formatDate(found.requested_at) : null;
     };
     const savedLab = (testId: number) => currentLabs.find(l => l.testId === testId);
+    /** The newest result for this test in the last 30 days, from the patient's earlier visits */
+    const lastResult = (testId: number) => {
+        const cutoff = Date.now() - 30 * 86_400_000;
+        const found = history.labs.find((l: any) => l.test_id === testId && l.status === 'COMPLETED' && new Date(l.requested_at).getTime() >= cutoff);
+        return found ? { date: formatDate(found.requested_at), url: found.result_url as string | null } : null;
+    };
+
+    const applyPanel = (panel: LabPanel) => {
+        const add = panel.testIds.filter(id => !selectedLabs.includes(id) && labTests.some(t => t.id === id));
+        if (add.length === 0) { toast.message(`Every test in ${panel.name} is already requested.`); return; }
+        setSelectedLabs(list => [...list, ...add]);
+        toast.success(`Added ${add.length} test${add.length === 1 ? '' : 's'} from ${panel.name}`);
+    };
+
+    const savePanel = async () => {
+        const name = await askText({ title: 'Save these tests as a set', label: 'Name of the set', placeholder: 'For example: Fever workup', confirmLabel: 'Save set' });
+        if (!name?.trim()) return;
+        try {
+            const res = await fetch('/api/doctor/presets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'panel', name: name.trim(), testIds: selectedLabs }) });
+            if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || 'Could not save the set');
+            toast.success(`Saved ${name.trim()}`);
+            const fresh = await fetch('/api/doctor/presets');
+            if (fresh.ok) setPresets(await fresh.json());
+        } catch (err: any) { toast.error(err.message); }
+    };
+
+    const deletePanel = async (panel: LabPanel) => {
+        if (!await confirm({ title: `Delete the set "${panel.name}"?`, description: 'Tests already requested are not affected.', confirmLabel: 'Delete set', cancelLabel: 'Keep it', destructive: true })) return;
+        const res = await fetch(`/api/doctor/presets?type=panel&id=${panel.id}`, { method: 'DELETE' });
+        if (res.ok) setPresets(p => ({ ...p, panels: p.panels.filter(x => x.id !== panel.id) }));
+        else toast.error('Could not delete the set');
+    };
 
     if (loading) return <div role="status" className="py-16 text-center text-neutral-500">Loading Consultation…</div>;
     if (!appointment) return <div role="alert" className="py-16 text-center text-neutral-600">Appointment not found</div>;
@@ -477,6 +577,16 @@ export default function ConsultationPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-5 space-y-5">
+                                    <RxQuickAdd
+                                        medicines={medicines}
+                                        favourites={presets.favourites}
+                                        recent={presets.recent}
+                                        repeatCount={repeatable.length}
+                                        onRepeat={repeatLastVisit}
+                                        onCommit={(d) => { void commitDraft(d); }}
+                                        onPrefill={prefillForm}
+                                    />
+
                                     {/* Add Med Form */}
                                     <div id="add-med-form" className={`p-4 border rounded-xl space-y-4 shadow-sm transition-all duration-300 ${editingIndex !== null ? 'bg-amber-50/80 border-amber-200 ring-2 ring-amber-100' : 'bg-white border-emerald-100'}`}>
                                         {editingIndex !== null && (
@@ -627,6 +737,7 @@ export default function ConsultationPage() {
                                                             value={selectedDuration}
                                                             onChange={e => setSelectedDuration(e.target.value)}
                                                         >
+                                                            {!['1 day', '3 days', '5 days', '7 days', '10 days', '2 weeks', '1 month', '2 months'].includes(selectedDuration) && <option value={selectedDuration}>{selectedDuration}</option>}
                                                             <option value="1 day">1 Day</option>
                                                             <option value="3 days">3 Days</option>
                                                             <option value="5 days">5 Days</option>
@@ -638,6 +749,26 @@ export default function ConsultationPage() {
                                                         </select>
                                                     </div>
                                                 </div>
+                                                {features.rxExtras && (
+                                                    <div className="space-y-2">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="text-xs font-medium text-neutral-700">With food?</span>
+                                                            {(['BEFORE', 'AFTER', 'WITH'] as const).map(t => (
+                                                                <button key={t} type="button" aria-pressed={foodTiming === t} onClick={() => setFoodTiming(foodTiming === t ? null : t)}
+                                                                    className={`min-h-8 rounded-full border px-3 text-xs font-medium ${foodTiming === t ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-neutral-300 bg-white hover:bg-neutral-50'}`}>
+                                                                    {FOOD_TEXT[t][0].toUpperCase() + FOOD_TEXT[t].slice(1)}
+                                                                </button>
+                                                            ))}
+                                                            <label className="ml-auto inline-flex min-h-8 cursor-pointer items-center gap-1.5 text-xs font-medium text-neutral-800">
+                                                                <input type="checkbox" checked={asNeeded} onChange={e => setAsNeeded(e.target.checked)} className="h-4 w-4" /> Only when needed
+                                                            </label>
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="rx-instructions" className="text-xs">Instructions for the patient (optional)</Label>
+                                                            <Input id="rx-instructions" value={instructions} maxLength={255} onChange={e => setInstructions(e.target.value)} placeholder="For example: finish the whole course, avoid alcohol" className="mt-1 h-9 text-sm" />
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <div aria-live="polite" className="mt-4 rounded-lg border border-dashed border-emerald-300 bg-emerald-50/40 p-3 text-sm">
                                                     <p className="text-[11px] font-bold uppercase tracking-tight text-neutral-500">How the patient will read it</p>
                                                     <p className="mt-1 font-medium text-neutral-900">{draftText}</p>
@@ -675,7 +806,7 @@ export default function ConsultationPage() {
                                                             </div>
                                                             <div className="min-w-0">
                                                                 <div className="font-bold text-neutral-800 text-base leading-tight">{item.medicineName}</div>
-                                                                <p className="mt-1 text-sm text-neutral-700">{describeLine({ form, times: item.frequency.split('-'), duration: item.duration, quantity: item.quantity })}</p>
+                                                                <p className="mt-1 text-sm text-neutral-700">{describeLine({ form, times: item.frequency.split('-'), duration: item.duration, quantity: item.quantity, asNeeded: item.asNeeded, foodTiming: item.foodTiming, instructions: item.instructions })}</p>
                                                             </div>
                                                         </div>
                                                         <div className="text-right shrink-0">
@@ -689,6 +820,16 @@ export default function ConsultationPage() {
                                                             {med && usable(med) < item.quantity - (item.dispensedQuantity ?? 0) && !locked && <span className="text-[11px] font-medium text-amber-800">Stock: {usable(med)}</span>}
                                                         </div>
                                                         <div className="flex gap-2">
+                                                            {presets.available && (() => {
+                                                                const fav = presets.favourites.some(fv => fv.medicineId === item.medicineId);
+                                                                return (
+                                                                    <button type="button" onClick={() => (fav ? removeFavourite(item.medicineId) : saveFavourite(item))}
+                                                                        aria-pressed={fav} aria-label={fav ? `Remove ${item.medicineName} from favourites` : `Save ${item.medicineName} as a favourite`}
+                                                                        className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg transition-all">
+                                                                        <Star className={`h-3 w-3 ${fav ? 'fill-amber-400 text-amber-500' : ''}`} aria-hidden /> {fav ? 'FAVOURITE' : 'SAVE'}
+                                                                    </button>
+                                                                );
+                                                            })()}
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleEditMedicine(idx)}
@@ -727,6 +868,22 @@ export default function ConsultationPage() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="pt-4 space-y-4">
+                                    {presets.panels.length > 0 && (
+                                        <div>
+                                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-600">Your test sets</p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {presets.panels.map(panel => (
+                                                    <span key={panel.id} className="inline-flex items-center overflow-hidden rounded-full border border-teal-200 bg-white text-xs">
+                                                        <button type="button" onClick={() => applyPanel(panel)} className="min-h-9 px-3 font-medium hover:bg-teal-50" title={`Add the ${panel.testIds.length} tests in ${panel.name}`}>
+                                                            {panel.name} <span className="text-neutral-600">({panel.testIds.length})</span>
+                                                        </button>
+                                                        <button type="button" onClick={() => deletePanel(panel)} className="min-h-9 border-l border-teal-100 px-2 text-neutral-600 hover:bg-red-50 hover:text-red-700" aria-label={`Delete the set ${panel.name}`}><X className="h-3 w-3" aria-hidden /></button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="space-y-2">
                                         <Label className="text-xs">Add a test</Label>
                                         <Popover open={labOpen} onOpenChange={setLabOpen}>
@@ -749,7 +906,7 @@ export default function ConsultationPage() {
                                                         <CommandGroup>
                                                             {labTests.map((test) => {
                                                                 const picked = selectedLabs.includes(test.id);
-                                                                const done = lastDone(test.id);
+                                                                const prior = lastResult(test.id);
                                                                 return (
                                                                     <CommandItem
                                                                         key={test.id}
@@ -772,7 +929,7 @@ export default function ConsultationPage() {
                                                                             </div>
                                                                             <span className="flex flex-1 flex-col">
                                                                                 <span>{test.name}</span>
-                                                                                {done && <span className="text-[11px] font-medium text-amber-800">Result already on file from {done}</span>}
+                                                                                {prior && <span className="text-[11px] font-medium text-amber-800">Result already on file from {prior.date}</span>}
                                                                             </span>
                                                                             <span className="text-xs text-neutral-500">{formatLKR(test.price)}</span>
                                                                         </div>
@@ -797,26 +954,50 @@ export default function ConsultationPage() {
                                                 const t = labById(id);
                                                 const saved = savedLab(id);
                                                 const finished = saved?.status === 'COMPLETED';
-                                                const done = !saved ? lastDone(id) : null;
+                                                const prior = lastResult(id);
+                                                const detail = labDetails[id] ?? { priority: 'ROUTINE' as const, note: '' };
+                                                const setDetail = (patch: Partial<LabDetail>) => setLabDetails(d => ({ ...d, [id]: { ...detail, ...patch } }));
                                                 return (
-                                                    <li key={id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                                                        <div className="min-w-0">
-                                                            <p className="truncate font-medium text-neutral-900">{t?.name ?? saved?.name ?? `Test #${id}`}</p>
-                                                            <p className="text-xs text-neutral-600">
-                                                                {finished ? 'Result ready' : saved ? 'Requested, waiting for the lab' : 'Will be sent when you save'}
-                                                                {t ? ` · ${formatLKR(t.price)}` : ''}
-                                                            </p>
-                                                            {done && <p className="text-[11px] font-medium text-amber-800">Already done on {done}. Is a repeat needed?</p>}
+                                                    <li key={id} className="space-y-2 px-3 py-2.5 text-sm">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <p className="truncate font-medium text-neutral-900">{t?.name ?? saved?.name ?? `Test #${id}`}</p>
+                                                                <p className="text-xs text-neutral-600">
+                                                                    {finished ? 'Result ready' : saved ? 'Requested, waiting for the lab' : 'Will be sent when you save'}
+                                                                    {t ? ` · ${formatLKR(t.price)}` : ''}
+                                                                </p>
+                                                            </div>
+                                                            {finished ? (
+                                                                <span className="flex shrink-0 items-center gap-2 text-xs">
+                                                                    {saved?.resultUrl && <a href={saved.resultUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-emerald-800 underline"><FileText className="h-3.5 w-3.5" aria-hidden /> View</a>}
+                                                                    <Lock className="h-3.5 w-3.5 text-neutral-500" aria-label="Locked: the result is in" />
+                                                                </span>
+                                                            ) : (
+                                                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-neutral-600 hover:text-red-700" onClick={() => setSelectedLabs(selectedLabs.filter(x => x !== id))} aria-label={`Remove ${t?.name ?? 'test'}`}>
+                                                                    <X className="h-4 w-4" aria-hidden />
+                                                                </Button>
+                                                            )}
                                                         </div>
-                                                        {finished ? (
-                                                            <span className="flex shrink-0 items-center gap-2 text-xs">
-                                                                {saved?.resultUrl && <a href={saved.resultUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-emerald-800 underline"><FileText className="h-3.5 w-3.5" aria-hidden /> View</a>}
-                                                                <Lock className="h-3.5 w-3.5 text-neutral-500" aria-label="Locked: the result is in" />
-                                                            </span>
-                                                        ) : (
-                                                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-neutral-600 hover:text-red-700" onClick={() => setSelectedLabs(selectedLabs.filter(x => x !== id))} aria-label={`Remove ${t?.name ?? 'test'}`}>
-                                                                <X className="h-4 w-4" aria-hidden />
-                                                            </Button>
+
+                                                        {!finished && features.labExtras && (
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <div role="group" aria-label={`Priority for ${t?.name ?? 'test'}`} className="inline-flex overflow-hidden rounded-md border border-neutral-300 text-xs font-medium">
+                                                                    {(['ROUTINE', 'URGENT'] as const).map(p => (
+                                                                        <button key={p} type="button" aria-pressed={detail.priority === p} onClick={() => setDetail({ priority: p })}
+                                                                            className={`min-h-8 px-3 ${detail.priority === p ? (p === 'URGENT' ? 'bg-red-600 text-white' : 'bg-teal-700 text-white') : 'bg-white hover:bg-neutral-50'}`}>
+                                                                            {p === 'URGENT' ? 'Urgent' : 'Routine'}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <Input aria-label={`Note for the lab about ${t?.name ?? 'this test'}`} value={detail.note} maxLength={255} onChange={e => setDetail({ note: e.target.value })} placeholder="Note for the lab (fasting, suspected…)" className="h-8 min-w-[10rem] flex-1 text-xs" />
+                                                            </div>
+                                                        )}
+
+                                                        {prior && !finished && (
+                                                            <p className="flex flex-wrap items-center gap-x-2 text-[11px] font-medium text-amber-800">
+                                                                Last result {prior.date}. Is a repeat needed?
+                                                                {prior.url && <a href={prior.url} target="_blank" rel="noopener noreferrer" className="underline">View it</a>}
+                                                            </p>
                                                         )}
                                                     </li>
                                                 );
@@ -824,7 +1005,12 @@ export default function ConsultationPage() {
                                         </ul>
                                     )}
                                     {selectedLabs.length > 0 && (
-                                        <p className="flex justify-between text-sm"><span className="text-neutral-600">{selectedLabs.length} test{selectedLabs.length === 1 ? '' : 's'}</span><span className="font-semibold tabular-nums">{formatLKR(labTotal)}</span></p>
+                                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                            <span><span className="text-neutral-600">{selectedLabs.length} test{selectedLabs.length === 1 ? '' : 's'}</span> <span className="ml-2 font-semibold tabular-nums">{formatLKR(labTotal)}</span></span>
+                                            {presets.available && (
+                                                <Button type="button" variant="outline" size="sm" className="h-9 gap-1.5" onClick={savePanel}><BookmarkPlus className="h-3.5 w-3.5" aria-hidden /> Save as a set</Button>
+                                            )}
+                                        </div>
                                     )}
                                 </CardContent>
                             </Card>
@@ -993,7 +1179,7 @@ export default function ConsultationPage() {
                                         return (
                                             <li key={i} className="rounded-md border p-2">
                                                 <p className="font-medium">{p.medicineName}</p>
-                                                <p className="text-neutral-700">{describeLine({ form: med ? medicineForm(med) : 'Pill', times: p.frequency.split('-'), duration: p.duration, quantity: p.quantity })}</p>
+                                                <p className="text-neutral-700">{describeLine({ form: med ? medicineForm(med) : 'Pill', times: p.frequency.split('-'), duration: p.duration, quantity: p.quantity, asNeeded: p.asNeeded, foodTiming: p.foodTiming, instructions: p.instructions })}</p>
                                                 {acknowledged.includes(p.medicineId) && <p className="mt-0.5 text-xs font-semibold text-red-800">Prescribed despite an allergy warning (recorded).</p>}
                                             </li>
                                         );

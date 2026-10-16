@@ -1,4 +1,5 @@
 'use client';
+import { rxExtraNotes } from '@/lib/rx-extras';
 import { formatDate } from '@/lib/dates';
 import { toast } from 'sonner';
 import { asDoctor } from '@/lib/names';
@@ -611,6 +612,9 @@ export default function DispensePage(props: { params: Promise<{ id: string }> })
                                                     {parseFrequency(item.frequency)}
                                                     <span className="text-neutral-400 ml-1">for {item.duration}</span>
                                                 </div>
+                                                {rxExtraNotes(item).length > 0 && (
+                                                    <p className="basis-full rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900">Directions: {rxExtraNotes(item).join('. ')}</p>
+                                                )}
                                                 {(item.location || item.manufacturer) && (
                                                     <div className="flex items-center gap-4 text-xs font-medium text-neutral-500">
                                                         {item.location && (

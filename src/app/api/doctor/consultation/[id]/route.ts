@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
+import { hasLabExtras, hasRxExtras } from '@/lib/schema-features';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
     const auth = await requireRole('DOCTOR');
@@ -70,6 +71,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         };
 
         // 2. Fetch Full Relational History
+        const [rxExtras, labExtras] = await Promise.all([hasRxExtras(), hasLabExtras()]);
+        const rxCols = rxExtras ? 'pi.instructions, pi.food_timing AS foodTiming, pi.as_needed AS asNeeded' : "NULL AS instructions, NULL AS foodTiming, 0 AS asNeeded";
+        const labCols = labExtras ? 'lr.priority, lr.clinical_note AS note' : "'ROUTINE' AS priority, NULL AS note";
         const [pastAppointments, pastLabs, pastPrescriptions, currentItems, currentLabs, allergies] = await Promise.all([
             // A. All Completed Appointments
             query<any[]>(
@@ -92,7 +96,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             // C. All Prescriptions
             query<any[]>(
                 `SELECT p.id as prescription_id, p.appointment_id, p.issued_at,
-                        pi.dosage, pi.frequency, pi.duration, pi.quantity,
+                        pi.medicine_id AS medicineId, pi.dosage, pi.frequency, pi.duration, pi.quantity, ${rxCols},
                         m.name as medicineName
                  FROM prescriptions p
                  JOIN appointments a ON p.appointment_id = a.id
@@ -104,12 +108,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
             ),
             // D. What is already saved for this visit, so reopening a draft shows it (and saving keeps it)
             query<any[]>(
-                `SELECT pi.medicine_id AS medicineId, m.name AS medicineName, pi.dosage, pi.frequency, pi.duration, pi.quantity,
+                `SELECT pi.medicine_id AS medicineId, m.name AS medicineName, pi.dosage, pi.frequency, pi.duration, pi.quantity, ${rxCols},
                         pi.status, COALESCE(pi.dispensed_quantity, 0) AS dispensedQuantity
                  FROM prescriptions p JOIN prescription_items pi ON pi.prescription_id = p.id JOIN medicines m ON m.id = pi.medicine_id
                  WHERE p.appointment_id = ? ORDER BY pi.id`, [id]),
             query<any[]>(
-                `SELECT lr.id, lr.test_id AS testId, lt.name, lr.status, lr.result_url AS resultUrl
+                `SELECT lr.id, lr.test_id AS testId, lt.name, lr.status, lr.result_url AS resultUrl, ${labCols}
                  FROM lab_requests lr JOIN lab_tests lt ON lt.id = lr.test_id WHERE lr.appointment_id = ? ORDER BY lr.id`, [id]),
             // E. Allergies, shown for the whole visit and checked when a medicine is added
             query<any[]>('SELECT allergy_name AS name, severity FROM patient_allergies WHERE patient_id = ? ORDER BY allergy_name', [appt.patient_id]),
@@ -118,8 +122,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({
             appointment: appointmentData,
             patient: { ...patientData, allergies },
+            features: { rxExtras, labExtras },
             current: {
-                prescription: currentItems.map((r) => ({ ...r, quantity: Number(r.quantity), dispensedQuantity: Number(r.dispensedQuantity) })),
+                prescription: currentItems.map((r) => ({ ...r, quantity: Number(r.quantity), dispensedQuantity: Number(r.dispensedQuantity), asNeeded: Boolean(Number(r.asNeeded)) })),
                 labs: currentLabs,
             },
             history: {

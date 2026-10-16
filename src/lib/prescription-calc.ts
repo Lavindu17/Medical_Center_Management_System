@@ -80,7 +80,13 @@ function joinSlots(names: string[]): string {
  * The line as the patient and the pharmacist will read it, for example
  * "Take 1 tablet in the morning and at night for 5 days. Total 10 tablets."
  */
-export function describeLine(input: { form: MedicineForm; times: readonly string[]; duration: string; quantity: number }): string {
+export type FoodTiming = 'BEFORE' | 'AFTER' | 'WITH';
+export const FOOD_TEXT: Record<FoodTiming, string> = { BEFORE: 'before food', AFTER: 'after food', WITH: 'with food' };
+
+export function describeLine(input: {
+    form: MedicineForm; times: readonly string[]; duration: string; quantity: number;
+    asNeeded?: boolean; foodTiming?: FoodTiming | null; instructions?: string | null;
+}): string {
     const { form, times, duration, quantity } = input;
     const used = times.map((t, i) => ({ t, name: ['in the morning', 'at midday', 'in the evening', 'at night'][i] })).filter((x) => x.t && x.t !== NONE);
     if (used.length === 0) return 'Choose when to take it.';
@@ -94,7 +100,19 @@ export function describeLine(input: { form: MedicineForm; times: readonly string
     };
     const dose = same ? amount(used[0].t) : used.map((x) => `${amount(x.t)} ${x.name}`).join(', ');
     const take = form === 'Cream' ? 'Apply' : 'Take';
-    const body = same ? `${take} ${dose} ${when}` : `${take} ${dose}`;
+    const body = input.asNeeded
+        ? `${take} ${same ? dose : 'as directed'} when needed, up to ${used.length} ${plural(used.length, 'time')} a day`
+        : same ? `${take} ${dose} ${when}` : `${take} ${dose}`;
     const total = form === 'Pill' ? ` Total ${quantity} ${plural(quantity, 'tablet')}.` : form === 'Syrup' ? ` Total ${quantity} ${plural(quantity, 'bottle')}.` : ` Total ${quantity} ${plural(quantity, 'tube')}.`;
-    return `${body} for ${duration}.${total}`;
+    const food = input.foodTiming && form !== 'Cream' ? ` Take ${FOOD_TEXT[input.foodTiming]}.` : '';
+    const note = input.instructions?.trim() ? ` ${input.instructions.trim().replace(/.$/, '')}.` : '';
+    return `${body} for ${duration}.${food}${note}${total}`;
+}
+
+/** "1-0-0-1" -> "BD", "1-1-1-1" -> "QDS"; anything else is shown as written. */
+export function frequencyLabel(times: readonly string[]): string {
+    const on = times.map((t) => (t && t !== NONE ? 1 : 0)).join('');
+    const same = new Set(times.filter((t) => t && t !== NONE)).size <= 1;
+    if (!same) return times.join('-');
+    return ({ '1000': 'OD', '1001': 'BD', '1101': 'TDS', '1111': 'QDS', '0001': 'Nocte' } as Record<string, string>)[on] ?? times.join('-');
 }

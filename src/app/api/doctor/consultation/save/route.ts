@@ -7,6 +7,7 @@ import { parseBody } from '@/lib/validate';
 import { itemStatus, prescriptionStatus } from '@/lib/prescription';
 import { nameOf, notify, usersWithRole } from '@/lib/notify';
 import { allergyMatches } from '@/lib/allergy';
+import { hasLabExtras, hasRxExtras } from '@/lib/schema-features';
 
 const SERVICE_CHARGE = 500.0;
 const CLOSED_STATUSES = ['CANCELLED', 'ABSENT', 'NO_SHOW'];
@@ -48,9 +49,18 @@ const consultationSchema = z.object({
         dosage: requiredText('dosage'),
         frequency: requiredText('frequency'),
         duration: requiredText('duration'),
+        instructions: z.string().trim().max(255, 'Instructions are too long (255 characters at most)').nullish().transform((v) => v || null),
+        foodTiming: z.enum(['BEFORE', 'AFTER', 'WITH'], { message: 'foodTiming must be BEFORE, AFTER or WITH' }).nullish().transform((v) => v ?? null),
+        asNeeded: z.boolean({ message: 'asNeeded must be true or false' }).nullish().transform((v) => v ?? false),
     }), { message: 'prescription must be an array' }).nullish().transform((v) => v ?? null),   // omitted: leave the prescription as it is
     labRequestIds: z.array(positiveInt('labRequestIds must be an array of test ids'), { message: 'labRequestIds must be an array of test ids' })
         .nullish().transform((v) => (v ? [...new Set(v)] : null)),   // omitted: leave the requests as they are
+    // The richer form of the same list: one entry per test with its priority and a note for the lab. Wins over labRequestIds.
+    labOrders: z.array(z.object({
+        testId: positiveInt('Each lab order needs a test'),
+        priority: z.enum(['ROUTINE', 'URGENT'], { message: 'priority must be ROUTINE or URGENT' }).nullish().transform((v) => v ?? 'ROUTINE'),
+        note: z.string().trim().max(255, 'A lab note can be 255 characters at most').nullish().transform((v) => v || null),
+    }), { message: 'labOrders must be an array' }).nullish().transform((v) => v ?? null),
     // Medicines the doctor has confirmed despite an allergy warning
     allergyAcknowledged: z.array(positiveInt('allergyAcknowledged must be a list of medicine ids')).nullish().transform((v) => new Set(v ?? [])),
 });
@@ -83,7 +93,14 @@ export async function POST(req: Request) {
     try {
         const body = await parseBody(req, consultationSchema);
         if ('error' in body) return body.error;
-        const { appointmentId, status, notes, prescription: items, labRequestIds: labIds, allergyAcknowledged } = body.data;
+        const { appointmentId, status, notes, prescription: items, labRequestIds, labOrders, allergyAcknowledged } = body.data;
+        // One list of orders whichever form was sent; null means the saved requests are left alone
+        const orders: { testId: number; priority: 'ROUTINE' | 'URGENT'; note: string | null }[] | null =
+            labOrders ? [...new Map(labOrders.map((o) => [o.testId, o])).values()]
+            : labRequestIds ? labRequestIds.map((testId) => ({ testId, priority: 'ROUTINE' as const, note: null })) : null;
+        const labIds = orders ? orders.map((o) => o.testId) : null;
+        // The optional columns from 21_orders.sql: used when present, so saving keeps working before it is applied
+        const [rxExtras, labExtras] = await Promise.all([hasRxExtras(), hasLabExtras()]);
         const { weight, temperature, pulse, blood_pressure: bloodPressure } = body.data.vitals;
 
         const connection = await pool.getConnection();
@@ -137,10 +154,14 @@ export async function POST(req: Request) {
                     if (idx === -1) {
                         const override = await checkAllergy(connection, appt.patient_id, item.medicineId, allergyAcknowledged);
                         if (override) overrides.push(override);
-                        await connection.execute(
+                        const [res]: any = await connection.execute(
                             `INSERT INTO prescription_items (prescription_id, medicine_id, dosage, frequency, duration, quantity)
                              VALUES (?, ?, ?, ?, ?, ?)`,
                             [prescriptionId, item.medicineId, item.dosage, item.frequency, item.duration, item.quantity]);
+                        if (rxExtras) {
+                            await connection.execute('UPDATE prescription_items SET instructions = ?, food_timing = ?, as_needed = ? WHERE id = ?',
+                                [item.instructions, item.foodTiming, item.asNeeded ? 1 : 0, res.insertId]);
+                        }
                         newItems++;
                         continue;
                     }
@@ -152,6 +173,10 @@ export async function POST(req: Request) {
                         'UPDATE prescription_items SET dosage = ?, frequency = ?, duration = ?, quantity = ?, status = ? WHERE id = ?',
                         [item.dosage, item.frequency, item.duration, item.quantity,
                          itemStatus(match.status, item.quantity, match.dispensed_quantity), match.id]);
+                    if (rxExtras) {
+                        await connection.execute('UPDATE prescription_items SET instructions = ?, food_timing = ?, as_needed = ? WHERE id = ?',
+                            [item.instructions, item.foodTiming, item.asNeeded ? 1 : 0, match.id]);
+                    }
                 }
 
                 // Lines the doctor removed: only untouched ones may go
@@ -168,14 +193,19 @@ export async function POST(req: Request) {
 
             // 3. Lab requests: the list is the whole set when it is sent. Tests that already carry a result are kept;
             //    a test not yet done can be taken off the list again.
-            let removedLabs = 0;
-            if (labIds !== null) {
-                for (const testId of labIds) {
+            let removedLabs = 0, urgentNew = 0;
+            if (orders !== null && labIds !== null) {
+                for (const order of orders) {
                     const [exists]: any = await connection.execute(
-                        'SELECT id FROM lab_requests WHERE appointment_id = ? AND test_id = ?', [appointmentId, testId]);
+                        'SELECT id, status FROM lab_requests WHERE appointment_id = ? AND test_id = ?', [appointmentId, order.testId]);
                     if (exists.length === 0) {
-                        await connection.execute('INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)', [appointmentId, testId]);
+                        const [res]: any = await connection.execute('INSERT INTO lab_requests (appointment_id, test_id) VALUES (?, ?)', [appointmentId, order.testId]);
+                        if (labExtras) await connection.execute('UPDATE lab_requests SET priority = ?, clinical_note = ? WHERE id = ?', [order.priority, order.note, res.insertId]);
                         newLabs++;
+                        if (order.priority === 'URGENT') urgentNew++;
+                    } else if (labExtras && exists[0].status === 'PENDING') {
+                        // Still waiting: the doctor may change how urgent it is or what the lab should know
+                        await connection.execute('UPDATE lab_requests SET priority = ?, clinical_note = ? WHERE id = ?', [order.priority, order.note, exists[0].id]);
                     }
                 }
                 const [open]: any = await connection.execute(
@@ -235,8 +265,8 @@ export async function POST(req: Request) {
             }
             if (newLabs > 0) {
                 await notify(connection, await usersWithRole(connection, 'LAB_ASSISTANT'), {
-                    type: 'LAB_REQUESTED', title: 'New lab request',
-                    body: `${newLabs} lab test${newLabs === 1 ? '' : 's'} requested for ${patientName}.`, link: '/lab-assistant',
+                    type: 'LAB_REQUESTED', title: urgentNew > 0 ? 'Urgent lab request' : 'New lab request',
+                    body: `${newLabs} lab test${newLabs === 1 ? '' : 's'} requested for ${patientName}${urgentNew > 0 ? `, ${urgentNew} urgent` : ''}.`, link: '/lab-assistant',
                 });
                 await notify(connection, appt.patient_id, {
                     type: 'LAB_REQUESTED', title: 'Lab tests requested',

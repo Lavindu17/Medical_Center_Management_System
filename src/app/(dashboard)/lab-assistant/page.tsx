@@ -32,6 +32,8 @@ interface LabRequest {
     requested_at: string;
     appointment_date: string | null;
     result_url?: string | null;
+    priority?: string;
+    clinical_note?: string | null;
 }
 
 // Defined at module level: a component declared inside the page is a new component on every render, which
@@ -72,9 +74,15 @@ function RequestTable({ data, onUploaded }: { data: LabRequest[]; onUploaded: ()
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                        {req.test_name ?? 'Unknown test'}
-                                    </Badge>
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                                            {req.test_name ?? 'Unknown test'}
+                                        </Badge>
+                                        {req.priority === 'URGENT' && req.status === 'PENDING' && (
+                                            <Badge className="border-0 bg-red-600 text-white">Urgent</Badge>
+                                        )}
+                                    </div>
+                                    {req.clinical_note && <p className="mt-1 max-w-xs text-xs text-neutral-700">Note: {req.clinical_note}</p>}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-1.5 text-neutral-600">

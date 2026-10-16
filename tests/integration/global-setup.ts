@@ -21,6 +21,7 @@ export default async function setup() {
     const sync = fs.readFileSync(path.join(SQL_DIR, '18_schema_sync.sql'), 'utf8');
     const auditLog = fs.readFileSync(path.join(SQL_DIR, '19_audit_log.sql'), 'utf8');
     const hr = fs.readFileSync(path.join(SQL_DIR, '20_hr.sql'), 'utf8');
+    const orders = fs.readFileSync(path.join(SQL_DIR, '21_orders.sql'), 'utf8');
 
     const admin = await mysql.createConnection({
         host,
@@ -37,6 +38,7 @@ export default async function setup() {
         await admin.query(sync);
         await admin.query(auditLog);
         await admin.query(hr);
+        await admin.query(orders);
         // Booking only accepts times a doctor offers, so the seeded doctors need working hours: every day, all day, 15-minute slots
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         await admin.query(

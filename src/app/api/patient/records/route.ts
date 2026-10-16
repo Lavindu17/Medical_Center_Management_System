@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { requireRole } from '@/lib/api-auth';
 import { auditAccess } from '@/lib/audit';
+import { hasRxExtras } from '@/lib/schema-features';
 
 export async function GET(req: Request) {
     const auth = await requireRole('PATIENT');
@@ -24,12 +25,13 @@ export async function GET(req: Request) {
         let data;
 
         if (type === 'prescriptions') {
+            const extras = await hasRxExtras();
             data = await query(`
         SELECT 
           p.id, p.status, p.issued_at,
           d.name as doctorName,
           doc.specialization,
-          pi.dosage, pi.frequency, pi.duration, pi.quantity,
+          pi.dosage, pi.frequency, pi.duration, pi.quantity, ${extras ? 'pi.instructions, pi.food_timing AS food_timing, pi.as_needed AS as_needed' : "NULL AS instructions, NULL AS food_timing, 0 AS as_needed"},
           m.name as medicineName
         FROM prescriptions p
         JOIN appointments a ON p.appointment_id = a.id
