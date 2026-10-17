@@ -23,3 +23,15 @@ export async function isSessionCurrent(payload: { id?: unknown; role?: unknown; 
     if (rows[0].changed && typeof payload.iat === 'number' && payload.iat < Math.floor(Number(rows[0].changed))) return false;
     return true;
 }
+
+/**
+ * Ends every session this person has (all devices): tokens issued before now stop working. Used by sign out, so a token
+ * that was copied cannot be used after the real owner has signed out. Best effort: the cookie is cleared regardless.
+ */
+export async function revokeSessions(userId: number): Promise<void> {
+    try {
+        await query('UPDATE users SET password_changed_at = NOW() WHERE id = ?', [userId]);
+    } catch (err) {
+        console.error('Could not revoke sessions on sign out:', err);
+    }
+}

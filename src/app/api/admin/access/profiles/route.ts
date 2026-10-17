@@ -5,7 +5,7 @@ import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { requirePermission } from '@/lib/api-auth';
 import { STAFF_ROLES } from '@/lib/access/defaults';
-import { grantsSchema, profileDescriptionSchema, profileNameSchema, rowsToGrants, roleGrants, writeGrants } from '@/lib/access/admin';
+import { grantsSchema, profileDescriptionSchema, profileNameSchema, rowsToGrants, roleGrants, writeGrants, ADMIN_ONLY, grantsAccessControl } from '@/lib/access/admin';
 import { accessFailure } from '@/lib/access/http';
 
 /**
@@ -48,6 +48,7 @@ export async function POST(req: Request) {
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, createSchema);
     if ('error' in body) return body.error;
+    if (auth.user.role !== 'ADMIN' && grantsAccessControl(body.data.grants)) return accessFailure(ADMIN_ONLY, 'Access profile create');
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();

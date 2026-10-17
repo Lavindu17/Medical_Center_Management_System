@@ -2,9 +2,25 @@ import type { NextConfig } from "next";
 
 const isProd = process.env.NODE_ENV === "production";
 
-// Baseline hardening for every response. (A Content-Security-Policy is deliberately not set here: Next, Recharts and
-// framer-motion inject inline code, so it needs to be designed and tested against the whole UI rather than added blind.)
+// Content-Security-Policy: nothing is loaded from another site (no external scripts, fonts, images or frames), forms can only
+// post back to this site, and the page cannot be framed or have its <base> changed. Inline scripts and styles stay allowed
+// because Next, Recharts and framer-motion inject them; a nonce-based policy would need every page rendered dynamically.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
+// Baseline hardening for every response.
 const securityHeaders = [
+  { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

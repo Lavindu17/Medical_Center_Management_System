@@ -5,7 +5,7 @@ import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { requirePermission } from '@/lib/api-auth';
 import { ALWAYS_ADMIN, STAFF_ROLES, isStaffRole, type StaffRole } from '@/lib/access/defaults';
-import { AccessError, describeChange, fillMissing, grantsSchema, lockRoleProfile, resetRole, roleGrants, writeGrants } from '@/lib/access/admin';
+import { AccessError, describeChange, fillMissing, grantsSchema, lockRoleProfile, resetRole, roleGrants, writeGrants, ADMIN_ONLY, grantsAccessControl } from '@/lib/access/admin';
 import { accessFailure } from '@/lib/access/http';
 
 const roleOf = (text: string): StaffRole => {
@@ -22,9 +22,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ role: st
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, putSchema);
     if ('error' in body) return body.error;
+    if (auth.user.role !== 'ADMIN' && grantsAccessControl(body.data.grants)) return accessFailure(ADMIN_ONLY, 'Access role save');
     const connection = await pool.getConnection();
     try {
         const role = roleOf((await params).role);
+        if (role === 'ADMIN' && auth.user.role !== 'ADMIN') throw ADMIN_ONLY;
         const { grants: before } = await roleGrants(role);
         // Administrators can always change access, so a site cannot lock itself out
         const grants = role === 'ADMIN' ? { ...body.data.grants, [ALWAYS_ADMIN]: { view: true, change: true } } : body.data.grants;

@@ -6,7 +6,7 @@ import { parseBody } from '@/lib/validate';
 import { requirePermission } from '@/lib/api-auth';
 import { grantsFor } from '@/lib/access/resolve';
 import { isStaffRole } from '@/lib/access/defaults';
-import { AccessError, conflictsIn, describeChange, grantsSchema, profileGrants, roleGrants, writeGrants } from '@/lib/access/admin';
+import { AccessError, conflictsIn, describeChange, grantsSchema, profileGrants, roleGrants, writeGrants, ADMIN_ONLY, grantsAccessControl, profilesHoldAccessControl } from '@/lib/access/admin';
 import { accessFailure } from '@/lib/access/http';
 
 async function staffUser(idText: string) {
@@ -59,6 +59,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if (user0 instanceof AccessError) return accessFailure(user0, 'Access user save');
     const user = user0;
     const { profileIds, personal } = body.data;
+    if (auth.user.role !== 'ADMIN' && (grantsAccessControl(personal) || await profilesHoldAccessControl(profileIds))) return accessFailure(ADMIN_ONLY, 'Access user save');
 
     // Two administrators saving the same person at once take turns (the person's row is the lock); a rare lost race is retried
     for (let attempt = 1; ; attempt++) {

@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSessionUser } from '@/lib/api-auth';
 import { audit } from '@/lib/audit';
+import { revokeSessions } from '@/lib/session-check';
 
 export async function POST() {
     const user = await getSessionUser();
-    if (user) await audit(user, { action: 'LOGOUT', entity: 'SESSION' });
+    if (user) {
+        await audit(user, { action: 'LOGOUT', entity: 'SESSION' });
+        await revokeSessions(user.id);
+        if (user.actorId && user.actorId !== user.id) await revokeSessions(user.actorId);
+    }
 
     // Clear the auth cookie
     (await cookies()).delete('token');
@@ -23,7 +28,11 @@ export async function GET(request: Request) {
     }
 
     const user = await getSessionUser();
-    if (user) await audit(user, { action: 'LOGOUT', entity: 'SESSION' });
+    if (user) {
+        await audit(user, { action: 'LOGOUT', entity: 'SESSION' });
+        await revokeSessions(user.id);
+        if (user.actorId && user.actorId !== user.id) await revokeSessions(user.actorId);
+    }
 
     // Clear the auth cookie
     (await cookies()).delete('token');

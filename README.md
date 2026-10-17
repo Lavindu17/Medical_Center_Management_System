@@ -33,7 +33,7 @@ Everyone gets **in-app notifications** (bell in the sidebar): new appointments, 
    - existing install: run `18_schema_sync.sql`, `19_audit_log.sql` (the audit trail; see `mydocumentations/audit-trail.md`) `20_hr.sql` (HR module; see `mydocumentations/hr-module-plan.md`) and `21_orders.sql` (prescription instructions, lab priority and notes, favourites, lab panels; optional, the app works without it) `22_access_control.sql` and `23_access_seed.sql` (configurable staff permissions: required. Staff can open only what is stored there, and `23` stores each role's starting permissions; `24` adds the "Other staff" role). It is idempotent and adds everything the code needs (item dispensed amounts, lab report storage, auth attempt counters, rate limits, session revocation, notifications).
 5. `npm run dev` → http://localhost:3000
 
-The seeded demo accounts in `full_setup.sql` use the password documented there; change them before any real use.
+The seeded demo accounts in `full_setup.sql` use the password documented there; change them before any real use. Before deploying, read `mydocumentations/security.md` (proxy, secrets, HTTPS, demo accounts).
 
 **Troubleshooting: the page reloads over and over in dev.** The terminal/`.next/dev/logs` show `Failed to write app endpoint ... Next.js package not found`. Turbopack's on-disk cache (`.next/dev/cache`) has gone stale, usually after a dev server was killed mid-write or two were started in this folder. The cache is turned off for dev in `next.config.ts`, but if it ever happens again: stop the server and run `npm run dev:clean` (deletes `.next`, then starts dev). Run only one `next dev` per project folder.
 

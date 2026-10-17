@@ -203,3 +203,53 @@ describe('the demo password warning', () => {
         expect((await dashboard()).health.demoPasswordAccounts).toBe(before);
     });
 });
+
+describe('signing out', () => {
+    it('ends the session for real: a copied token stops working, a new sign-in still works', async () => {
+        const r: any = await query(`INSERT INTO users (email, password_hash, name, role, is_verified) VALUES (?, 'x', 'Signs Out', 'PHARMACIST', 1)`, [`out.${uniq()}@security.test`]);
+        const { tokenFor } = await import('../helpers/auth');
+        const now = Math.floor(Date.now() / 1000);
+        const stolen = await tokenFor('PHARMACIST', r.insertId, undefined, now - 30);
+        const { AuthService } = await import('@/services/auth.service');
+        expect(await AuthService.verifyToken(stolen)).toBeTruthy();
+
+        state.token = stolen;
+        const res = await (await import('@/app/api/auth/logout/route')).POST();
+        expect(res.status).toBe(200);
+
+        expect(await AuthService.verifyToken(stolen)).toBeNull();
+        expect(await AuthService.verifyToken(await tokenFor('PHARMACIST', r.insertId, undefined, now + 5))).toBeTruthy();
+    });
+});
+
+describe('handing out access control is for administrators only', () => {
+    const grantsOf = (extra: Record<string, any> = {}) => ({ 'admin.users': { view: true }, ...extra });
+    it('a delegate who can configure access cannot give access control to anyone, or touch the administrator role', async () => {
+        const mk = async (name: string): Promise<number> => ((await query(`INSERT INTO users (email, password_hash, name, role, is_verified) VALUES (?, 'x', ?, 'STAFF', 1)`, [`dg.${uniq()}@security.test`, name])) as any).insertId;
+        const delegate = await mk('Delegate'); const friend = await mk('Friend');
+        const p: any = await query(`INSERT INTO access_profiles (name) VALUES (?)`, [`Config ${uniq()}`]);
+        await query(`INSERT INTO access_grants (profile_id, resource, can_view, can_add, can_change, can_approve) VALUES (?, 'access.config', 1, 0, 1, 0)`, [p.insertId]);
+        await query(`INSERT INTO user_access_profiles (user_id, profile_id) VALUES (?, ?)`, [delegate, p.insertId]);
+
+        await as('STAFF', delegate);
+        const profiles = await import('@/app/api/admin/access/profiles/route');
+        const user = await import('@/app/api/admin/access/users/[id]/route');
+        const role = await import('@/app/api/admin/access/roles/[role]/route');
+        const rolectx = (r: string) => ({ params: Promise.resolve({ role: r }) });
+
+        // an ordinary profile is fine
+        expect((await profiles.POST(post('/x', { name: `Plain ${uniq()}`, grants: grantsOf() }))).status).toBe(201);
+        // one that includes access control is not
+        expect((await profiles.POST(post('/x', { name: `Sneaky ${uniq()}`, grants: grantsOf({ 'access.config': { view: true, change: true } }) }))).status).toBe(403);
+        // nor is giving a friend the profile that holds it, or ticking it for them directly
+        expect((await user.PUT(post('/x', { profileIds: [p.insertId], personal: {} }, 'PUT'), ctx(friend))).status).toBe(403);
+        expect((await user.PUT(post('/x', { profileIds: [], personal: { 'access.config': { view: true, change: true } } }, 'PUT'), ctx(friend))).status).toBe(403);
+        expect((await user.PUT(post('/x', { profileIds: [], personal: { 'admin.users': { view: true } } }, 'PUT'), ctx(friend))).status).toBe(200);
+        // and the administrator role is off limits
+        expect((await role.PUT(post('/x', { grants: grantsOf() }, 'PUT'), rolectx('ADMIN'))).status).toBe(403);
+
+        // an administrator can do all of it
+        await as('ADMIN', ADMIN);
+        expect((await user.PUT(post('/x', { profileIds: [p.insertId], personal: {} }, 'PUT'), ctx(friend))).status).toBe(200);
+    });
+});

@@ -41,7 +41,7 @@ vi.mock('@/lib/access/resolve', async (importOriginal) => {
     };
 });
 
-vi.mock('@/lib/session-check', () => ({ isSessionCurrent: vi.fn(async () => true) }));
+vi.mock('@/lib/session-check', () => ({ isSessionCurrent: vi.fn(async () => true), revokeSessions: vi.fn(async () => {}) }));
 
 vi.mock('next/headers', () => ({
     cookies: async () => ({

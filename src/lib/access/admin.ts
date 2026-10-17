@@ -128,3 +128,22 @@ export const isTablesMissing = (err: any) => err?.errno === 1146;
 export { CONFLICTS, conflictsIn } from './conflicts';
 
 export { RESOURCES, levelsOf, isStaffRole };
+
+// Access to the configuration window itself is the most powerful thing there is: whoever holds it can give themselves
+// anything. So only an administrator may hand it out, however many people are allowed to configure everything else.
+export const ADMIN_ONLY = new AccessError(403, 'Only an administrator can give out access to the access configuration itself.');
+
+/** True when these ticks include any access to the configuration window. */
+export function grantsAccessControl(grants: GrantMap): boolean {
+    const g = grants['access.config'];
+    return Boolean(g && Object.values(g).some(Boolean));
+}
+
+/** True when any of these profiles includes access to the configuration window. */
+export async function profilesHoldAccessControl(profileIds: number[]): Promise<boolean> {
+    if (profileIds.length === 0) return false;
+    const { pool } = await import('@/lib/db');
+    const [found]: any = await pool.query(
+        `SELECT 1 FROM access_grants WHERE profile_id IN (?) AND resource = 'access.config' AND (can_view OR can_add OR can_change OR can_approve) LIMIT 1`, [profileIds]);
+    return found.length > 0;
+}

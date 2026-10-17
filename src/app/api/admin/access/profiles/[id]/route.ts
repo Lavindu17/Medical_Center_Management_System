@@ -4,7 +4,7 @@ import { pool, query } from '@/lib/db';
 import { audit } from '@/lib/audit';
 import { parseBody } from '@/lib/validate';
 import { requirePermission } from '@/lib/api-auth';
-import { AccessError, describeChange, grantsSchema, profileDescriptionSchema, profileGrants, profileNameSchema, writeGrants } from '@/lib/access/admin';
+import { AccessError, describeChange, grantsSchema, profileDescriptionSchema, profileGrants, profileNameSchema, writeGrants, ADMIN_ONLY, grantsAccessControl, profilesHoldAccessControl } from '@/lib/access/admin';
 import { accessFailure } from '@/lib/access/http';
 
 async function customProfile(idText: string) {
@@ -23,9 +23,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if ('error' in auth) return auth.error;
     const body = await parseBody(req, putSchema);
     if ('error' in body) return body.error;
+    if (auth.user.role !== 'ADMIN' && grantsAccessControl(body.data.grants)) return accessFailure(ADMIN_ONLY, 'Access profile save');
     const connection = await pool.getConnection();
     try {
         const profile = await customProfile((await params).id);
+        if (auth.user.role !== 'ADMIN' && await profilesHoldAccessControl([profile.id])) throw ADMIN_ONLY;
         const before = await profileGrants(profile.id);
         await connection.beginTransaction();
         await connection.execute('UPDATE access_profiles SET name = ?, description = ? WHERE id = ?', [body.data.name, body.data.description, profile.id]);
@@ -47,6 +49,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     if ('error' in auth) return auth.error;
     try {
         const profile = await customProfile((await params).id);
+        if (auth.user.role !== 'ADMIN' && await profilesHoldAccessControl([profile.id])) throw ADMIN_ONLY;
         const [n] = await query<any[]>('SELECT COUNT(*) AS n FROM user_access_profiles WHERE profile_id = ?', [profile.id]);
         await query('DELETE FROM access_profiles WHERE id = ?', [profile.id]);
         await audit(auth.user, { action: 'DELETE', entity: 'ACCESS', entityId: profile.id, details: { profile: profile.name, peopleAffected: Number(n.n) } });
